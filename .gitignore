@@ -3,4 +3,6 @@ dist
 out
 *.vsix
 .vscode-test
-.vscode
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json

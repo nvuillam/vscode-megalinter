@@ -68,6 +68,7 @@ There are several ways to open the MegaLinter configuration editor:
 
 - Node.js 18.x or higher
 - npm 8.x or higher
+- Visual Studio Code 1.75.0 or higher
 
 ### Building
 
@@ -84,6 +85,55 @@ npm run watch
 # Compile without optimization
 npm run compile
 ```
+
+### Debugging
+
+The repository includes `.vscode/launch.json` and `.vscode/tasks.json` for easy debugging:
+
+1. **Open the project in VS Code**
+   ```bash
+   code .
+   ```
+
+2. **Start debugging** (Option 1: Quick Launch)
+   - Press `F5` to build and launch the Extension Development Host
+   - A new VS Code window will open with the extension loaded
+
+3. **Start debugging** (Option 2: Debug View)
+   - Open the Debug view (`Ctrl+Shift+D` / `Cmd+Shift+D`)
+   - Select "Run Extension" from the dropdown
+   - Click the green play button or press `F5`
+
+4. **Using the debugger**
+   - Set breakpoints in your TypeScript files (`src/**/*.ts`, `src/**/*.tsx`)
+   - The debugger will pause at breakpoints
+   - Use the Debug Console to inspect variables
+   - Check the Extension Host Console for extension logs
+   - Check the WebView Developer Tools for React app debugging
+
+5. **Debugging the WebView**
+   - After launching the extension, open the configuration UI
+   - In the Extension Development Host, press `Ctrl+Shift+P` / `Cmd+Shift+P`
+   - Type "Developer: Open Webview Developer Tools"
+   - This opens Chrome DevTools for the React application
+
+6. **Hot Reload**
+   - In a separate terminal, run `npm run watch`
+   - After making changes, press `Ctrl+R` / `Cmd+R` in the Extension Development Host to reload
+
+### Debug Configurations
+
+The project includes two debug configurations:
+
+- **Run Extension**: Launches the extension for manual testing
+- **Extension Tests**: Runs automated tests (when available)
+
+### Troubleshooting Debugging
+
+- **Extension doesn't load**: Run `npm run build` and restart debugging
+- **Breakpoints not hit**: Ensure source maps are generated (check `webpack.config.js`)
+- **WebView not working**: Check Developer Console for errors (`Help > Toggle Developer Tools`)
+- **Build errors**: Delete `node_modules` and `dist`, then run `npm install && npm run build`
 
 ### Project Structure
 

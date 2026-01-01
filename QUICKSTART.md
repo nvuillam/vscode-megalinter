@@ -35,7 +35,19 @@ npm run watch
 
 # Debug
 # Press F5 in VS Code to launch Extension Development Host
+# The .vscode/launch.json file is included for easy debugging
 ```
+
+### Debugging Steps
+
+1. **Open the project in VS Code**
+2. **Press F5** to start debugging
+3. A new VS Code window (Extension Development Host) will open
+4. In the new window, test the extension
+5. Set breakpoints in your source files to debug
+6. Use `Ctrl+Shift+P` → "Developer: Open Webview Developer Tools" to debug the React UI
+
+For detailed debugging information, see the main README.md file.
 
 ### Testing
 1. Press `F5` to launch Extension Development Host
