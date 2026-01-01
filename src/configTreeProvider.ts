@@ -1,0 +1,184 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+
+export type NavigationTarget =
+  | { type: 'general' }
+  | { type: 'descriptor'; descriptorId: string }
+  | { type: 'linter'; descriptorId: string; linterId: string };
+
+type SchemaGroups = {
+  generalKeys: string[];
+  descriptorKeys: Record<string, string[]>;
+  linterKeys: Record<string, Record<string, string[]>>;
+};
+
+class SectionNode extends vscode.TreeItem {
+  constructor(
+    public readonly target: NavigationTarget,
+    label: string,
+    collapsibleState: vscode.TreeItemCollapsibleState
+  ) {
+    super(label, collapsibleState);
+
+    this.command = {
+      command: 'megalinter.revealSection',
+      title: 'Open section',
+      arguments: [target]
+    };
+  }
+}
+
+export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  private _groups: SchemaGroups | null = null;
+  private _schemaLoaded = false;
+
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  refresh() {
+    this._schemaLoaded = false;
+    this._groups = null;
+    this._onDidChangeTreeData.fire();
+  }
+
+  getTreeItem(element: SectionNode): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(element?: SectionNode): vscode.ProviderResult<SectionNode[]> {
+    if (!this._schemaLoaded) {
+      this._loadSchema();
+    }
+
+    if (!this._groups) {
+      return [];
+    }
+
+    if (!element) {
+      const descriptorIds = Object.keys(this._groups.descriptorKeys).sort();
+
+      const descriptorNodes = descriptorIds.map(
+        (descriptorId) =>
+          new SectionNode(
+            { type: 'descriptor', descriptorId },
+            descriptorId,
+            vscode.TreeItemCollapsibleState.Collapsed
+          )
+      );
+
+      return [
+        new SectionNode({ type: 'general' }, 'General', vscode.TreeItemCollapsibleState.None),
+        ...descriptorNodes
+      ];
+    }
+
+    if (isDescriptorTarget(element.target)) {
+      const descriptorId = element.target.descriptorId;
+      const linters = this._groups.linterKeys[descriptorId] || {};
+      const linterIds = Object.keys(linters).sort();
+
+      return linterIds.map((linterId) => {
+        const shortLabel = linterId.replace(`${descriptorId}_`, '');
+        return new SectionNode(
+          {
+            type: 'linter',
+            descriptorId,
+            linterId
+          },
+          shortLabel,
+          vscode.TreeItemCollapsibleState.None
+        );
+      });
+    }
+
+    return [];
+  }
+
+  private _loadSchema() {
+    try {
+      const schemaPath = path.join(
+        this.context.extensionPath,
+        'src',
+        'schema',
+        'megalinter-configuration.jsonschema.json'
+      );
+
+      const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+      const schema = JSON.parse(schemaContent);
+      this._groups = extractGroups(schema);
+    } catch (error) {
+      console.error('Failed to load MegaLinter schema for tree view', error);
+      this._groups = {
+        generalKeys: [],
+        descriptorKeys: {},
+        linterKeys: {}
+      };
+    } finally {
+      this._schemaLoaded = true;
+    }
+  }
+}
+
+const extractGroups = (schema: any): SchemaGroups => {
+  const properties = (schema.properties as Record<string, any>) || {};
+  const descriptorEnums = (schema.definitions as any)?.enum_descriptor_keys?.enum as
+    | string[]
+    | undefined;
+  const linterEnums = (schema.definitions as any)?.enum_linter_keys?.enum as string[] | undefined;
+
+  const descriptorList = Array.isArray(descriptorEnums) ? descriptorEnums : [];
+  const linterList = Array.isArray(linterEnums) ? linterEnums : [];
+
+  const descriptorKeys: Record<string, string[]> = {};
+  const linterKeys: Record<string, Record<string, string[]>> = {};
+  const generalKeys: string[] = [];
+
+  const linterDescriptorMap: Record<string, string> = {};
+  linterList.forEach((l) => {
+    const parts = l.split('_');
+    const descriptor = parts[0];
+    linterDescriptorMap[l] = descriptor;
+  });
+
+  const descriptorPrefixes = descriptorList.map((d) => `${d}_`);
+  const linterPrefixes = linterList.map((l) => `${l}_`);
+
+  Object.keys(properties).forEach((propKey) => {
+    const linterPrefix = linterPrefixes.find((p) => propKey.startsWith(p));
+    if (linterPrefix) {
+      const linterKey = linterPrefix.slice(0, -1);
+      const descriptor = linterDescriptorMap[linterKey];
+      if (descriptor) {
+        if (!linterKeys[descriptor]) {
+          linterKeys[descriptor] = {};
+        }
+        if (!linterKeys[descriptor][linterKey]) {
+          linterKeys[descriptor][linterKey] = [];
+        }
+        linterKeys[descriptor][linterKey].push(propKey);
+        return;
+      }
+    }
+
+    const descriptorPrefix = descriptorPrefixes.find((p) => propKey.startsWith(p));
+    if (descriptorPrefix) {
+      const descriptor = descriptorPrefix.slice(0, -1);
+      if (!descriptorKeys[descriptor]) {
+        descriptorKeys[descriptor] = [];
+      }
+      descriptorKeys[descriptor].push(propKey);
+      return;
+    }
+
+    generalKeys.push(propKey);
+  });
+
+  return { generalKeys, descriptorKeys, linterKeys };
+};
+
+const isDescriptorTarget = (
+  target: NavigationTarget
+): target is Extract<NavigationTarget, { type: 'descriptor' }> => target.type === 'descriptor';

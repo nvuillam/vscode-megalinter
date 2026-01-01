@@ -2,15 +2,22 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { NavigationTarget } from './configTreeProvider';
 
 export class ConfigurationPanel {
   public static currentPanel: ConfigurationPanel | undefined;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private _configPath: string;
+  private _webviewReady = false;
+  private _pendingNavigation: NavigationTarget | null = null;
+  private _statusMessage?: vscode.Disposable;
   private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(extensionUri: vscode.Uri, configPath: string) {
+  public static createOrShow(
+    extensionUri: vscode.Uri,
+    configPath: string
+  ): ConfigurationPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -20,7 +27,7 @@ export class ConfigurationPanel {
       ConfigurationPanel.currentPanel._panel.reveal(column);
       ConfigurationPanel.currentPanel._configPath = configPath;
       ConfigurationPanel.currentPanel._update();
-      return;
+      return ConfigurationPanel.currentPanel;
     }
 
     // Otherwise, create a new panel
@@ -41,6 +48,8 @@ export class ConfigurationPanel {
       extensionUri,
       configPath
     );
+
+    return ConfigurationPanel.currentPanel;
   }
 
   private constructor(
@@ -63,6 +72,17 @@ export class ConfigurationPanel {
     this._panel.webview.onDidReceiveMessage(
       async (message) => {
         switch (message.type) {
+          case 'ready':
+            this._webviewReady = true;
+            this._sendConfig();
+            if (this._pendingNavigation) {
+              this._panel.webview.postMessage({
+                type: 'navigate',
+                target: this._pendingNavigation
+              });
+              this._pendingNavigation = null;
+            }
+            break;
           case 'getConfig':
             this._sendConfig();
             break;
@@ -77,6 +97,16 @@ export class ConfigurationPanel {
       null,
       this._disposables
     );
+  }
+
+  public revealSection(target: NavigationTarget) {
+    this._pendingNavigation = target;
+    this._panel.reveal(undefined, true);
+
+    if (this._webviewReady) {
+      this._panel.webview.postMessage({ type: 'navigate', target });
+      this._pendingNavigation = null;
+    }
   }
 
   private _sendConfig() {
@@ -114,11 +144,15 @@ export class ConfigurationPanel {
 
       fs.writeFileSync(this._configPath, yamlContent, 'utf8');
 
-      vscode.window.showInformationMessage(
-        `MegaLinter configuration saved to ${path.basename(this._configPath)}`
+      if (this._statusMessage) {
+        this._statusMessage.dispose();
+      }
+
+      this._statusMessage = vscode.window.setStatusBarMessage(
+        `MegaLinter configuration saved (${path.basename(this._configPath)})`,
+        2000
       );
 
-      // Refresh the config
       this._sendConfig();
     } catch (error) {
       vscode.window.showErrorMessage(
@@ -133,6 +167,10 @@ export class ConfigurationPanel {
     // Clean up our resources
     this._panel.dispose();
 
+    if (this._statusMessage) {
+      this._statusMessage.dispose();
+    }
+
     while (this._disposables.length) {
       const x = this._disposables.pop();
       if (x) {
@@ -143,6 +181,7 @@ export class ConfigurationPanel {
 
   private _update() {
     const webview = this._panel.webview;
+    this._webviewReady = false;
     this._panel.webview.html = this._getHtmlForWebview(webview);
     this._sendConfig();
   }

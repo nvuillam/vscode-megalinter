@@ -110,7 +110,7 @@ Here are some commonly used MegaLinter settings you might want to configure:
 Begin with a minimal configuration and add options as needed. You don't need to fill in every field.
 
 ### Tip 2: Use Validation
-The form prevents invalid configurations. If a field shows an error, read the message carefully—it tells you what's wrong.
+The form prevents invalid configurations. If a field shows an error, read the message carefully, it tells you what's wrong.
 
 ### Tip 3: Refer to MegaLinter Docs
 For detailed information about specific settings, visit [MegaLinter's documentation](https://megalinter.io/).

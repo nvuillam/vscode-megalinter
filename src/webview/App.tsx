@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+/* eslint-disable @typescript-eslint/naming-convention */
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { ArrayFieldTemplateProps, RJSFSchema, UiSchema } from '@rjsf/utils';
@@ -15,6 +16,11 @@ type Tab = {
   id: string;
   label: string;
 };
+
+type NavigationTarget =
+  | { type: 'general' }
+  | { type: 'descriptor'; descriptorId: string }
+  | { type: 'linter'; descriptorId: string; linterId: string };
 
 // VS Code API type
 declare global {
@@ -55,6 +61,56 @@ export const App: React.FC = () => {
   const [activeLinterThemes, setActiveLinterThemes] = useState<
     Record<string, Record<string, string>>
   >({});
+  const saveTimer = useRef<number | null>(null);
+
+  const queueSave = (data: any) => {
+    if (!schema) {
+      return;
+    }
+
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current);
+    }
+
+    const timerId = window.setTimeout(() => {
+      const pruned = pruneDefaults(data, originalConfig, schema);
+      vscode.postMessage({ type: 'saveConfig', config: pruned });
+    }, 400);
+
+    saveTimer.current = timerId;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) {
+        window.clearTimeout(saveTimer.current);
+      }
+    };
+  }, []);
+
+  const applyNavigation = (target: NavigationTarget) => {
+    if (!target) {
+      return;
+    }
+
+    if (target.type === 'general') {
+      setActiveMainTab('general');
+      return;
+    }
+
+    if (target.type === 'descriptor') {
+      setActiveMainTab('descriptors');
+      setSelectedDescriptor(target.descriptorId);
+      setSelectedScope('descriptor');
+      return;
+    }
+
+    if (target.type === 'linter') {
+      setActiveMainTab('descriptors');
+      setSelectedDescriptor(target.descriptorId);
+      setSelectedScope(target.linterId);
+    }
+  };
 
   useEffect(() => {
     const fallbackSchema = bundledSchema as RJSFSchema;
@@ -102,6 +158,7 @@ export const App: React.FC = () => {
 
     fetchSchema();
     vscode.postMessage({ type: 'getConfig' });
+    vscode.postMessage({ type: 'ready' });
 
     const messageHandler = (event: MessageEvent) => {
       const message = event.data;
@@ -109,6 +166,8 @@ export const App: React.FC = () => {
         setFormData(message.config);
         setOriginalConfig(message.config || {});
         setConfigPath(message.configPath);
+      } else if (message.type === 'navigate' && message.target) {
+        applyNavigation(message.target as NavigationTarget);
       }
     };
 
@@ -136,15 +195,6 @@ export const App: React.FC = () => {
     }
   }, [schema, selectedDescriptor]);
 
-  const handleSave = () => {
-    if (!schema) {
-      return;
-    }
-
-    const pruned = pruneDefaults(formData, originalConfig, schema);
-    vscode.postMessage({ type: 'saveConfig', config: pruned });
-  };
-
   const handleSubsetChange = (keys: string[], subsetData: any) => {
     setFormData((prev: any) => {
       const next = { ...prev };
@@ -155,15 +205,14 @@ export const App: React.FC = () => {
           delete next[key];
         }
       });
+      queueSave(next);
       return next;
     });
   };
 
   const uiSchema: UiSchema = {
     'ui:submitButtonOptions': {
-      submitText: 'Save Configuration',
-      norender: false,
-      props: { className: 'btn-primary' }
+      norender: true
     }
   };
 
@@ -220,9 +269,7 @@ export const App: React.FC = () => {
           formData={formData}
           uiSchema={uiSchema}
           onSubsetChange={handleSubsetChange}
-          onSave={handleSave}
           activeMainTab={activeMainTab}
-          setActiveMainTab={setActiveMainTab}
           selectedDescriptor={selectedDescriptor}
           setSelectedDescriptor={setSelectedDescriptor}
           selectedScope={selectedScope}
@@ -245,9 +292,7 @@ const MainTabs: React.FC<{
   formData: any;
   uiSchema: UiSchema;
   onSubsetChange: (keys: string[], subsetData: any) => void;
-  onSave: () => void;
   activeMainTab: string;
-  setActiveMainTab: (id: string) => void;
   selectedDescriptor: string | null;
   setSelectedDescriptor: (id: string | null) => void;
   selectedScope: string | null;
@@ -264,9 +309,7 @@ const MainTabs: React.FC<{
   formData,
   uiSchema,
   onSubsetChange,
-  onSave,
   activeMainTab,
-  setActiveMainTab,
   selectedDescriptor,
   setSelectedDescriptor,
   selectedScope,
@@ -280,14 +323,6 @@ const MainTabs: React.FC<{
 }) => {
   const descriptorOrder = useMemo(() => Object.keys(groups.descriptorKeys).sort(), [groups]);
 
-  const mainTabs: Tab[] = useMemo(
-    () => [
-      { id: 'general', label: 'General' },
-      { id: 'descriptors', label: 'Descriptors' }
-    ],
-    []
-  );
-
   const renderGeneral = () => (
     <ThemedForm
       baseSchema={schema}
@@ -296,7 +331,6 @@ const MainTabs: React.FC<{
       uiSchema={uiSchema}
       formData={filterFormData(formData, groups.generalKeys)}
       onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
-      onSave={onSave}
       activeThemeTab={activeGeneralTheme}
       setActiveThemeTab={setActiveGeneralTheme}
     />
@@ -327,7 +361,6 @@ const MainTabs: React.FC<{
         uiSchema={uiSchema}
         formData={filterFormData(formData, descriptorKeys)}
         onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
-        onSave={onSave}
         activeThemeTab={activeDescriptorThemes[descriptorId] || null}
         setActiveThemeTab={(id) =>
           setActiveDescriptorThemes({ ...activeDescriptorThemes, [descriptorId]: id || '' })
@@ -344,7 +377,6 @@ const MainTabs: React.FC<{
         uiSchema={uiSchema}
         formData={filterFormData(formData, keys)}
         onSubsetChange={(k, subset) => onSubsetChange(k, subset)}
-        onSave={onSave}
         activeThemeTab={activeLinterThemes[descriptorId]?.[linterKey] || null}
         setActiveThemeTab={(id) =>
           setActiveLinterThemes({
@@ -405,10 +437,7 @@ const MainTabs: React.FC<{
   const activeContent = activeMainTab === 'general' ? renderGeneral() : renderDescriptorArea();
 
   return (
-    <div>
-      <TabBar tabs={mainTabs} activeTab={activeMainTab} onSelect={setActiveMainTab} />
-      {activeContent}
-    </div>
+    <div>{activeContent}</div>
   );
 };
 
@@ -438,7 +467,6 @@ const ThemedForm: React.FC<{
   uiSchema: UiSchema;
   formData: any;
   onSubsetChange: (keys: string[], subset: any) => void;
-  onSave: () => void;
   activeThemeTab: string | null;
   setActiveThemeTab: (id: string | null) => void;
   prefixToStrip?: string;
@@ -449,7 +477,6 @@ const ThemedForm: React.FC<{
   uiSchema,
   formData,
   onSubsetChange,
-  onSave,
   activeThemeTab,
   setActiveThemeTab,
   prefixToStrip
@@ -483,13 +510,12 @@ const ThemedForm: React.FC<{
       )}
       <Form
         key={`${title}-${effectiveActive || 'default'}`}
-        schema={buildSubsetSchema(baseSchema, activeKeys, `${title} — ${activeLabel}`)}
+        schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`)}
         uiSchema={uiSchema}
         formData={filterFormData(formData, activeKeys)}
         validator={validator}
         templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
         onChange={({ formData: subset }) => onSubsetChange(activeKeys, subset)}
-        onSubmit={onSave}
         liveValidate={false}
         showErrorList="bottom"
       />

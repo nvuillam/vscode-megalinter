@@ -15,18 +15,37 @@
     "Linters",
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:megalinter.openConfiguration",
-    "onLanguage:yaml"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "megalinter.openConfiguration",
         "title": "MegaLinter: Open Configuration"
+      },
+      {
+        "command": "megalinter.revealSection",
+        "title": "MegaLinter: Open Section"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "megalinter",
+          "title": "MegaLinter",
+          "icon": "$(infinity)"
+        }
+      ]
+    },
+    "views": {
+      "megalinter": [
+        {
+          "id": "megalinter.sections",
+          "name": "Sections",
+          "icon": "$(infinity)"
+        }
+      ]
+    },
     "menus": {
       "explorer/context": [
         {
