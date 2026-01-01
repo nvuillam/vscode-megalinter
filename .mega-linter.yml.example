@@ -1,0 +1,25 @@
+# Example MegaLinter Configuration
+# This is a sample configuration file that demonstrates some common settings
+# Edit this file using the MegaLinter Configuration extension
+
+# Apply fixes automatically
+APPLY_FIXES: all
+
+# Show elapsed time for each linter
+SHOW_ELAPSED_TIME: true
+
+# Enable specific linters (example)
+# ENABLE:
+#   - JAVASCRIPT
+#   - TYPESCRIPT
+#   - PYTHON
+
+# Disable specific linters (example)
+# DISABLE:
+#   - SPELL
+
+# Parallel processing
+PARALLEL_PROCESS_COUNT: 4
+
+# Log level
+LOG_LEVEL: INFO
