@@ -156,6 +156,9 @@ export class ConfigurationPanel {
     // Use a nonce to only allow specific scripts to be run
     const nonce = getNonce();
 
+    // Note: 'unsafe-inline' for styles is required because we use style-loader
+    // which dynamically injects styles. This is a standard pattern for React apps
+    // in VS Code WebViews. The script-src uses nonce for security.
     return `<!DOCTYPE html>
 <html lang="en">
 <head>

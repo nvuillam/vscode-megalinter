@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { RJSFSchema, UiSchema } from '@rjsf/utils';
@@ -26,6 +26,8 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     // Fetch the schema from GitHub
+    // TODO: Consider adding a configuration option for custom schema URLs
+    // and implementing fallback mechanisms for offline scenarios
     const fetchSchema = async () => {
       try {
         const response = await fetch(
@@ -37,10 +39,11 @@ export const App: React.FC = () => {
         const schemaData = await response.json();
         setSchema(schemaData);
       } catch (err) {
-        setError(`Failed to load MegaLinter schema: ${err}`);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to load MegaLinter schema: ${errorMessage}`);
         vscode.postMessage({
           type: 'error',
-          message: `Failed to load MegaLinter schema: ${err}`
+          message: `Failed to load MegaLinter schema: ${errorMessage}`
         });
       } finally {
         setLoading(false);
