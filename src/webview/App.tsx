@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { RJSFSchema, UiSchema } from '@rjsf/utils';
+import bundledSchema from '../schema/megalinter-configuration.jsonschema.json';
 import './styles.css';
 
 // VS Code API type
@@ -23,28 +24,55 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [configPath, setConfigPath] = useState<string>('');
+  const [schemaSource, setSchemaSource] = useState<'remote' | 'local' | null>(
+    null
+  );
 
   useEffect(() => {
-    // Fetch the schema from GitHub
-    // TODO: Consider adding a configuration option for custom schema URLs
-    // and implementing fallback mechanisms for offline scenarios
+    const fallbackSchema = bundledSchema as RJSFSchema;
+    const remoteSchemaUrl =
+      'https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json';
+
+    // Fetch the schema from GitHub, fall back to bundled copy when offline
     const fetchSchema = async () => {
       try {
-        const response = await fetch(
-          'https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json'
-        );
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch(remoteSchemaUrl, {
+          signal: controller.signal
+        });
+
+        window.clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error('Failed to fetch schema');
+          throw new Error(`Failed to fetch schema (HTTP ${response.status})`);
         }
+
         const schemaData = await response.json();
         setSchema(schemaData);
+        setSchemaSource('remote');
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        setError(`Failed to load MegaLinter schema: ${errorMessage}`);
-        vscode.postMessage({
-          type: 'error',
-          message: `Failed to load MegaLinter schema: ${errorMessage}`
-        });
+        console.warn('Remote schema fetch failed, using bundled schema', err);
+        try {
+          setSchema(fallbackSchema);
+          setSchemaSource('local');
+          vscode.postMessage({
+            type: 'info',
+            message:
+              'Using bundled MegaLinter schema (remote fetch unavailable).'
+          });
+        } catch (fallbackErr) {
+          const errorMessage =
+            fallbackErr instanceof Error
+              ? fallbackErr.message
+              : String(fallbackErr);
+          setError(`Failed to load MegaLinter schema: ${errorMessage}`);
+          vscode.postMessage({
+            type: 'error',
+            message: `Failed to load MegaLinter schema: ${errorMessage}`
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -133,6 +161,11 @@ export const App: React.FC = () => {
         {configPath && (
           <p className="config-path">
             Editing: <code>{configPath}</code>
+          </p>
+        )}
+        {schemaSource && (
+          <p className="config-path">
+            Schema source: {schemaSource === 'remote' ? 'remote' : 'bundled'}
           </p>
         )}
       </div>
