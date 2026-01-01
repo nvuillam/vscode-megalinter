@@ -58,6 +58,133 @@ body {
   background-color: var(--vscode-editor-background);
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tab.active {
+  background: var(--vscode-editor-selectionBackground);
+  color: var(--vscode-editor-selectionForeground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.tab:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.tab-content {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.muted {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.tag-array {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tag-array__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 12px;
+  padding: 4px 8px;
+}
+
+.tag-pill__field {
+  flex: 1;
+}
+
+.tag-pill--string .tag-pill__field input {
+  width: auto;
+  min-width: 140px;
+  max-width: 240px;
+}
+
+.pill-remove,
+.pill-add {
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.pill-remove:hover,
+.pill-add:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.pill-add--inline {
+  align-self: center;
+  border-style: dashed;
+  background: transparent;
+  color: var(--vscode-foreground);
+}
+
+.tag-array__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.descriptor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.descriptor-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.descriptor-controls .control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.descriptor-controls select {
+  padding: 6px 8px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+}
+
 /* Form styles */
 .form-container form {
   display: flex;
