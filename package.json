@@ -43,7 +43,8 @@
     "watch": "webpack --mode development --watch",
     "compile": "webpack --mode development",
     "lint": "eslint src --ext ts",
-    "pretest": "npm run compile"
+    "pretest": "npm run compile",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
