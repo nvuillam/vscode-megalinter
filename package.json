@@ -1,0 +1,71 @@
+{
+  "name": "vscode-megalinter",
+  "displayName": "MegaLinter Configuration",
+  "description": "Configure MegaLinter using a visual interface",
+  "version": "0.0.1",
+  "publisher": "nvuillam",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nvuillam/vscode-megalinter"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:megalinter.openConfiguration",
+    "onLanguage:yaml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "megalinter.openConfiguration",
+        "title": "MegaLinter: Open Configuration"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "megalinter.openConfiguration",
+          "when": "resourceFilename == .mega-linter.yml || resourceFilename == .megalinter.yml",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
+    "compile": "webpack --mode development",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.0.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.4.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "@rjsf/core": "^5.13.0",
+    "@rjsf/utils": "^5.13.0",
+    "@rjsf/validator-ajv8": "^5.13.0",
+    "js-yaml": "^4.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

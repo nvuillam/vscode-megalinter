@@ -1,0 +1,248 @@
+body {
+  padding: 0;
+  margin: 0;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  margin-bottom: 30px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding-bottom: 15px;
+}
+
+.header h1 {
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.config-path {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.config-path code {
+  background-color: var(--vscode-textCodeBlock-background);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11px;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.error {
+  color: var(--vscode-errorForeground);
+}
+
+.error h2 {
+  margin-top: 0;
+}
+
+.form-container {
+  background-color: var(--vscode-editor-background);
+}
+
+/* Form styles */
+.form-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-container fieldset {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.form-container legend {
+  font-weight: 600;
+  padding: 0 10px;
+  color: var(--vscode-foreground);
+}
+
+.form-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: var(--vscode-foreground);
+}
+
+.form-container input[type="text"],
+.form-container input[type="number"],
+.form-container input[type="email"],
+.form-container textarea,
+.form-container select {
+  width: 100%;
+  padding: 6px 8px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  box-sizing: border-box;
+}
+
+.form-container input[type="text"]:focus,
+.form-container input[type="number"]:focus,
+.form-container input[type="email"]:focus,
+.form-container textarea:focus,
+.form-container select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.form-container input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.form-container .checkbox label {
+  display: inline;
+  font-weight: normal;
+}
+
+.form-container .form-group {
+  margin-bottom: 20px;
+}
+
+.form-container .field-description {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.form-container button[type="submit"] {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
+.form-container button[type="submit"]:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.form-container button[type="submit"]:active {
+  opacity: 0.9;
+}
+
+.form-container .btn-add,
+.form-container .array-item-add {
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.form-container .btn-add:hover,
+.form-container .array-item-add:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.form-container .array-item {
+  border: 1px solid var(--vscode-panel-border);
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 3px;
+  position: relative;
+}
+
+.form-container .array-item-toolbox {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.form-container .array-item-remove,
+.form-container .array-item-move-up,
+.form-container .array-item-move-down {
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.form-container .array-item-remove:hover {
+  background-color: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground);
+}
+
+.form-container .error-detail {
+  color: var(--vscode-errorForeground);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.form-container .errors {
+  background-color: var(--vscode-inputValidation-errorBackground);
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  color: var(--vscode-inputValidation-errorForeground);
+  padding: 12px;
+  border-radius: 3px;
+  margin-top: 20px;
+}
+
+.form-container .errors ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.form-container .errors li {
+  margin-bottom: 4px;
+}
+
+/* Object properties styling */
+.form-container .object-properties {
+  margin-left: 15px;
+  padding-left: 15px;
+  border-left: 2px solid var(--vscode-panel-border);
+}
+
+/* Array items styling */
+.form-container .array-items {
+  margin-top: 10px;
+}
+
+/* Help text */
+.form-container .help-block {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Required field indicator */
+.form-container .required {
+  color: var(--vscode-errorForeground);
+}
