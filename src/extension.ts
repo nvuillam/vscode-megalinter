@@ -12,6 +12,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider('megalinter.sections', treeProvider)
   );
 
+  void resolveConfigPath().then((configPath) => {
+    if (configPath) {
+      treeProvider.setConfigPath(configPath);
+    }
+  });
+
   // Register the command to open the configuration
   let disposable = vscode.commands.registerCommand(
     'megalinter.openConfiguration',
@@ -25,6 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      treeProvider.setConfigPath(configPath);
       ConfigurationPanel.createOrShow(context.extensionUri, configPath);
     }
   );
@@ -41,12 +48,17 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      treeProvider.setConfigPath(configPath);
       const panel = ConfigurationPanel.createOrShow(context.extensionUri, configPath);
       panel.revealSection(target);
     }
   );
 
-  context.subscriptions.push(disposable, revealSection);
+  const refreshTree = vscode.commands.registerCommand('megalinter.refreshSections', () => {
+    treeProvider.refresh();
+  });
+
+  context.subscriptions.push(disposable, revealSection, refreshTree);
 }
 
 export function deactivate() {}

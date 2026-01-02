@@ -5,11 +5,13 @@ import validator from '@rjsf/validator-ajv8';
 import { ArrayFieldTemplateProps, RJSFSchema, UiSchema, WidgetProps } from '@rjsf/utils';
 import bundledSchema from '../schema/megalinter-configuration.jsonschema.json';
 import { extractGroups, filterRemovedLintersFromSchema, SchemaGroups } from '../shared/schemaUtils';
+import { buildPresenceMaps, hasAnyKeySet } from '../shared/configPresence';
 import './styles.css';
 
 type Tab = {
   id: string;
   label: string;
+  hasValues?: boolean;
 };
 
 type NavigationTarget =
@@ -349,6 +351,10 @@ const MainTabs: React.FC<{
   setActiveLinterThemes
 }) => {
   const descriptorOrder = useMemo(() => Object.keys(groups.descriptorKeys).sort(), [groups]);
+  const { descriptorHasValues, linterHasValues } = useMemo(
+    () => buildPresenceMaps(groups, formData),
+    [groups, formData]
+  );
 
   const renderGeneral = () => (
     <ThemedForm
@@ -371,11 +377,20 @@ const MainTabs: React.FC<{
 
     const descriptorKeys = groups.descriptorKeys[descriptorId] || [];
     const linters = groups.linterKeys[descriptorId] || {};
+    const linterValueMap = linterHasValues[descriptorId] || {};
+
     const linterEntries = Object.entries(linters).sort(([a], [b]) => a.localeCompare(b));
 
     const scopeOptions: Tab[] = [
-      { id: 'descriptor', label: `${descriptorId} variables` },
-      ...linterEntries.map(([linter]) => ({ id: linter, label: linter.replace(`${descriptorId}_`, '') }))
+      {
+        id: 'descriptor',
+        label: `${descriptorId} variables${hasAnyKeySet(descriptorKeys, formData) ? ' *' : ''}`
+      },
+      ...linterEntries.map(([linter]) => ({
+        id: linter,
+        label: `${linter.replace(`${descriptorId}_`, '')}${linterValueMap[linter] ? ' *' : ''}`,
+        hasValues: linterValueMap[linter]
+      }))
     ];
 
     const activeScope = scopeOptions.find((opt) => opt.id === selectedScope)?.id || scopeOptions[0]?.id;
@@ -437,7 +452,7 @@ const MainTabs: React.FC<{
             >
               {descriptorOrder.map((id) => (
                 <option key={id} value={id}>
-                  {id}
+                  {descriptorHasValues[id] ? `${id} *` : id}
                 </option>
               ))}
             </select>
@@ -481,7 +496,7 @@ const TabBar: React.FC<{
         onClick={() => onSelect(tab.id)}
         type="button"
       >
-        {tab.label}
+        {tab.hasValues ? `${tab.label} *` : tab.label}
       </button>
     ))}
   </div>
@@ -514,8 +529,8 @@ const ThemedForm: React.FC<{
   );
 
   const { tabs, grouped } = useMemo(
-    () => groupKeysByTheme(filteredKeys, prefixToStrip),
-    [filteredKeys, prefixToStrip]
+    () => groupKeysByTheme(filteredKeys, prefixToStrip, formData),
+    [filteredKeys, prefixToStrip, formData]
   );
 
   const effectiveActive = useMemo(() => {
@@ -697,7 +712,8 @@ const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) => {
 
 const groupKeysByTheme = (
   keys: string[],
-  prefixToStrip?: string
+  prefixToStrip?: string,
+  values?: Record<string, any>
 ): { tabs: Tab[]; grouped: Record<string, string[]> } => {
   const categoryOrder = ['command', 'scope', 'severity', 'prepost', 'misc'];
   const categoryLabels: Record<string, string> = {
@@ -709,14 +725,19 @@ const groupKeysByTheme = (
   };
 
   const grouped: Record<string, string[]> = {};
+  const categoryHasValues: Record<string, boolean> = {};
 
   keys.forEach((key) => {
     const stripped = prefixToStrip && key.startsWith(prefixToStrip) ? key.slice(prefixToStrip.length) : key;
     const [themeRaw] = stripped.split('_');
     const theme = themeRaw || 'misc';
     const category = categorizeTheme(theme, stripped, key);
+    const isSet = values ? hasAnyKeySet([key], values) : false;
     if (!grouped[category]) {
       grouped[category] = [];
+    }
+    if (isSet) {
+      categoryHasValues[category] = true;
     }
     grouped[category].push(key);
   });
@@ -727,7 +748,7 @@ const groupKeysByTheme = (
 
   const tabs: Tab[] = categoryOrder
     .filter((id) => grouped[id]?.length)
-    .map((id) => ({ id, label: categoryLabels[id] || id }));
+    .map((id) => ({ id, label: categoryLabels[id] || id, hasValues: categoryHasValues[id] }));
 
   return { tabs, grouped };
 };

@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { extractGroups, REMOVED_LINTERS, SchemaGroups } from './shared/schemaUtils';
+import * as YAML from 'yaml';
+import { extractGroups, SchemaGroups } from './shared/schemaUtils';
+import { hasAnyKeySet } from './shared/configPresence';
 
 export type NavigationTarget =
   | { type: 'general' }
@@ -33,8 +35,38 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
 
   private _groups: SchemaGroups | null = null;
   private _schemaLoaded = false;
+  private _configPath?: string;
+  private _configKeys: Set<string> = new Set();
+  private _configWatcher?: fs.FSWatcher;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
+
+  setConfigPath(configPath: string) {
+    if (this._configWatcher) {
+      this._configWatcher.close();
+    }
+    this._configPath = configPath;
+    this._configWatcher = undefined;
+    if (configPath) {
+      try {
+        if (fs.existsSync(configPath)) {
+          this._configWatcher = fs.watch(configPath, () => this.refresh());
+        } else {
+          const dir = path.dirname(configPath);
+          if (dir && fs.existsSync(dir)) {
+            this._configWatcher = fs.watch(dir, () => {
+              if (fs.existsSync(configPath)) {
+                this.refresh();
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to watch config file', err);
+      }
+    }
+    this.refresh();
+  }
 
   refresh() {
     this._schemaLoaded = false;
@@ -58,18 +90,27 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
     if (!element) {
       const descriptorIds = Object.keys(this._groups.descriptorKeys).sort();
 
-      const descriptorNodes = descriptorIds.map(
-        (descriptorId) =>
-          new SectionNode(
-            { type: 'descriptor', descriptorId },
-            descriptorId,
-            vscode.TreeItemCollapsibleState.Collapsed,
-            false
-          )
-      );
+      const descriptorNodes = descriptorIds.map((descriptorId) => {
+        const descriptorKeys = this._groups!.descriptorKeys[descriptorId] || [];
+        const linterKeys = Object.values(this._groups!.linterKeys[descriptorId] || {}).flat();
+        const hasDescriptorValues = hasAnyKeySet([...descriptorKeys, ...linterKeys], this._configKeys);
+        const label = hasDescriptorValues ? `${descriptorId} *` : descriptorId;
+        return new SectionNode(
+          { type: 'descriptor', descriptorId },
+          label,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          false
+        );
+      });
+
+      const hasGeneralValues = hasAnyKeySet(this._groups.generalKeys, this._configKeys);
 
       return [
-        new SectionNode({ type: 'general' }, 'General', vscode.TreeItemCollapsibleState.None),
+        new SectionNode(
+          { type: 'general' },
+          hasGeneralValues ? 'General *' : 'General',
+          vscode.TreeItemCollapsibleState.None
+        ),
         ...descriptorNodes
       ];
     }
@@ -87,13 +128,18 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
 
       const linterNodes = linterIds.map((linterId) => {
         const shortLabel = linterId.replace(`${descriptorId}_`, '');
+        const hasValues = hasAnyKeySet(
+          this._groups!.linterKeys[descriptorId]?.[linterId] || [],
+          this._configKeys
+        );
+        const label = hasValues ? `${shortLabel} *` : shortLabel;
         return new SectionNode(
           {
             type: 'linter',
             descriptorId,
             linterId
           },
-          shortLabel,
+          label,
           vscode.TreeItemCollapsibleState.None
         );
       });
@@ -116,6 +162,7 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
       const schemaContent = fs.readFileSync(schemaPath, 'utf8');
       const schema = JSON.parse(schemaContent);
       this._groups = extractGroups(schema);
+      this._loadConfigKeys();
     } catch (error) {
       console.error('Failed to load MegaLinter schema for tree view', error);
       this._groups = {
@@ -125,6 +172,22 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
       };
     } finally {
       this._schemaLoaded = true;
+    }
+  }
+
+  private _loadConfigKeys() {
+    this._configKeys = new Set();
+    if (!this._configPath || !fs.existsSync(this._configPath)) {
+      return;
+    }
+    try {
+      const content = fs.readFileSync(this._configPath, 'utf8');
+      const doc = YAML.parse(content);
+      if (doc && typeof doc === 'object') {
+        Object.keys(doc).forEach((k) => this._configKeys.add(k));
+      }
+    } catch (err) {
+      console.warn('Failed to parse config for tree highlights', err);
     }
   }
 }

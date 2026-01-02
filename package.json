@@ -26,6 +26,10 @@
       {
         "command": "megalinter.revealSection",
         "title": "MegaLinter: Open Section"
+      },
+      {
+        "command": "megalinter.refreshSections",
+        "title": "MegaLinter: Refresh Configuration Tree"
       }
     ],
     "viewsContainers": {
@@ -52,6 +56,17 @@
           "command": "megalinter.openConfiguration",
           "when": "resourceFilename == .mega-linter.yml || resourceFilename == .megalinter.yml",
           "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "megalinter.refreshSections",
+          "when": "view == megalinter.sections",
+          "group": "navigation@1",
+          "icon": {
+            "dark": "media/refresh.svg",
+            "light": "media/refresh.svg"
+          }
         }
       ]
     }
