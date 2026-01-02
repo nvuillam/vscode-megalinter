@@ -69,6 +69,12 @@ export const App: React.FC = () => {
     Record<string, Record<string, string>>
   >({});
   const saveTimer = useRef<number | null>(null);
+  const highlightedKeys = useMemo(() => {
+    if (!schema) {
+      return new Set<string>();
+    }
+    return computeNonDefaultKeys(formData, schema);
+  }, [formData, schema]);
 
   useEffect(() => {
     const viewState: ViewState = {
@@ -323,6 +329,7 @@ export const App: React.FC = () => {
           setActiveDescriptorThemes={setActiveDescriptorThemes}
           activeLinterThemes={activeLinterThemes}
           setActiveLinterThemes={setActiveLinterThemes}
+          highlightedKeys={highlightedKeys}
         />
       </div>
     </div>
@@ -346,6 +353,7 @@ const MainTabs: React.FC<{
   setActiveDescriptorThemes: (value: Record<string, string>) => void;
   activeLinterThemes: Record<string, Record<string, string>>;
   setActiveLinterThemes: (value: Record<string, Record<string, string>>) => void;
+  highlightedKeys: Set<string>;
 }> = ({
   schema,
   groups,
@@ -362,7 +370,8 @@ const MainTabs: React.FC<{
   activeDescriptorThemes,
   setActiveDescriptorThemes,
   activeLinterThemes,
-  setActiveLinterThemes
+  setActiveLinterThemes,
+  highlightedKeys
 }) => {
   const descriptorOrder = useMemo(() => Object.keys(groups.descriptorKeys).sort(), [groups]);
   const { descriptorHasValues, linterHasValues } = useMemo(
@@ -380,6 +389,7 @@ const MainTabs: React.FC<{
       onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
       activeThemeTab={activeGeneralTheme}
       setActiveThemeTab={setActiveGeneralTheme}
+      highlightedKeys={highlightedKeys}
     />
   );
 
@@ -422,6 +432,7 @@ const MainTabs: React.FC<{
           setActiveDescriptorThemes({ ...activeDescriptorThemes, [descriptorId]: id || '' })
         }
         prefixToStrip={`${descriptorId}_`}
+          highlightedKeys={highlightedKeys}
       />
     );
 
@@ -444,6 +455,7 @@ const MainTabs: React.FC<{
           })
         }
         prefixToStrip={`${linterKey}_`}
+        highlightedKeys={highlightedKeys}
       />
     );
 
@@ -522,6 +534,7 @@ const ThemedForm: React.FC<{
   activeThemeTab: string | null;
   setActiveThemeTab: (id: string | null) => void;
   prefixToStrip?: string;
+  highlightedKeys: Set<string>;
 }> = ({
   baseSchema,
   keys,
@@ -531,7 +544,8 @@ const ThemedForm: React.FC<{
   onSubsetChange,
   activeThemeTab,
   setActiveThemeTab,
-  prefixToStrip
+  prefixToStrip,
+  highlightedKeys
 }) => {
   const filteredKeys = useMemo(
     () => keys.filter((key) => !isDeprecatedPropertyTitle(baseSchema, key)),
@@ -577,7 +591,7 @@ const ThemedForm: React.FC<{
       <Form
         key={`${title}-${effectiveActive || 'default'}`}
         schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
-        uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema)}
+        uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema, highlightedKeys)}
         formData={filterFormData(formData, activeKeys)}
         validator={validator}
         templates={templates}
@@ -800,11 +814,15 @@ const buildSubsetSchema = (
 const buildScopedUiSchema = (
   baseSchema: RJSFSchema,
   keys: string[],
-  baseUiSchema: UiSchema
+  baseUiSchema: UiSchema,
+  highlightedKeys?: Set<string>
 ): UiSchema => {
   const ui: UiSchema = { ...baseUiSchema };
   const properties = (baseSchema.properties as Record<string, any>) || {};
   const definitions = (baseSchema.definitions as Record<string, any>) || {};
+
+  const appendClass = (existing: string | undefined, extra: string) =>
+    [existing, extra].filter(Boolean).join(' ').trim();
 
   const resolveEnum = (node: any): string[] | undefined => {
     if (!node) {
@@ -832,6 +850,14 @@ const buildScopedUiSchema = (
         ui[key] = { ...(ui[key] as any), 'ui:widget': 'dualList' };
       }
     }
+
+    if (highlightedKeys?.has(key)) {
+      const existing = (ui[key] as Record<string, any>) || {};
+      ui[key] = {
+        ...existing,
+        'ui:classNames': appendClass(existing['ui:classNames'], 'form-field--non-default')
+      };
+    }
   });
 
   return ui;
@@ -849,6 +875,43 @@ const filterFormData = (data: any, keys: string[]) => {
 
 const deepEqual = (a: any, b: any) => {
   return JSON.stringify(a) === JSON.stringify(b);
+};
+
+const computeNonDefaultKeys = (data: any, schema: RJSFSchema): Set<string> => {
+  const result = new Set<string>();
+  const properties = (schema.properties as Record<string, any>) || {};
+
+  const isEmptyValue = (value: any) => {
+    if (value === undefined || value === null) {
+      return true;
+    }
+    if (typeof value === 'string' && value.trim() === '') {
+      return true;
+    }
+    if (Array.isArray(value) && value.length === 0) {
+      return true;
+    }
+    return false;
+  };
+
+  Object.keys(data || {}).forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(properties, key)) {
+      return;
+    }
+    const value = data[key];
+    if (isEmptyValue(value)) {
+      return;
+    }
+    const defaultValue = properties[key]?.default;
+    const hasDefault = defaultValue !== undefined;
+    const equalsDefault = hasDefault && deepEqual(value, defaultValue);
+
+    if (!equalsDefault) {
+      result.add(key);
+    }
+  });
+
+  return result;
 };
 
 const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
