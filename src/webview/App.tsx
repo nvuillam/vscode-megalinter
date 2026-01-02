@@ -44,6 +44,44 @@ declare global {
 
 const vscode = window.acquireVsCodeApi();
 
+const REMOVED_LINTERS = new Set([
+  'CREDENTIALS_SECRETLINT',
+  'DOCKERFILE_DOCKERFILELINT',
+  'GIT_GIT_DIFF',
+  'PHP_BUILTIN',
+  'KUBERNETES_KUBEVAL',
+  'REPOSITORY_GOODCHECK',
+  'SPELL_MISSPELL',
+  'TERRAFORM_CHECKOV',
+  'TERRAFORM_KICS',
+  'CSS_SCSSLINT',
+  'OPENAPI_SPECTRAL',
+  'SQL_SQL_LINT',
+  'MARKDOWN_MARKDOWN_LINK_CHECK'
+]);
+
+const filterRemovedLintersFromSchema = (schema: RJSFSchema): RJSFSchema => {
+  const clone = JSON.parse(JSON.stringify(schema)) as RJSFSchema;
+  const def = (clone as any)?.definitions?.enum_linter_keys;
+  if (def && Array.isArray(def.enum)) {
+    const filteredEnum: string[] = [];
+    const filteredNames: string[] = [];
+    def.enum.forEach((val: string, idx: number) => {
+      if (!REMOVED_LINTERS.has(val)) {
+        filteredEnum.push(val);
+        if (Array.isArray(def.enumNames) && def.enumNames[idx] !== undefined) {
+          filteredNames.push(def.enumNames[idx]);
+        }
+      }
+    });
+    def.enum = filteredEnum;
+    if (Array.isArray(def.enumNames)) {
+      def.enumNames = filteredNames;
+    }
+  }
+  return clone;
+};
+
 export const App: React.FC = () => {
   const [schema, setSchema] = useState<RJSFSchema | null>(null);
   const [groups, setGroups] = useState<SchemaGroups | null>(null);
@@ -169,15 +207,17 @@ export const App: React.FC = () => {
         }
 
         const schemaData = await response.json();
-        setSchema(schemaData);
+        const filtered = filterRemovedLintersFromSchema(schemaData as RJSFSchema);
+        setSchema(filtered);
         setSchemaSource('remote');
-        setGroups(extractGroups(schemaData));
+        setGroups(extractGroups(filtered));
       } catch (err) {
         console.warn('Remote schema fetch failed, using bundled schema', err);
         try {
-          setSchema(fallbackSchema);
+          const filtered = filterRemovedLintersFromSchema(fallbackSchema);
+          setSchema(filtered);
           setSchemaSource('local');
-          setGroups(extractGroups(fallbackSchema));
+          setGroups(extractGroups(filtered));
           vscode.postMessage({
             type: 'info',
             message: 'Using bundled MegaLinter schema (remote fetch unavailable).'
@@ -740,8 +780,20 @@ const extractGroups = (schema: RJSFSchema): SchemaGroups => {
   const descriptorEnums = (schema.definitions as any)?.enum_descriptor_keys?.enum as string[] | undefined;
   const linterEnums = (schema.definitions as any)?.enum_linter_keys?.enum as string[] | undefined;
 
-  const descriptorList = Array.isArray(descriptorEnums) ? descriptorEnums : [];
-  const linterList = Array.isArray(linterEnums) ? linterEnums : [];
+  const descriptorListRaw = Array.isArray(descriptorEnums) ? descriptorEnums : [];
+  const linterListRaw = Array.isArray(linterEnums) ? linterEnums : [];
+  const linterList = linterListRaw.filter((l) => !REMOVED_LINTERS.has(l));
+
+  // Remove descriptors that no longer have any linters after filtering
+  const descriptorsWithLinters = new Set<string>();
+  linterList.forEach((l) => {
+    const [descriptorId] = l.split('_');
+    if (descriptorId) {
+      descriptorsWithLinters.add(descriptorId);
+    }
+  });
+
+  const descriptorList = descriptorListRaw.filter((d) => descriptorsWithLinters.has(d));
 
   const descriptorKeys: Record<string, string[]> = {};
   const linterKeys: Record<string, Record<string, string[]>> = {};
@@ -756,8 +808,13 @@ const extractGroups = (schema: RJSFSchema): SchemaGroups => {
 
   const descriptorPrefixes = descriptorList.map((d) => `${d}_`);
   const linterPrefixes = linterList.map((l) => `${l}_`);
+  const removedLinterPrefixes = Array.from(REMOVED_LINTERS).map((l) => `${l}_`);
 
   Object.keys(properties).forEach((propKey) => {
+    if (removedLinterPrefixes.some((p) => propKey.startsWith(p))) {
+      return;
+    }
+
     const linterPrefix = linterPrefixes.find((p) => propKey.startsWith(p));
     if (linterPrefix) {
       const linterKey = linterPrefix.slice(0, -1);
@@ -785,6 +842,12 @@ const extractGroups = (schema: RJSFSchema): SchemaGroups => {
     }
 
     generalKeys.push(propKey);
+  });
+
+  Object.keys(descriptorKeys).forEach((d) => {
+    if (!descriptorList.includes(d)) {
+      delete descriptorKeys[d];
+    }
   });
 
   return { generalKeys, descriptorKeys, linterKeys };

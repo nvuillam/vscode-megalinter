@@ -13,6 +13,22 @@ type SchemaGroups = {
   linterKeys: Record<string, Record<string, string[]>>;
 };
 
+const REMOVED_LINTERS = new Set([
+  'CREDENTIALS_SECRETLINT',
+  'DOCKERFILE_DOCKERFILELINT',
+  'GIT_GIT_DIFF',
+  'PHP_BUILTIN',
+  'KUBERNETES_KUBEVAL',
+  'REPOSITORY_GOODCHECK',
+  'SPELL_MISSPELL',
+  'TERRAFORM_CHECKOV',
+  'TERRAFORM_KICS',
+  'CSS_SCSSLINT',
+  'OPENAPI_SPECTRAL',
+  'SQL_SQL_LINT',
+  'MARKDOWN_MARKDOWN_LINK_CHECK'
+]);
+
 class SectionNode extends vscode.TreeItem {
   constructor(
     public readonly target: NavigationTarget,
@@ -141,8 +157,19 @@ const extractGroups = (schema: any): SchemaGroups => {
     | undefined;
   const linterEnums = (schema.definitions as any)?.enum_linter_keys?.enum as string[] | undefined;
 
-  const descriptorList = Array.isArray(descriptorEnums) ? descriptorEnums : [];
-  const linterList = Array.isArray(linterEnums) ? linterEnums : [];
+  const descriptorListRaw = Array.isArray(descriptorEnums) ? descriptorEnums : [];
+  const linterListRaw = Array.isArray(linterEnums) ? linterEnums : [];
+  const linterList = linterListRaw.filter((l) => !REMOVED_LINTERS.has(l));
+
+  const descriptorsWithLinters = new Set<string>();
+  linterList.forEach((l) => {
+    const [descriptorId] = l.split('_');
+    if (descriptorId) {
+      descriptorsWithLinters.add(descriptorId);
+    }
+  });
+
+  const descriptorList = descriptorListRaw.filter((d) => descriptorsWithLinters.has(d));
 
   const descriptorKeys: Record<string, string[]> = {};
   const linterKeys: Record<string, Record<string, string[]>> = {};
@@ -157,8 +184,13 @@ const extractGroups = (schema: any): SchemaGroups => {
 
   const descriptorPrefixes = descriptorList.map((d) => `${d}_`);
   const linterPrefixes = linterList.map((l) => `${l}_`);
+  const removedLinterPrefixes = Array.from(REMOVED_LINTERS).map((l) => `${l}_`);
 
   Object.keys(properties).forEach((propKey) => {
+    if (removedLinterPrefixes.some((p) => propKey.startsWith(p))) {
+      return;
+    }
+
     const linterPrefix = linterPrefixes.find((p) => propKey.startsWith(p));
     if (linterPrefix) {
       const linterKey = linterPrefix.slice(0, -1);
@@ -186,6 +218,12 @@ const extractGroups = (schema: any): SchemaGroups => {
     }
 
     generalKeys.push(propKey);
+  });
+
+  Object.keys(descriptorKeys).forEach((d) => {
+    if (!descriptorList.includes(d)) {
+      delete descriptorKeys[d];
+    }
   });
 
   return { generalKeys, descriptorKeys, linterKeys };
