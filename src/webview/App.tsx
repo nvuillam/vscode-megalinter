@@ -822,13 +822,8 @@ const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
 
   Object.keys(data || {}).forEach((key) => {
     const value = data[key];
-    const isEmptyArray = Array.isArray(value) && value.length === 0;
     const wasPresent = Object.prototype.hasOwnProperty.call(original || {}, key);
     const defaultValue = properties[key]?.default;
-
-    if (isEmptyArray) {
-      return; // remove empty arrays entirely
-    }
 
     const equalsDefault = defaultValue !== undefined && deepEqual(value, defaultValue);
 
