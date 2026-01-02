@@ -17,15 +17,18 @@ class SectionNode extends vscode.TreeItem {
   constructor(
     public readonly target: NavigationTarget,
     label: string,
-    collapsibleState: vscode.TreeItemCollapsibleState
+    collapsibleState: vscode.TreeItemCollapsibleState,
+    clickable = true
   ) {
     super(label, collapsibleState);
 
-    this.command = {
-      command: 'megalinter.revealSection',
-      title: 'Open section',
-      arguments: [target]
-    };
+    if (clickable) {
+      this.command = {
+        command: 'megalinter.revealSection',
+        title: 'Open section',
+        arguments: [target]
+      };
+    }
   }
 }
 
@@ -65,7 +68,8 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
           new SectionNode(
             { type: 'descriptor', descriptorId },
             descriptorId,
-            vscode.TreeItemCollapsibleState.Collapsed
+            vscode.TreeItemCollapsibleState.Collapsed,
+            false
           )
       );
 
@@ -80,7 +84,13 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
       const linters = this._groups.linterKeys[descriptorId] || {};
       const linterIds = Object.keys(linters).sort();
 
-      return linterIds.map((linterId) => {
+       const descriptorEntry = new SectionNode(
+        { type: 'descriptor', descriptorId },
+        'Descriptor variables',
+        vscode.TreeItemCollapsibleState.None
+      );
+
+      const linterNodes = linterIds.map((linterId) => {
         const shortLabel = linterId.replace(`${descriptorId}_`, '');
         return new SectionNode(
           {
@@ -92,6 +102,8 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
           vscode.TreeItemCollapsibleState.None
         );
       });
+
+      return [descriptorEntry, ...linterNodes];
     }
 
     return [];

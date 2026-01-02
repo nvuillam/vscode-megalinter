@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
+import * as YAML from 'yaml';
 import { NavigationTarget } from './configTreeProvider';
 
 export class ConfigurationPanel {
@@ -115,7 +115,8 @@ export class ConfigurationPanel {
     if (fs.existsSync(this._configPath)) {
       try {
         const content = fs.readFileSync(this._configPath, 'utf8');
-        config = yaml.load(content) || {};
+        const doc = YAML.parseDocument(content);
+        config = (doc.toJS() as any) || {};
       } catch (error) {
         console.error('Error reading config file:', error);
         config = {};
@@ -131,10 +132,41 @@ export class ConfigurationPanel {
 
   private async _saveConfig(config: any) {
     try {
-      const yamlContent = yaml.dump(config, {
-        lineWidth: -1,
-        noRefs: true
+      const existingText = fs.existsSync(this._configPath)
+        ? fs.readFileSync(this._configPath, 'utf8')
+        : '';
+
+      const doc = existingText ? YAML.parseDocument(existingText) : new YAML.Document();
+
+      if (!doc.contents) {
+        const empty = YAML.parseDocument('{}');
+        doc.contents = empty.contents;
+      }
+
+      const configKeys = new Set(Object.keys(config || {}));
+
+      // Remove keys that are no longer present in the incoming config
+      const existingKeys: string[] = [];
+      if (doc.contents && 'items' in (doc.contents as any)) {
+        const items = (doc.contents as any).items || [];
+        items.forEach((item: any) => {
+          if (item && item.key && typeof item.key.value === 'string') {
+            existingKeys.push(item.key.value);
+          }
+        });
+      }
+
+      existingKeys
+        .filter((key) => !configKeys.has(key))
+        .forEach((key) => {
+          doc.deleteIn([key]);
+        });
+
+      Object.keys(config || {}).forEach((key) => {
+        doc.setIn([key], config[key]);
       });
+
+      const yamlContent = doc.toString();
 
       // Ensure directory exists
       const dir = path.dirname(this._configPath);

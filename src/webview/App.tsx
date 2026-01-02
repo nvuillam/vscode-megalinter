@@ -200,9 +200,12 @@ export const App: React.FC = () => {
       const next = { ...prev };
       keys.forEach((key) => {
         if (subsetData && Object.prototype.hasOwnProperty.call(subsetData, key)) {
-          next[key] = subsetData[key];
-        } else {
-          delete next[key];
+          const value = subsetData[key];
+          if (value === undefined) {
+            delete next[key];
+          } else {
+            next[key] = value;
+          }
         }
       });
       queueSave(next);
@@ -249,19 +252,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="container">
-      <div className="header">
-        <h1>MegaLinter Configuration</h1>
-        {configPath && (
-          <p className="config-path">
-            Editing: <code>{configPath}</code>
-          </p>
-        )}
-        {schemaSource && (
-          <p className="config-path">
-            Schema source: {schemaSource === 'remote' ? 'remote' : 'bundled'}
-          </p>
-        )}
-      </div>
       <div className="form-container">
         <MainTabs
           schema={schema}
@@ -510,7 +500,7 @@ const ThemedForm: React.FC<{
       )}
       <Form
         key={`${title}-${effectiveActive || 'default'}`}
-        schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`)}
+        schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
         uiSchema={uiSchema}
         formData={filterFormData(formData, activeKeys)}
         validator={validator}
@@ -567,21 +557,35 @@ const groupKeysByTheme = (
   keys: string[],
   prefixToStrip?: string
 ): { tabs: Tab[]; grouped: Record<string, string[]> } => {
+  const categoryOrder = ['command', 'scope', 'severity', 'prepost', 'misc'];
+  const categoryLabels: Record<string, string> = {
+    command: 'Linter command',
+    scope: 'Scope (filters)',
+    severity: 'Severity',
+    prepost: 'Pre-Post commands',
+    misc: 'Misc'
+  };
+
   const grouped: Record<string, string[]> = {};
 
   keys.forEach((key) => {
     const stripped = prefixToStrip && key.startsWith(prefixToStrip) ? key.slice(prefixToStrip.length) : key;
     const [themeRaw] = stripped.split('_');
     const theme = themeRaw || 'misc';
-    if (!grouped[theme]) {
-      grouped[theme] = [];
+    const category = categorizeTheme(theme, stripped, key);
+    if (!grouped[category]) {
+      grouped[category] = [];
     }
-    grouped[theme].push(key);
+    grouped[category].push(key);
   });
 
-  const tabs: Tab[] = Object.keys(grouped)
-    .sort()
-    .map((id) => ({ id, label: id }));
+  Object.keys(grouped).forEach((cat) => {
+    grouped[cat] = sortKeysWithinCategory(grouped[cat], cat);
+  });
+
+  const tabs: Tab[] = categoryOrder
+    .filter((id) => grouped[id]?.length)
+    .map((id) => ({ id, label: categoryLabels[id] || id }));
 
   return { tabs, grouped };
 };
@@ -644,12 +648,17 @@ const extractGroups = (schema: RJSFSchema): SchemaGroups => {
 const buildSubsetSchema = (
   baseSchema: RJSFSchema,
   keys: string[],
-  title?: string
+  title?: string,
+  prefixToStrip?: string
 ): RJSFSchema => {
   const properties = (baseSchema.properties as Record<string, any>) || {};
   const subsetProps = keys.reduce<Record<string, any>>((acc, key) => {
     if (properties[key]) {
-      acc[key] = properties[key];
+      const cloned = { ...properties[key] };
+      if (prefixToStrip && typeof cloned.title === 'string') {
+        cloned.title = stripTitlePrefix(cloned.title, prefixToStrip);
+      }
+      acc[key] = cloned;
     }
     return acc;
   }, {});
@@ -687,8 +696,13 @@ const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
 
   Object.keys(data || {}).forEach((key) => {
     const value = data[key];
+    const isEmptyArray = Array.isArray(value) && value.length === 0;
     const wasPresent = Object.prototype.hasOwnProperty.call(original || {}, key);
     const defaultValue = properties[key]?.default;
+
+    if (isEmptyArray) {
+      return; // remove empty arrays entirely
+    }
 
     const equalsDefault = defaultValue !== undefined && deepEqual(value, defaultValue);
 
@@ -700,4 +714,77 @@ const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
   });
 
   return result;
+};
+
+const stripTitlePrefix = (title: string, prefix: string): string => {
+  const cleanPrefix = prefix.replace(/_+$/, '');
+  if (!cleanPrefix) {
+    return title;
+  }
+
+  const escaped = cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`^${escaped}(?:\\s+linter)?(?:\\s*[-:])?\\s*`, 'i');
+  return title.replace(pattern, '').trimStart();
+};
+
+const categorizeTheme = (theme: string, strippedKey: string, fullKey: string): string => {
+  const upper = theme.toUpperCase();
+  const keyUpper = strippedKey.toUpperCase();
+
+  // Override matching files/regex should live in scope
+  if (/(FILE_EXTENSIONS|FILE_NAME.*REGEX)/.test(keyUpper)) {
+    return 'scope';
+  }
+
+  // Avoid duplicate display of config-file-name style keys by grouping them under command once
+  if (keyUpper.includes('CONFIG_FILE')) {
+    return 'command';
+  }
+
+  if (['FILTER', 'SCOPE'].includes(upper)) {
+    return 'scope';
+  }
+
+  if (['COMMAND', 'CLI', 'CONFIG', 'FILE', 'ARGUMENTS'].includes(upper)) {
+    return 'command';
+  }
+
+  if (['RULES', 'DISABLE', 'SEVERITY'].includes(upper)) {
+    return 'severity';
+  }
+
+  if (['PRE', 'POST'].includes(upper)) {
+    return 'prepost';
+  }
+
+  return 'misc';
+};
+
+const sortKeysWithinCategory = (keys: string[], category: string) => {
+  const priority = (key: string) => {
+    const upper = key.toUpperCase();
+
+    if (category === 'prepost') {
+      if (upper.includes('PRE_')) return 0;
+      if (upper.includes('POST_')) return 1;
+      return 2;
+    }
+
+    if (category === 'command') {
+      if (upper.includes('CUSTOM_REMOVE_ARGUMENTS') || upper.includes('REMOVE_ARGUMENTS')) return 1;
+      if (upper.includes('CUSTOM_ARGUMENTS') || (upper.includes('ARGUMENTS') && !upper.includes('REMOVE'))) return 0;
+      return 2;
+    }
+
+    if (category === 'scope') {
+      if (upper.includes('FILE_NAME') && upper.includes('REGEX')) return 0;
+      if (upper.includes('REGEX')) return 1;
+      if (upper.includes('FILE_EXT')) return 2;
+      return 3;
+    }
+
+    return 2;
+  };
+
+  return [...keys].sort((a, b) => priority(a) - priority(b) || a.localeCompare(b));
 };
