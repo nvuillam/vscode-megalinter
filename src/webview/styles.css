@@ -373,3 +373,58 @@ body {
 .form-container .required {
   color: var(--vscode-errorForeground);
 }
+
+/* Dual list widget */
+.dual-list {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.dual-list__pane {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dual-list__title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+}
+
+.dual-list__pane select {
+  min-height: 140px;
+  border: 1px solid var(--vscode-input-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.dual-list__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.dual-list__controls button {
+  min-width: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-button-secondaryBackground);
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dual-list__controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

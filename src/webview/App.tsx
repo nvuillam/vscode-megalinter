@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import { ArrayFieldTemplateProps, RJSFSchema, UiSchema } from '@rjsf/utils';
+import { ArrayFieldTemplateProps, RJSFSchema, UiSchema, WidgetProps } from '@rjsf/utils';
 import bundledSchema from '../schema/megalinter-configuration.jsonschema.json';
 import './styles.css';
 
@@ -492,6 +492,8 @@ const ThemedForm: React.FC<{
 
   const activeKeys = effectiveActive ? grouped[effectiveActive] || [] : [];
   const activeLabel = tabs.find((t) => t.id === effectiveActive)?.label || title;
+  const widgets = useMemo(() => ({ dualList: DualListWidget }), []);
+  const templates = useMemo(() => ({ ArrayFieldTemplate: TagArrayFieldTemplate }), []);
 
   return (
     <div className="tab-content">
@@ -501,10 +503,11 @@ const ThemedForm: React.FC<{
       <Form
         key={`${title}-${effectiveActive || 'default'}`}
         schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
-        uiSchema={uiSchema}
+        uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema)}
         formData={filterFormData(formData, activeKeys)}
         validator={validator}
-        templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
+        templates={templates}
+        widgets={widgets}
         onChange={({ formData: subset }) => onSubsetChange(activeKeys, subset)}
         liveValidate={false}
         showErrorList="bottom"
@@ -676,6 +679,42 @@ const buildSubsetSchema = (
   } as RJSFSchema;
 };
 
+const buildScopedUiSchema = (
+  baseSchema: RJSFSchema,
+  keys: string[],
+  baseUiSchema: UiSchema
+): UiSchema => {
+  const ui: UiSchema = { ...baseUiSchema };
+  const properties = (baseSchema.properties as Record<string, any>) || {};
+  const definitions = (baseSchema.definitions as Record<string, any>) || {};
+
+  const resolveEnum = (node: any): string[] | undefined => {
+    if (!node) return undefined;
+    if (Array.isArray(node.enum)) return node.enum as string[];
+    const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
+    if (ref && ref.startsWith('#/definitions/')) {
+      const defKey = ref.replace('#/definitions/', '');
+      const def = definitions[defKey];
+      if (def && Array.isArray(def.enum)) {
+        return def.enum as string[];
+      }
+    }
+    return undefined;
+  };
+
+  keys.forEach((key) => {
+    const prop = properties[key];
+    if (prop && prop.type === 'array' && prop.items) {
+      const enumValues = resolveEnum(prop.items);
+      if (enumValues) {
+        ui[key] = { ...(ui[key] as any), 'ui:widget': 'dualList' };
+      }
+    }
+  });
+
+  return ui;
+};
+
 const filterFormData = (data: any, keys: string[]) => {
   const subset: Record<string, any> = {};
   keys.forEach((key) => {
@@ -787,4 +826,139 @@ const sortKeysWithinCategory = (keys: string[], category: string) => {
   };
 
   return [...keys].sort((a, b) => priority(a) - priority(b) || a.localeCompare(b));
+};
+
+const DualListWidget: React.FC<WidgetProps> = ({
+  value,
+  onChange,
+  options,
+  disabled,
+  readonly,
+  label,
+  id,
+  schema,
+  registry
+}) => {
+  const rootSchema = registry?.rootSchema as RJSFSchema | undefined;
+  const schemaUtils = registry?.schemaUtils;
+
+  const resolveEnumValues = (node: any): string[] | undefined => {
+    if (!node) return undefined;
+
+    const resolved = schemaUtils?.retrieveSchema ? schemaUtils.retrieveSchema(node, rootSchema) : node;
+    if (Array.isArray(resolved?.enum)) return resolved.enum as string[];
+
+    const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
+    if (ref && ref.startsWith('#/definitions/') && rootSchema?.definitions) {
+      const defKey = ref.replace('#/definitions/', '');
+      const def = (rootSchema.definitions as Record<string, any>)[defKey];
+      if (def && Array.isArray(def.enum)) {
+        return def.enum as string[];
+      }
+    }
+    return undefined;
+  };
+
+  const enumOptions = useMemo(() => {
+    if (options.enumOptions && options.enumOptions.length) {
+      return options.enumOptions as Array<{ value: any; label: string }>;
+    }
+
+    const itemSchema = (schema as any)?.items;
+    const values = resolveEnumValues(itemSchema) || [];
+    return values.map((v) => ({ value: v, label: String(v) }));
+  }, [options.enumOptions, schema, rootSchema]);
+  const selectedValues = Array.isArray(value) ? value : [];
+  const selectedSet = new Set(selectedValues);
+  const valueMap = useMemo(() => {
+    const map = new Map<string, any>();
+    enumOptions.forEach((opt) => {
+      map.set(String(opt.value), opt.value);
+    });
+    return map;
+  }, [enumOptions]);
+
+  const available = enumOptions.filter((opt) => !selectedSet.has(opt.value));
+  const selected = enumOptions.filter((opt) => selectedSet.has(opt.value));
+
+  const [availableSelected, setAvailableSelected] = useState<string[]>([]);
+  const [chosenSelected, setChosenSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Clear selections when the source data changes to avoid stale ids
+    setAvailableSelected([]);
+    setChosenSelected([]);
+  }, [value]);
+
+  const addSelected = () => {
+    if (readonly || disabled) return;
+    const toAdd = availableSelected
+      .map((v) => valueMap.get(String(v)))
+      .filter((v): v is any => v !== undefined && !selectedSet.has(v));
+    if (toAdd.length === 0) return;
+    onChange([...selectedValues, ...toAdd]);
+    setAvailableSelected([]);
+  };
+
+  const removeSelected = () => {
+    if (readonly || disabled) return;
+    if (chosenSelected.length === 0) return;
+    const removeSet = new Set(
+      chosenSelected
+        .map((v) => valueMap.get(String(v)))
+        .filter((v): v is any => v !== undefined)
+    );
+    const next = selectedValues.filter((v) => !removeSet.has(v));
+    onChange(next);
+    setChosenSelected([]);
+  };
+
+  return (
+    <div className="dual-list" aria-label={label} id={id}>
+      <div className="dual-list__pane">
+        <div className="dual-list__title">Available</div>
+        <select
+          multiple
+          value={availableSelected}
+          onChange={(e) => {
+            const opts = Array.from(e.target.selectedOptions).map((o) => o.value as string);
+            setAvailableSelected(opts);
+          }}
+          disabled={disabled || readonly}
+        >
+          {available.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="dual-list__controls">
+        <button type="button" onClick={addSelected} disabled={disabled || readonly || availableSelected.length === 0}>
+          &gt;
+        </button>
+        <button type="button" onClick={removeSelected} disabled={disabled || readonly || chosenSelected.length === 0}>
+          &lt;
+        </button>
+      </div>
+      <div className="dual-list__pane">
+        <div className="dual-list__title">Selected</div>
+        <select
+          multiple
+          value={chosenSelected}
+          onChange={(e) => {
+            const opts = Array.from(e.target.selectedOptions).map((o) => o.value as string);
+            setChosenSelected(opts);
+          }}
+          disabled={disabled || readonly}
+        >
+          {selected.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 };

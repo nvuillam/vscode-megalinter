@@ -145,6 +145,11 @@ export class ConfigurationPanel {
 
       const configKeys = new Set(Object.keys(config || {}));
 
+      // Guard against accidental empty payloads wiping the file
+      if (configKeys.size === 0) {
+        return;
+      }
+
       // Remove keys that are no longer present in the incoming config
       const existingKeys: string[] = [];
       if (doc.contents && 'items' in (doc.contents as any)) {

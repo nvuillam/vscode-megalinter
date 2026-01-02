@@ -41,7 +41,7 @@
       "megalinter": [
         {
           "id": "megalinter.sections",
-          "name": "Sections",
+          "name": "Configuration",
           "icon": "media/megalinter.svg"
         }
       ]
