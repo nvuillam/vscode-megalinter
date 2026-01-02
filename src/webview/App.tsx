@@ -46,6 +46,7 @@ export const App: React.FC = () => {
   const [groups, setGroups] = useState<SchemaGroups | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [originalConfig, setOriginalConfig] = useState<any>({});
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [configPath, setConfigPath] = useState<string>('');
@@ -91,17 +92,29 @@ export const App: React.FC = () => {
   useEffect(() => {
     const saved = vscode.getState?.() as Partial<ViewState> | undefined;
     if (saved) {
-      if (saved.activeMainTab) setActiveMainTab(saved.activeMainTab);
-      if (saved.selectedDescriptor !== undefined) setSelectedDescriptor(saved.selectedDescriptor);
-      if (saved.selectedScope !== undefined) setSelectedScope(saved.selectedScope);
-      if (saved.activeGeneralTheme !== undefined) setActiveGeneralTheme(saved.activeGeneralTheme);
-      if (saved.activeDescriptorThemes) setActiveDescriptorThemes(saved.activeDescriptorThemes);
-      if (saved.activeLinterThemes) setActiveLinterThemes(saved.activeLinterThemes);
+      if (saved.activeMainTab) {
+        setActiveMainTab(saved.activeMainTab);
+      }
+      if (saved.selectedDescriptor !== undefined) {
+        setSelectedDescriptor(saved.selectedDescriptor);
+      }
+      if (saved.selectedScope !== undefined) {
+        setSelectedScope(saved.selectedScope);
+      }
+      if (saved.activeGeneralTheme !== undefined) {
+        setActiveGeneralTheme(saved.activeGeneralTheme);
+      }
+      if (saved.activeDescriptorThemes) {
+        setActiveDescriptorThemes(saved.activeDescriptorThemes);
+      }
+      if (saved.activeLinterThemes) {
+        setActiveLinterThemes(saved.activeLinterThemes);
+      }
     }
   }, []);
 
   const queueSave = (data: any) => {
-    if (!schema) {
+    if (!schema || !configLoaded) {
       return;
     }
 
@@ -205,6 +218,7 @@ export const App: React.FC = () => {
         setFormData(message.config);
         setOriginalConfig(message.config || {});
         setConfigPath(message.configPath);
+        setConfigLoaded(true);
       } else if (message.type === 'navigate' && message.target) {
         applyNavigation(message.target as NavigationTarget);
       }
@@ -797,8 +811,12 @@ const buildScopedUiSchema = (
   const definitions = (baseSchema.definitions as Record<string, any>) || {};
 
   const resolveEnum = (node: any): string[] | undefined => {
-    if (!node) return undefined;
-    if (Array.isArray(node.enum)) return node.enum as string[];
+    if (!node) {
+      return undefined;
+    }
+    if (Array.isArray(node.enum)) {
+      return node.enum as string[];
+    }
     const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
     if (ref && ref.startsWith('#/definitions/')) {
       const defKey = ref.replace('#/definitions/', '');
@@ -845,6 +863,11 @@ const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
     const value = data[key];
     const wasPresent = Object.prototype.hasOwnProperty.call(original || {}, key);
     const defaultValue = properties[key]?.default;
+
+    // Drop empty arrays entirely to avoid persisting [] in config
+    if (Array.isArray(value) && value.length === 0) {
+      return;
+    }
 
     const equalsDefault = defaultValue !== undefined && deepEqual(value, defaultValue);
 
@@ -927,21 +950,35 @@ const sortKeysWithinCategory = (keys: string[], category: string) => {
     const upper = key.toUpperCase();
 
     if (category === 'prepost') {
-      if (upper.includes('PRE_')) return 0;
-      if (upper.includes('POST_')) return 1;
+      if (upper.includes('PRE_')) {
+        return 0;
+      }
+      if (upper.includes('POST_')) {
+        return 1;
+      }
       return 2;
     }
 
     if (category === 'command') {
-      if (upper.includes('CUSTOM_REMOVE_ARGUMENTS') || upper.includes('REMOVE_ARGUMENTS')) return 1;
-      if (upper.includes('CUSTOM_ARGUMENTS') || (upper.includes('ARGUMENTS') && !upper.includes('REMOVE'))) return 0;
+      if (upper.includes('CUSTOM_REMOVE_ARGUMENTS') || upper.includes('REMOVE_ARGUMENTS')) {
+        return 1;
+      }
+      if (upper.includes('CUSTOM_ARGUMENTS') || (upper.includes('ARGUMENTS') && !upper.includes('REMOVE'))) {
+        return 0;
+      }
       return 2;
     }
 
     if (category === 'scope') {
-      if (upper.includes('FILE_NAME') && upper.includes('REGEX')) return 0;
-      if (upper.includes('REGEX')) return 1;
-      if (upper.includes('FILE_EXT')) return 2;
+      if (upper.includes('FILE_NAME') && upper.includes('REGEX')) {
+        return 0;
+      }
+      if (upper.includes('REGEX')) {
+        return 1;
+      }
+      if (upper.includes('FILE_EXT')) {
+        return 2;
+      }
       return 3;
     }
 
@@ -966,25 +1003,33 @@ const DualListWidget: React.FC<WidgetProps> = ({
   const schemaUtils = registry?.schemaUtils;
 
   const resolveEnumOptions = (node: any): Array<{ value: any; label: string }> | undefined => {
-    if (!node) return undefined;
+    if (!node) {
+      return undefined;
+    }
 
     const resolveWithNames = (schemaNode: any) => {
       const values = Array.isArray(schemaNode?.enum) ? schemaNode.enum : undefined;
-      if (!values) return undefined;
+      if (!values) {
+        return undefined;
+      }
       const names = Array.isArray(schemaNode?.enumNames) ? schemaNode.enumNames : undefined;
       return values.map((v: any, idx: number) => ({ value: v, label: names?.[idx] ?? String(v) }));
     };
 
     const resolved = schemaUtils?.retrieveSchema ? schemaUtils.retrieveSchema(node, rootSchema) : node;
     const direct = resolveWithNames(resolved);
-    if (direct) return direct;
+    if (direct) {
+      return direct;
+    }
 
     const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
     if (ref && ref.startsWith('#/definitions/') && rootSchema?.definitions) {
       const defKey = ref.replace('#/definitions/', '');
       const def = (rootSchema.definitions as Record<string, any>)[defKey];
       const fromDef = resolveWithNames(def);
-      if (fromDef) return fromDef;
+      if (fromDef) {
+        return fromDef;
+      }
     }
     return undefined;
   };
@@ -1025,18 +1070,26 @@ const DualListWidget: React.FC<WidgetProps> = ({
   }, [selectedValues, isEditing]);
 
   const addSelected = () => {
-    if (readonly || disabled) return;
+    if (readonly || disabled) {
+      return;
+    }
     const toAdd = availableSelected
       .map((v) => valueMap.get(String(v)))
       .filter((v): v is any => v !== undefined && !selectedSet.has(v));
-    if (toAdd.length === 0) return;
+    if (toAdd.length === 0) {
+      return;
+    }
     setDraft((prev) => [...prev, ...toAdd]);
     setAvailableSelected([]);
   };
 
   const removeSelected = () => {
-    if (readonly || disabled) return;
-    if (chosenSelected.length === 0) return;
+    if (readonly || disabled) {
+      return;
+    }
+    if (chosenSelected.length === 0) {
+      return;
+    }
     const removeSet = new Set(
       chosenSelected
         .map((v) => valueMap.get(String(v)))
