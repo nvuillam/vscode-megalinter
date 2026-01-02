@@ -869,7 +869,9 @@ const DualListWidget: React.FC<WidgetProps> = ({
     return values.map((v) => ({ value: v, label: String(v) }));
   }, [options.enumOptions, schema, rootSchema]);
   const selectedValues = Array.isArray(value) ? value : [];
-  const selectedSet = new Set(selectedValues);
+  const [draft, setDraft] = useState<string[]>(selectedValues);
+  const [isEditing, setIsEditing] = useState(false);
+  const selectedSet = new Set(isEditing ? draft : selectedValues);
   const valueMap = useMemo(() => {
     const map = new Map<string, any>();
     enumOptions.forEach((opt) => {
@@ -885,10 +887,13 @@ const DualListWidget: React.FC<WidgetProps> = ({
   const [chosenSelected, setChosenSelected] = useState<string[]>([]);
 
   useEffect(() => {
-    // Clear selections when the source data changes to avoid stale ids
+    // Keep draft in sync when not editing; clear transient selections on change
+    if (!isEditing) {
+      setDraft(selectedValues);
+    }
     setAvailableSelected([]);
     setChosenSelected([]);
-  }, [value]);
+  }, [selectedValues, isEditing]);
 
   const addSelected = () => {
     if (readonly || disabled) return;
@@ -896,7 +901,7 @@ const DualListWidget: React.FC<WidgetProps> = ({
       .map((v) => valueMap.get(String(v)))
       .filter((v): v is any => v !== undefined && !selectedSet.has(v));
     if (toAdd.length === 0) return;
-    onChange([...selectedValues, ...toAdd]);
+    setDraft((prev) => [...prev, ...toAdd]);
     setAvailableSelected([]);
   };
 
@@ -908,10 +913,39 @@ const DualListWidget: React.FC<WidgetProps> = ({
         .map((v) => valueMap.get(String(v)))
         .filter((v): v is any => v !== undefined)
     );
-    const next = selectedValues.filter((v) => !removeSet.has(v));
-    onChange(next);
+    setDraft((prev) => prev.filter((v) => !removeSet.has(v)));
     setChosenSelected([]);
   };
+
+  const handleSave = () => {
+    onChange(draft);
+    setIsEditing(false);
+  };
+
+  if (!isEditing) {
+    return (
+      <div className="dual-list dual-list--view" aria-label={label} id={id}>
+        <div className="dual-list__pane dual-list__pane--view">
+          {selected.length ? (
+            <ul className="dual-list__chips">
+              {selected.map((opt) => (
+                <li key={opt.value} className="dual-list__chip">
+                  {opt.label}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">None selected</p>
+          )}
+        </div>
+        <div className="dual-list__controls dual-list__controls--view">
+          <button type="button" onClick={() => setIsEditing(true)} disabled={disabled || readonly}>
+            Edit
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dual-list" aria-label={label} id={id}>
@@ -958,6 +992,11 @@ const DualListWidget: React.FC<WidgetProps> = ({
             </option>
           ))}
         </select>
+      </div>
+      <div className="dual-list__footer">
+        <button type="button" className="dual-list__save" onClick={handleSave} disabled={disabled || readonly}>
+          Save
+        </button>
       </div>
     </div>
   );

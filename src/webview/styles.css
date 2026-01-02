@@ -428,3 +428,55 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.dual-list__footer {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.dual-list__save,
+.dual-list__controls button,
+.dual-list__controls--view button {
+  border: 1px solid var(--vscode-button-secondaryBackground);
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.dual-list__save:disabled,
+.dual-list__controls--view button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dual-list--view {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dual-list__pane--view {
+  min-width: 260px;
+}
+
+.dual-list__chips {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dual-list__chip {
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
