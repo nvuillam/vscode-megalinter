@@ -511,7 +511,15 @@ const ThemedForm: React.FC<{
   setActiveThemeTab,
   prefixToStrip
 }) => {
-  const { tabs, grouped } = useMemo(() => groupKeysByTheme(keys, prefixToStrip), [keys, prefixToStrip]);
+  const filteredKeys = useMemo(
+    () => keys.filter((key) => !isDeprecatedPropertyTitle(baseSchema, key)),
+    [keys, baseSchema]
+  );
+
+  const { tabs, grouped } = useMemo(
+    () => groupKeysByTheme(filteredKeys, prefixToStrip),
+    [filteredKeys, prefixToStrip]
+  );
 
   const effectiveActive = useMemo(() => {
     if (activeThemeTab && grouped[activeThemeTab]) {
@@ -535,6 +543,10 @@ const ThemedForm: React.FC<{
   const widgets = useMemo(() => ({ dualList: DualListWidget }), []);
   const templates = useMemo(() => ({ ArrayFieldTemplate: TagArrayFieldTemplate }), []);
 
+  if (!filteredKeys.length) {
+    return <p className="muted">No fields available</p>;
+  }
+
   return (
     <div className="tab-content">
       {tabs.length > 1 && (
@@ -557,9 +569,99 @@ const ThemedForm: React.FC<{
 };
 
 const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) => {
-  const { items, canAdd, onAddClick, title, schema } = props;
+  const { items, canAdd, onAddClick, title, schema, formData, disabled, readonly } = props;
   const itemType = (schema as any)?.items?.type;
+  const enumValues = Array.isArray((schema as any)?.items?.enum)
+    ? (schema as any).items.enum
+    : undefined;
   const isStringArray = itemType === 'string' || (Array.isArray(itemType) && itemType.includes('string'));
+  const isFreeStringArray = isStringArray && !enumValues;
+  const values = Array.isArray(formData)
+    ? (formData as unknown[]).filter((v) => v !== undefined && v !== null)
+    : [];
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (disabled || readonly) {
+      setIsEditing(false);
+    }
+  }, [disabled, readonly]);
+
+  if (isFreeStringArray) {
+    if (!isEditing) {
+      return (
+        <div className="string-list string-list--view">
+          {title && <p className="tag-array__title">{title}</p>}
+          {schema?.description && <p className="field-description">{schema.description}</p>}
+          {values.length ? (
+            <ul className="dual-list__chips">
+              {values.map((val, idx) => (
+                <li key={`${idx}-${String(val)}`} className="dual-list__chip">
+                  {String(val)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">None set</p>
+          )}
+          <div className="string-list__controls">
+            <button
+              type="button"
+              className="dual-list__save"
+              onClick={() => setIsEditing(true)}
+              disabled={disabled || readonly}
+            >
+              Edit
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="string-list string-list--edit">
+        {title && <p className="tag-array__title">{title}</p>}
+        {schema?.description && <p className="field-description">{schema.description}</p>}
+        <div className="string-list__rows">
+          {items.map((item) => (
+            <div key={item.key} className="string-list__row">
+              <div className="string-list__input">{item.children}</div>
+              {item.hasRemove && (
+                <button
+                  type="button"
+                  className="pill-remove string-list__remove"
+                  onClick={item.onDropIndexClick(item.index)}
+                  aria-label="Remove item"
+                >
+                  -
+                </button>
+              )}
+            </div>
+          ))}
+          {canAdd && (
+            <button
+              type="button"
+              className="pill-add pill-add--inline string-list__add"
+              onClick={(event) => onAddClick(event)}
+              aria-label="Add item"
+            >
+              + Add string item
+            </button>
+          )}
+        </div>
+        <div className="string-list__footer">
+          <button
+            type="button"
+            className="dual-list__save"
+            onClick={() => setIsEditing(false)}
+            disabled={disabled || readonly}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tag-array">
@@ -837,6 +939,16 @@ const categorizeTheme = (theme: string, strippedKey: string, fullKey: string): s
   }
 
   return 'misc';
+};
+
+const isDeprecatedPropertyTitle = (schema: RJSFSchema, key: string): boolean => {
+  const properties = (schema.properties as Record<string, any>) || {};
+  const title = properties[key]?.title;
+  if (typeof title !== 'string') {
+    return false;
+  }
+  const lower = title.toLowerCase();
+  return lower.includes('deprecated') || lower.includes('removed');
 };
 
 const sortKeysWithinCategory = (keys: string[], category: string) => {

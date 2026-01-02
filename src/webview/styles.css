@@ -480,3 +480,40 @@ body {
   padding: 4px 8px;
   font-size: 12px;
 }
+
+.string-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.string-list__controls,
+.string-list__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.string-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.string-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.string-list__input {
+  flex: 1;
+}
+
+.string-list__remove {
+  min-width: 32px;
+}
+
+.string-list__add {
+  align-self: flex-start;
+}
