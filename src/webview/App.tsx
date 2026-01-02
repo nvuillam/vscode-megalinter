@@ -490,11 +490,7 @@ const MainTabs: React.FC<{
     );
   };
 
-  const activeContent = activeMainTab === 'general' ? renderGeneral() : renderDescriptorArea();
-
-  return (
-    <div>{activeContent}</div>
-  );
+  return activeMainTab === 'general' ? renderGeneral() : renderDescriptorArea();
 };
 
 const TabBar: React.FC<{
