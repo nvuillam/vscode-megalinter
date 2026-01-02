@@ -29,7 +29,8 @@
       },
       {
         "command": "megalinter.refreshSections",
-        "title": "MegaLinter: Refresh Configuration Tree"
+        "title": "MegaLinter: Refresh Configuration Tree",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -62,11 +63,7 @@
         {
           "command": "megalinter.refreshSections",
           "when": "view == megalinter.sections",
-          "group": "navigation@1",
-          "icon": {
-            "dark": "media/refresh.svg",
-            "light": "media/refresh.svg"
-          }
+          "group": "navigation"
         }
       ]
     }

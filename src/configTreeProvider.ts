@@ -103,7 +103,8 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
         );
       });
 
-      const hasGeneralValues = hasAnyKeySet(this._groups.generalKeys, this._configKeys);
+      const hasGeneralValues =
+        hasAnyKeySet(this._groups.generalKeys, this._configKeys) || this._configKeys.size > 0;
 
       return [
         new SectionNode(
@@ -120,9 +121,14 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
       const linters = this._groups.linterKeys[descriptorId] || {};
       const linterIds = Object.keys(linters).sort();
 
-       const descriptorEntry = new SectionNode(
+      const hasDescriptorValues = hasAnyKeySet(
+        this._groups.descriptorKeys[descriptorId] || [],
+        this._configKeys
+      );
+
+      const descriptorEntry = new SectionNode(
         { type: 'descriptor', descriptorId },
-        'Descriptor variables',
+        hasDescriptorValues ? 'Descriptor variables *' : 'Descriptor variables',
         vscode.TreeItemCollapsibleState.None
       );
 
