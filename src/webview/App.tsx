@@ -882,19 +882,26 @@ const DualListWidget: React.FC<WidgetProps> = ({
   const rootSchema = registry?.rootSchema as RJSFSchema | undefined;
   const schemaUtils = registry?.schemaUtils;
 
-  const resolveEnumValues = (node: any): string[] | undefined => {
+  const resolveEnumOptions = (node: any): Array<{ value: any; label: string }> | undefined => {
     if (!node) return undefined;
 
+    const resolveWithNames = (schemaNode: any) => {
+      const values = Array.isArray(schemaNode?.enum) ? schemaNode.enum : undefined;
+      if (!values) return undefined;
+      const names = Array.isArray(schemaNode?.enumNames) ? schemaNode.enumNames : undefined;
+      return values.map((v: any, idx: number) => ({ value: v, label: names?.[idx] ?? String(v) }));
+    };
+
     const resolved = schemaUtils?.retrieveSchema ? schemaUtils.retrieveSchema(node, rootSchema) : node;
-    if (Array.isArray(resolved?.enum)) return resolved.enum as string[];
+    const direct = resolveWithNames(resolved);
+    if (direct) return direct;
 
     const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
     if (ref && ref.startsWith('#/definitions/') && rootSchema?.definitions) {
       const defKey = ref.replace('#/definitions/', '');
       const def = (rootSchema.definitions as Record<string, any>)[defKey];
-      if (def && Array.isArray(def.enum)) {
-        return def.enum as string[];
-      }
+      const fromDef = resolveWithNames(def);
+      if (fromDef) return fromDef;
     }
     return undefined;
   };
@@ -905,8 +912,7 @@ const DualListWidget: React.FC<WidgetProps> = ({
     }
 
     const itemSchema = (schema as any)?.items;
-    const values = resolveEnumValues(itemSchema) || [];
-    return values.map((v) => ({ value: v, label: String(v) }));
+    return resolveEnumOptions(itemSchema) || [];
   }, [options.enumOptions, schema, rootSchema]);
   const selectedValues = Array.isArray(value) ? value : [];
   const [draft, setDraft] = useState<string[]>(selectedValues);
