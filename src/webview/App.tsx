@@ -22,6 +22,15 @@ type NavigationTarget =
   | { type: 'descriptor'; descriptorId: string }
   | { type: 'linter'; descriptorId: string; linterId: string };
 
+type ViewState = {
+  activeMainTab: string;
+  selectedDescriptor: string | null;
+  selectedScope: string | null;
+  activeGeneralTheme: string | null;
+  activeDescriptorThemes: Record<string, string>;
+  activeLinterThemes: Record<string, Record<string, string>>;
+};
+
 // VS Code API type
 declare global {
   interface Window {
@@ -62,6 +71,37 @@ export const App: React.FC = () => {
     Record<string, Record<string, string>>
   >({});
   const saveTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    const viewState: ViewState = {
+      activeMainTab,
+      selectedDescriptor,
+      selectedScope,
+      activeGeneralTheme,
+      activeDescriptorThemes,
+      activeLinterThemes
+    };
+    vscode.setState?.(viewState);
+  }, [
+    activeMainTab,
+    selectedDescriptor,
+    selectedScope,
+    activeGeneralTheme,
+    activeDescriptorThemes,
+    activeLinterThemes
+  ]);
+
+  useEffect(() => {
+    const saved = vscode.getState?.() as Partial<ViewState> | undefined;
+    if (saved) {
+      if (saved.activeMainTab) setActiveMainTab(saved.activeMainTab);
+      if (saved.selectedDescriptor !== undefined) setSelectedDescriptor(saved.selectedDescriptor);
+      if (saved.selectedScope !== undefined) setSelectedScope(saved.selectedScope);
+      if (saved.activeGeneralTheme !== undefined) setActiveGeneralTheme(saved.activeGeneralTheme);
+      if (saved.activeDescriptorThemes) setActiveDescriptorThemes(saved.activeDescriptorThemes);
+      if (saved.activeLinterThemes) setActiveLinterThemes(saved.activeLinterThemes);
+    }
+  }, []);
 
   const queueSave = (data: any) => {
     if (!schema) {
