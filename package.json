@@ -33,7 +33,33 @@
         "title": "MegaLinter: Reveal Section",
         "icon": "$(go-to-file)"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@1",
+          "when": "resourceFilename == '.mega-linter.yml'"
+        },
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@2",
+          "when": "resourceFilename == '.megalinter.yml'"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@1",
+          "when": "resourceFilename == '.mega-linter.yml'"
+        },
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@2",
+          "when": "resourceFilename == '.megalinter.yml'"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",

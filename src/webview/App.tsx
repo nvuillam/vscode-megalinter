@@ -529,13 +529,29 @@ const MainTabs: React.FC<{
 
     const activeScope = scopeOptions.find((opt) => opt.id === selectedScope)?.id || scopeOptions[0]?.id;
 
+    const descriptorBreadcrumbOptions = descriptorOrder.map((id) => ({
+      id,
+      label: prettifyId(id),
+      onSelect: () => {
+        setSelectedDescriptor(id);
+        setSelectedScope('descriptor');
+      }
+    }));
+
+    const scopeBreadcrumbOptions = scopeOptions.map((opt) => ({
+      id: opt.id,
+      label: opt.id === 'descriptor' ? 'Variables' : prettifyId(opt.id.replace(`${descriptorId}_`, '')),
+      onSelect: () => {
+        setSelectedDescriptor(descriptorId);
+        setSelectedScope(opt.id);
+      }
+    }));
+
     const breadcrumbItems = [
       {
         id: descriptorId,
         label: prettifyId(descriptorId),
-        onClick: () => {
-          setSelectedScope('descriptor');
-        }
+        options: descriptorBreadcrumbOptions
       },
       {
         id: activeScope,
@@ -543,7 +559,7 @@ const MainTabs: React.FC<{
           activeScope === 'descriptor'
             ? 'Variables'
             : prettifyId(activeScope.replace(`${descriptorId}_`, '')),
-        onClick: undefined
+        options: scopeBreadcrumbOptions
       }
     ];
 
@@ -622,27 +638,60 @@ const TabBar: React.FC<{
   </div>
 );
 
+type BreadcrumbOption = { id: string; label: string; onSelect: () => void };
+
 const Breadcrumbs: React.FC<{
-  items: Array<{ id: string; label: string; onClick?: () => void }>;
-}> = ({ items }) => (
-  <div className="breadcrumbs" aria-label="Navigation breadcrumb">
-    {items.map((item, idx) => {
-      const isLast = idx === items.length - 1;
-      return (
-        <span key={item.id} className="breadcrumbs__item">
-          {item.onClick && !isLast ? (
-            <button type="button" className="breadcrumbs__link" onClick={item.onClick}>
-              {item.label}
-            </button>
-          ) : (
-            <span className="breadcrumbs__current">{item.label}</span>
-          )}
-          {!isLast && <span className="breadcrumbs__sep">/</span>}
-        </span>
-      );
-    })}
-  </div>
-);
+  items: Array<{ id: string; label: string; options?: BreadcrumbOption[] }>;
+}> = ({ items }) => {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <div className="breadcrumbs" aria-label="Navigation breadcrumb">
+      {items.map((item, idx) => {
+        const isLast = idx === items.length - 1;
+        const hasOptions = !!(item.options && item.options.length > 0);
+        const isOpen = openId === item.id;
+
+        const handleSelect = (optId: string) => {
+          const match = item.options?.find((opt) => opt.id === optId);
+          match?.onSelect();
+          setOpenId(null);
+        };
+
+        return (
+          <span key={item.id} className="breadcrumbs__item">
+            {hasOptions ? (
+              <div className="breadcrumbs__menu-wrapper">
+                <button
+                  type="button"
+                  className="breadcrumbs__link breadcrumbs__link--menu"
+                  onClick={() => setOpenId(isOpen ? null : item.id)}
+                >
+                  {item.label}
+                  <span className={`breadcrumbs__chevron ${isOpen ? 'breadcrumbs__chevron--open' : ''}`} />
+                </button>
+                {isOpen && (
+                  <ul className="breadcrumbs__menu">
+                    {item.options?.map((opt) => (
+                      <li key={opt.id}>
+                        <button type="button" onClick={() => handleSelect(opt.id)}>
+                          {opt.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <span className="breadcrumbs__current">{item.label}</span>
+            )}
+            {!isLast && <span className="breadcrumbs__sep">/</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
 
 const ThemedForm: React.FC<{
   baseSchema: RJSFSchema;

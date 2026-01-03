@@ -128,6 +128,71 @@ body {
   font-weight: 600;
 }
 
+.breadcrumbs__menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.breadcrumbs__link--menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.breadcrumbs__link--menu:hover {
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.breadcrumbs__chevron {
+  width: 6px;
+  height: 6px;
+  border: solid var(--vscode-textLink-foreground);
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+
+.breadcrumbs__chevron--open {
+  transform: rotate(-135deg);
+}
+
+.breadcrumbs__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  padding: 6px;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editor-background);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+}
+
+.breadcrumbs__menu button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.breadcrumbs__menu button:hover,
+.breadcrumbs__menu button:focus {
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
 .breadcrumbs__sep {
   color: var(--vscode-descriptionForeground);
 }
