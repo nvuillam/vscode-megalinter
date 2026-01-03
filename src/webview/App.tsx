@@ -4,15 +4,24 @@ import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { ArrayFieldTemplateProps, RJSFSchema, UiSchema, WidgetProps } from '@rjsf/utils';
 import bundledSchema from '../schema/megalinter-configuration.jsonschema.json';
-import { extractGroups, filterRemovedLintersFromSchema, SchemaGroups } from '../shared/schemaUtils';
 import { buildPresenceMaps, hasAnyKeySet } from '../shared/configPresence';
+import { extractGroups, filterRemovedLintersFromSchema, SchemaGroups } from '../shared/schemaUtils';
+import {
+  buildNavigationModel,
+  buildScopedUiSchema,
+  buildSubsetSchema,
+  computeNonDefaultKeys,
+  filterFormData,
+  groupKeysByTheme,
+  isDeprecatedPropertyTitle,
+  MenuChild,
+  MenuItem,
+  MenuSection,
+  prettifyId,
+  pruneDefaults,
+  Tab
+} from './menuUtils';
 import './styles.css';
-
-type Tab = {
-  id: string;
-  label: string;
-  hasValues?: boolean;
-};
 
 type NavigationTarget =
   | { type: 'general' }
@@ -75,6 +84,10 @@ export const App: React.FC = () => {
     }
     return computeNonDefaultKeys(formData, schema);
   }, [formData, schema]);
+  const navigationModel = useMemo(
+    () => (groups ? buildNavigationModel(groups, formData) : null),
+    [groups, formData]
+  );
 
   useEffect(() => {
     const viewState: ViewState = {
@@ -143,6 +156,26 @@ export const App: React.FC = () => {
       }
     };
   }, []);
+
+  const handleNavigationSelect = (item: MenuItem | MenuChild) => {
+    if (item.type === 'general') {
+      setActiveMainTab('general');
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
+    if (item.type === 'linter') {
+      setActiveMainTab('descriptors');
+      setSelectedDescriptor(item.parentId);
+      setSelectedScope(item.id);
+      return;
+    }
+
+    setActiveMainTab('descriptors');
+    setSelectedDescriptor(item.id);
+    setSelectedScope('descriptor');
+  };
 
   const applyNavigation = (target: NavigationTarget) => {
     if (!target) {
@@ -238,21 +271,26 @@ export const App: React.FC = () => {
     if (schema) {
       const grouped = extractGroups(schema);
       setGroups(grouped);
-
-      const descriptorList = Object.keys(grouped.descriptorKeys).sort();
-      if (!selectedDescriptor && descriptorList.length) {
-        setSelectedDescriptor(descriptorList[0]);
-        setSelectedScope('descriptor');
-      } else if (
-        selectedDescriptor &&
-        descriptorList.length &&
-        !descriptorList.includes(selectedDescriptor)
-      ) {
-        setSelectedDescriptor(descriptorList[0]);
-        setSelectedScope('descriptor');
-      }
     }
   }, [schema, selectedDescriptor]);
+
+  useEffect(() => {
+    if (!navigationModel || !navigationModel.descriptorOrder.length) {
+      return;
+    }
+    const firstDescriptor = navigationModel.descriptorOrder[0];
+    const isValidSelection = selectedDescriptor && navigationModel.descriptorOrder.includes(selectedDescriptor);
+
+    if (selectedDescriptor && !isValidSelection) {
+      setSelectedDescriptor(firstDescriptor);
+      setSelectedScope('descriptor');
+    }
+
+    if (!selectedDescriptor && activeMainTab === 'descriptors') {
+      setSelectedDescriptor(firstDescriptor);
+      setSelectedScope('descriptor');
+    }
+  }, [navigationModel, selectedDescriptor, activeMainTab]);
 
   const handleSubsetChange = (keys: string[], subsetData: any) => {
     setFormData((prev: any) => {
@@ -311,30 +349,95 @@ export const App: React.FC = () => {
 
   return (
     <div className="container">
-      <div className="form-container">
-        <MainTabs
-          schema={schema}
-          groups={groups}
-          formData={formData}
-          uiSchema={uiSchema}
-          onSubsetChange={handleSubsetChange}
-          activeMainTab={activeMainTab}
-          selectedDescriptor={selectedDescriptor}
-          setSelectedDescriptor={setSelectedDescriptor}
-          selectedScope={selectedScope}
-          setSelectedScope={setSelectedScope}
-          activeGeneralTheme={activeGeneralTheme}
-          setActiveGeneralTheme={setActiveGeneralTheme}
-          activeDescriptorThemes={activeDescriptorThemes}
-          setActiveDescriptorThemes={setActiveDescriptorThemes}
-          activeLinterThemes={activeLinterThemes}
-          setActiveLinterThemes={setActiveLinterThemes}
-          highlightedKeys={highlightedKeys}
+      <div className="layout">
+        <NavigationMenu
+          sections={navigationModel?.sections || []}
+          selectedId={
+            activeMainTab === 'general'
+              ? 'general'
+              : selectedScope || selectedDescriptor || ''
+          }
+          activeDescriptorId={selectedDescriptor}
+          onSelect={handleNavigationSelect}
         />
+        <div className="form-container">
+          <MainTabs
+            schema={schema}
+            groups={groups}
+            formData={formData}
+            uiSchema={uiSchema}
+            onSubsetChange={handleSubsetChange}
+            descriptorOrder={navigationModel?.descriptorOrder || []}
+            activeMainTab={activeMainTab}
+            selectedDescriptor={selectedDescriptor}
+            setSelectedDescriptor={setSelectedDescriptor}
+            selectedScope={selectedScope}
+            setSelectedScope={setSelectedScope}
+            activeGeneralTheme={activeGeneralTheme}
+            setActiveGeneralTheme={setActiveGeneralTheme}
+            activeDescriptorThemes={activeDescriptorThemes}
+            setActiveDescriptorThemes={setActiveDescriptorThemes}
+            activeLinterThemes={activeLinterThemes}
+            setActiveLinterThemes={setActiveLinterThemes}
+            highlightedKeys={highlightedKeys}
+          />
+        </div>
       </div>
     </div>
   );
 };
+
+const NavigationMenu: React.FC<{
+  sections: MenuSection[];
+  selectedId: string;
+  activeDescriptorId: string | null;
+  onSelect: (item: MenuItem | MenuChild) => void;
+}> = ({ sections, selectedId, activeDescriptorId, onSelect }) => (
+  <nav className="nav" aria-label="Configuration sections">
+    {sections.map((section) => (
+      <div key={section.id} className="nav__section">
+        <div className="nav__title">{section.label}</div>
+        <ul className="nav__list">
+          {section.items.map((item) => {
+            const isActive = selectedId === item.id;
+            const isExpanded = activeDescriptorId === item.id || isActive;
+            return (
+              <li key={item.id} className="nav__list-item">
+                <button
+                  type="button"
+                  className={`nav__item ${isActive ? 'nav__item--active' : ''}`}
+                  onClick={() => onSelect(item)}
+                >
+                  <span className="nav__label">{item.label}</span>
+                  {item.hasValues && <span className="nav__dot" aria-hidden="true" />}
+                </button>
+                {item.children && item.children.length && isExpanded && (
+                  <ul className="nav__child-list">
+                    {item.children.map((child) => {
+                      const childActive = selectedId === child.id;
+                      return (
+                        <li key={child.id} className="nav__child-item">
+                          <button
+                            type="button"
+                            className={`nav__item nav__item--child ${childActive ? 'nav__item--active' : ''}`}
+                            onClick={() => onSelect(child)}
+                          >
+                            <span className="nav__label">{child.label}</span>
+                            {child.hasValues && <span className="nav__dot" aria-hidden="true" />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ))}
+  </nav>
+);
 
 const MainTabs: React.FC<{
   schema: RJSFSchema;
@@ -342,6 +445,7 @@ const MainTabs: React.FC<{
   formData: any;
   uiSchema: UiSchema;
   onSubsetChange: (keys: string[], subsetData: any) => void;
+  descriptorOrder: string[];
   activeMainTab: string;
   selectedDescriptor: string | null;
   setSelectedDescriptor: (id: string | null) => void;
@@ -360,6 +464,7 @@ const MainTabs: React.FC<{
   formData,
   uiSchema,
   onSubsetChange,
+  descriptorOrder: descriptorOrderProp,
   activeMainTab,
   selectedDescriptor,
   setSelectedDescriptor,
@@ -373,7 +478,12 @@ const MainTabs: React.FC<{
   setActiveLinterThemes,
   highlightedKeys
 }) => {
-  const descriptorOrder = useMemo(() => Object.keys(groups.descriptorKeys).sort(), [groups]);
+  const descriptorOrder = useMemo(() => {
+    if (descriptorOrderProp.length) {
+      return descriptorOrderProp;
+    }
+    return Object.keys(groups.descriptorKeys).sort();
+  }, [descriptorOrderProp, groups]);
   const { descriptorHasValues, linterHasValues } = useMemo(
     () => buildPresenceMaps(groups, formData),
     [groups, formData]
@@ -418,6 +528,24 @@ const MainTabs: React.FC<{
     ];
 
     const activeScope = scopeOptions.find((opt) => opt.id === selectedScope)?.id || scopeOptions[0]?.id;
+
+    const breadcrumbItems = [
+      {
+        id: descriptorId,
+        label: prettifyId(descriptorId),
+        onClick: () => {
+          setSelectedScope('descriptor');
+        }
+      },
+      {
+        id: activeScope,
+        label:
+          activeScope === 'descriptor'
+            ? 'Variables'
+            : prettifyId(activeScope.replace(`${descriptorId}_`, '')),
+        onClick: undefined
+      }
+    ];
 
     const descriptorForm = (
       <ThemedForm
@@ -466,37 +594,7 @@ const MainTabs: React.FC<{
 
     return (
       <div className="descriptor-panel">
-        <div className="descriptor-controls">
-          <label className="control">
-            <span>Descriptor</span>
-            <select
-              value={descriptorId}
-              onChange={(e) => {
-                setSelectedDescriptor(e.target.value);
-                setSelectedScope('descriptor');
-              }}
-            >
-              {descriptorOrder.map((id) => (
-                <option key={id} value={id}>
-                  {descriptorHasValues[id] ? `${id} *` : id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="control">
-            <span>Scope</span>
-            <select
-              value={activeScope || ''}
-              onChange={(e) => setSelectedScope(e.target.value || 'descriptor')}
-            >
-              {scopeOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <Breadcrumbs items={breadcrumbItems} />
         <div className="tab-content">{activeContent}</div>
       </div>
     );
@@ -521,6 +619,28 @@ const TabBar: React.FC<{
         {tab.hasValues ? `${tab.label} *` : tab.label}
       </button>
     ))}
+  </div>
+);
+
+const Breadcrumbs: React.FC<{
+  items: Array<{ id: string; label: string; onClick?: () => void }>;
+}> = ({ items }) => (
+  <div className="breadcrumbs" aria-label="Navigation breadcrumb">
+    {items.map((item, idx) => {
+      const isLast = idx === items.length - 1;
+      return (
+        <span key={item.id} className="breadcrumbs__item">
+          {item.onClick && !isLast ? (
+            <button type="button" className="breadcrumbs__link" onClick={item.onClick}>
+              {item.label}
+            </button>
+          ) : (
+            <span className="breadcrumbs__current">{item.label}</span>
+          )}
+          {!isLast && <span className="breadcrumbs__sep">/</span>}
+        </span>
+      );
+    })}
   </div>
 );
 
@@ -732,319 +852,6 @@ const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) => {
       </div>
     </div>
   );
-};
-
-const groupKeysByTheme = (
-  keys: string[],
-  prefixToStrip?: string,
-  values?: Record<string, any>
-): { tabs: Tab[]; grouped: Record<string, string[]> } => {
-  const categoryOrder = ['command', 'scope', 'severity', 'prepost', 'misc'];
-  const categoryLabels: Record<string, string> = {
-    command: 'Linter command',
-    scope: 'Scope (filters)',
-    severity: 'Severity',
-    prepost: 'Pre-Post commands',
-    misc: 'Misc'
-  };
-
-  const grouped: Record<string, string[]> = {};
-  const categoryHasValues: Record<string, boolean> = {};
-
-  keys.forEach((key) => {
-    const stripped = prefixToStrip && key.startsWith(prefixToStrip) ? key.slice(prefixToStrip.length) : key;
-    const [themeRaw] = stripped.split('_');
-    const theme = themeRaw || 'misc';
-    const category = categorizeTheme(theme, stripped, key);
-    const isSet = values ? hasAnyKeySet([key], values) : false;
-    if (!grouped[category]) {
-      grouped[category] = [];
-    }
-    if (isSet) {
-      categoryHasValues[category] = true;
-    }
-    grouped[category].push(key);
-  });
-
-  Object.keys(grouped).forEach((cat) => {
-    grouped[cat] = sortKeysWithinCategory(grouped[cat], cat);
-  });
-
-  const tabs: Tab[] = categoryOrder
-    .filter((id) => grouped[id]?.length)
-    .map((id) => ({ id, label: categoryLabels[id] || id, hasValues: categoryHasValues[id] }));
-
-  return { tabs, grouped };
-};
-
-const buildSubsetSchema = (
-  baseSchema: RJSFSchema,
-  keys: string[],
-  title?: string,
-  prefixToStrip?: string
-): RJSFSchema => {
-  const properties = (baseSchema.properties as Record<string, any>) || {};
-  const subsetProps = keys.reduce<Record<string, any>>((acc, key) => {
-    if (properties[key]) {
-      const cloned = { ...properties[key] };
-      if (prefixToStrip && typeof cloned.title === 'string') {
-        cloned.title = stripTitlePrefix(cloned.title, prefixToStrip);
-      }
-      if (prefixToStrip && typeof cloned.description === 'string') {
-        cloned.description = stripDescriptionPrefix(cloned.description, prefixToStrip);
-      }
-      acc[key] = cloned;
-    }
-    return acc;
-  }, {});
-
-  const required = Array.isArray(baseSchema.required)
-    ? (baseSchema.required as string[]).filter((r) => keys.includes(r))
-    : undefined;
-
-  return {
-    type: 'object',
-    title,
-    properties: subsetProps,
-    required,
-    definitions: baseSchema.definitions
-  } as RJSFSchema;
-};
-
-const buildScopedUiSchema = (
-  baseSchema: RJSFSchema,
-  keys: string[],
-  baseUiSchema: UiSchema,
-  highlightedKeys?: Set<string>
-): UiSchema => {
-  const ui: UiSchema = { ...baseUiSchema };
-  const properties = (baseSchema.properties as Record<string, any>) || {};
-  const definitions = (baseSchema.definitions as Record<string, any>) || {};
-
-  const appendClass = (existing: string | undefined, extra: string) =>
-    [existing, extra].filter(Boolean).join(' ').trim();
-
-  const resolveEnum = (node: any): string[] | undefined => {
-    if (!node) {
-      return undefined;
-    }
-    if (Array.isArray(node.enum)) {
-      return node.enum as string[];
-    }
-    const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
-    if (ref && ref.startsWith('#/definitions/')) {
-      const defKey = ref.replace('#/definitions/', '');
-      const def = definitions[defKey];
-      if (def && Array.isArray(def.enum)) {
-        return def.enum as string[];
-      }
-    }
-    return undefined;
-  };
-
-  keys.forEach((key) => {
-    const prop = properties[key];
-    if (prop && prop.type === 'array' && prop.items) {
-      const enumValues = resolveEnum(prop.items);
-      if (enumValues) {
-        ui[key] = { ...(ui[key] as any), 'ui:widget': 'dualList' };
-      }
-    }
-
-    if (highlightedKeys?.has(key)) {
-      const existing = (ui[key] as Record<string, any>) || {};
-      ui[key] = {
-        ...existing,
-        'ui:classNames': appendClass(existing['ui:classNames'], 'form-field--non-default')
-      };
-    }
-  });
-
-  return ui;
-};
-
-const filterFormData = (data: any, keys: string[]) => {
-  const subset: Record<string, any> = {};
-  keys.forEach((key) => {
-    if (data && Object.prototype.hasOwnProperty.call(data, key)) {
-      subset[key] = data[key];
-    }
-  });
-  return subset;
-};
-
-const deepEqual = (a: any, b: any) => {
-  return JSON.stringify(a) === JSON.stringify(b);
-};
-
-const computeNonDefaultKeys = (data: any, schema: RJSFSchema): Set<string> => {
-  const result = new Set<string>();
-  const properties = (schema.properties as Record<string, any>) || {};
-
-  const isEmptyValue = (value: any) => {
-    if (value === undefined || value === null) {
-      return true;
-    }
-    if (typeof value === 'string' && value.trim() === '') {
-      return true;
-    }
-    if (Array.isArray(value) && value.length === 0) {
-      return true;
-    }
-    return false;
-  };
-
-  Object.keys(data || {}).forEach((key) => {
-    if (!Object.prototype.hasOwnProperty.call(properties, key)) {
-      return;
-    }
-    const value = data[key];
-    if (isEmptyValue(value)) {
-      return;
-    }
-    const defaultValue = properties[key]?.default;
-    const hasDefault = defaultValue !== undefined;
-    const equalsDefault = hasDefault && deepEqual(value, defaultValue);
-
-    if (!equalsDefault) {
-      result.add(key);
-    }
-  });
-
-  return result;
-};
-
-const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
-  const result: Record<string, any> = {};
-  const properties = (schema.properties as Record<string, any>) || {};
-
-  Object.keys(data || {}).forEach((key) => {
-    const value = data[key];
-    const wasPresent = Object.prototype.hasOwnProperty.call(original || {}, key);
-    const defaultValue = properties[key]?.default;
-
-    // Drop empty arrays entirely to avoid persisting [] in config
-    if (Array.isArray(value) && value.length === 0) {
-      return;
-    }
-
-    const equalsDefault = defaultValue !== undefined && deepEqual(value, defaultValue);
-
-    if (!wasPresent && equalsDefault) {
-      return; // skip writing default values that weren't originally set
-    }
-
-    result[key] = value;
-  });
-
-  return result;
-};
-
-const stripTitlePrefix = (title: string, prefix: string): string => {
-  const cleanPrefix = prefix.replace(/_+$/, '');
-  if (!cleanPrefix) {
-    return title;
-  }
-
-  const escaped = cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`^${escaped}(?:\\s+linter)?(?:\\s*[-:])?\\s*`, 'i');
-  return title.replace(pattern, '').trimStart();
-};
-
-const stripDescriptionPrefix = (description: string, prefix: string): string => {
-  const cleanPrefix = prefix.replace(/_+$/, '');
-  if (!cleanPrefix) {
-    return description;
-  }
-  const escaped = cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`^${escaped}\\s*:\\s*`, 'i');
-  return description.replace(pattern, '').trimStart();
-};
-
-const categorizeTheme = (theme: string, strippedKey: string, fullKey: string): string => {
-  const upper = theme.toUpperCase();
-  const keyUpper = strippedKey.toUpperCase();
-
-  // Override matching files/regex should live in scope
-  if (/(FILE_EXTENSIONS|FILE_NAME.*REGEX)/.test(keyUpper)) {
-    return 'scope';
-  }
-
-  // Avoid duplicate display of config-file-name style keys by grouping them under command once
-  if (keyUpper.includes('CONFIG_FILE')) {
-    return 'command';
-  }
-
-  if (['FILTER', 'SCOPE'].includes(upper)) {
-    return 'scope';
-  }
-
-  if (['COMMAND', 'CLI', 'CONFIG', 'FILE', 'ARGUMENTS'].includes(upper)) {
-    return 'command';
-  }
-
-  if (['RULES', 'DISABLE', 'SEVERITY'].includes(upper)) {
-    return 'severity';
-  }
-
-  if (['PRE', 'POST'].includes(upper)) {
-    return 'prepost';
-  }
-
-  return 'misc';
-};
-
-const isDeprecatedPropertyTitle = (schema: RJSFSchema, key: string): boolean => {
-  const properties = (schema.properties as Record<string, any>) || {};
-  const title = properties[key]?.title;
-  if (typeof title !== 'string') {
-    return false;
-  }
-  const lower = title.toLowerCase();
-  return lower.includes('deprecated') || lower.includes('removed');
-};
-
-const sortKeysWithinCategory = (keys: string[], category: string) => {
-  const priority = (key: string) => {
-    const upper = key.toUpperCase();
-
-    if (category === 'prepost') {
-      if (upper.includes('PRE_')) {
-        return 0;
-      }
-      if (upper.includes('POST_')) {
-        return 1;
-      }
-      return 2;
-    }
-
-    if (category === 'command') {
-      if (upper.includes('CUSTOM_REMOVE_ARGUMENTS') || upper.includes('REMOVE_ARGUMENTS')) {
-        return 1;
-      }
-      if (upper.includes('CUSTOM_ARGUMENTS') || (upper.includes('ARGUMENTS') && !upper.includes('REMOVE'))) {
-        return 0;
-      }
-      return 2;
-    }
-
-    if (category === 'scope') {
-      if (upper.includes('FILE_NAME') && upper.includes('REGEX')) {
-        return 0;
-      }
-      if (upper.includes('REGEX')) {
-        return 1;
-      }
-      if (upper.includes('FILE_EXT')) {
-        return 2;
-      }
-      return 3;
-    }
-
-    return 2;
-  };
-
-  return [...keys].sort((a, b) => priority(a) - priority(b) || a.localeCompare(b));
 };
 
 const DualListWidget: React.FC<WidgetProps> = ({

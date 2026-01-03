@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
-import { NavigationTarget } from './configTreeProvider';
+import type { NavigationTarget } from './extension';
 
 export class ConfigurationPanel {
   public static currentPanel: ConfigurationPanel | undefined;

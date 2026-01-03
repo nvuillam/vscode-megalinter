@@ -12,61 +12,28 @@
     "vscode": "^1.75.0"
   },
   "categories": [
-    "Linters",
     "Other"
   ],
-  "activationEvents": [],
+  "icon": "media/megalinter.svg",
+  "activationEvents": [
+    "onCommand:megalinter.openConfiguration",
+    "onCommand:megalinter.revealSection",
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "megalinter.openConfiguration",
-        "title": "MegaLinter: Open Configuration"
+        "title": "MegaLinter: Open Configuration",
+        "icon": "$(gear)"
       },
       {
         "command": "megalinter.revealSection",
-        "title": "MegaLinter: Open Section"
-      },
-      {
-        "command": "megalinter.refreshSections",
-        "title": "MegaLinter: Refresh Configuration Tree",
-        "icon": "$(refresh)"
+        "title": "MegaLinter: Reveal Section",
+        "icon": "$(go-to-file)"
       }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "megalinter",
-          "title": "MegaLinter",
-          "icon": "media/megalinter.svg"
-        }
-      ]
-    },
-    "views": {
-      "megalinter": [
-        {
-          "id": "megalinter.sections",
-          "name": "Configuration",
-          "icon": "media/megalinter.svg"
-        }
-      ]
-    },
-    "menus": {
-      "explorer/context": [
-        {
-          "command": "megalinter.openConfiguration",
-          "when": "resourceFilename == .mega-linter.yml || resourceFilename == .megalinter.yml",
-          "group": "navigation"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "megalinter.refreshSections",
-          "when": "view == megalinter.sections",
-          "group": "navigation"
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",

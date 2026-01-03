@@ -2,21 +2,22 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigurationPanel } from './configurationPanel';
-import { ConfigTreeProvider, NavigationTarget } from './configTreeProvider';
+
+export type NavigationTarget =
+  | { type: 'general' }
+  | { type: 'descriptor'; descriptorId: string }
+  | { type: 'linter'; descriptorId: string; linterId: string };
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('MegaLinter Configuration extension is now active');
 
-  const treeProvider = new ConfigTreeProvider(context);
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('megalinter.sections', treeProvider)
-  );
+  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBarItem.text = '$(tools) MegaLinter';
+  statusBarItem.command = 'megalinter.openConfiguration';
+  statusBarItem.tooltip = 'Open MegaLinter configuration';
+  statusBarItem.show();
 
-  void resolveConfigPath().then((configPath) => {
-    if (configPath) {
-      treeProvider.setConfigPath(configPath);
-    }
-  });
+  context.subscriptions.push(statusBarItem);
 
   // Register the command to open the configuration
   let disposable = vscode.commands.registerCommand(
@@ -31,7 +32,6 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      treeProvider.setConfigPath(configPath);
       ConfigurationPanel.createOrShow(context.extensionUri, configPath);
     }
   );
@@ -48,17 +48,12 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      treeProvider.setConfigPath(configPath);
       const panel = ConfigurationPanel.createOrShow(context.extensionUri, configPath);
       panel.revealSection(target);
     }
   );
 
-  const refreshTree = vscode.commands.registerCommand('megalinter.refreshSections', () => {
-    treeProvider.refresh();
-  });
-
-  context.subscriptions.push(disposable, revealSection, refreshTree);
+  context.subscriptions.push(disposable, revealSection);
 }
 
 export function deactivate() {}
