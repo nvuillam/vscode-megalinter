@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      ConfigurationPanel.createOrShow(context.extensionUri, configPath);
+      ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
     }
   );
 
@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const panel = ConfigurationPanel.createOrShow(context.extensionUri, configPath);
+      const panel = ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
       panel.revealSection(target);
     }
   );

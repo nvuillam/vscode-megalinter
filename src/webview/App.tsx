@@ -60,6 +60,17 @@ type LinterDescriptorMetadata = {
   text?: string;
 };
 
+type CachedSchema = {
+  schema: RJSFSchema;
+  timestamp: number;
+};
+
+type PersistedState = ViewState & {
+  cachedSchema?: CachedSchema | null;
+};
+
+const SCHEMA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 // VS Code API type
 declare global {
   interface Window {
@@ -84,6 +95,8 @@ export const App: React.FC = () => {
   const [configPath, setConfigPath] = useState<string>('');
   const [configExists, setConfigExists] = useState<boolean>(false);
   const [linterMetadata, setLinterMetadata] = useState<Record<string, LinterDescriptorMetadata>>({});
+  const [cachedSchema, setCachedSchema] = useState<CachedSchema | null>(null);
+  const [initialStateReady, setInitialStateReady] = useState(false);
 
   const [activeMainTab, setActiveMainTab] = useState<string>('home');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -181,14 +194,15 @@ export const App: React.FC = () => {
   }, [firstGenericCategoryId, groups]);
 
   useEffect(() => {
-    const viewState: ViewState = {
+    const viewState: PersistedState = {
       activeMainTab,
       selectedCategory,
       selectedDescriptor,
       selectedScope,
       activeGeneralTheme,
       activeDescriptorThemes,
-      activeLinterThemes
+      activeLinterThemes,
+      cachedSchema
     };
     vscode.setState?.(viewState);
   }, [
@@ -198,11 +212,12 @@ export const App: React.FC = () => {
     selectedScope,
     activeGeneralTheme,
     activeDescriptorThemes,
-    activeLinterThemes
+    activeLinterThemes,
+    cachedSchema
   ]);
 
   useEffect(() => {
-    const saved = vscode.getState?.() as Partial<ViewState> | undefined;
+    const saved = vscode.getState?.() as Partial<PersistedState> | undefined;
     if (saved) {
       if (saved.activeMainTab) {
         setActiveMainTab(saved.activeMainTab);
@@ -225,7 +240,21 @@ export const App: React.FC = () => {
       if (saved.activeLinterThemes) {
         setActiveLinterThemes(saved.activeLinterThemes);
       }
+
+      const cached = saved.cachedSchema;
+      const isCacheFresh =
+        cached && typeof cached.timestamp === 'number' && Date.now() - cached.timestamp < SCHEMA_CACHE_TTL_MS;
+
+      if (cached && isCacheFresh) {
+        const filtered = filterRemovedLintersFromSchema(cached.schema);
+        setSchema(filtered);
+        setGroups(extractGroups(filtered));
+        setCachedSchema(cached);
+        setLoading(false);
+      }
     }
+
+    setInitialStateReady(true);
   }, []);
 
   const queueSave = (data: any) => {
@@ -386,11 +415,19 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!initialStateReady) {
+      return;
+    }
+
     const fallbackSchema = bundledSchema as RJSFSchema;
     const remoteSchemaUrl =
       'https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json';
+    const shouldSkipFetch = cachedSchema && Date.now() - cachedSchema.timestamp < SCHEMA_CACHE_TTL_MS;
 
     const fetchSchema = async () => {
+      if (shouldSkipFetch) {
+        return;
+      }
       try {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
@@ -405,6 +442,7 @@ export const App: React.FC = () => {
         const filtered = filterRemovedLintersFromSchema(schemaData as RJSFSchema);
         setSchema(filtered);
         setGroups(extractGroups(filtered));
+        setCachedSchema({ schema: schemaData as RJSFSchema, timestamp: Date.now() });
       } catch (err) {
         console.warn('Remote schema fetch failed, using bundled schema', err);
         try {
@@ -449,7 +487,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('message', messageHandler);
     return () => window.removeEventListener('message', messageHandler);
-  }, []);
+  }, [initialStateReady]);
 
   useEffect(() => {
     if (schema) {

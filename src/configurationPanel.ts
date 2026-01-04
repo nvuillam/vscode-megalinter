@@ -15,10 +15,19 @@ type LinterDescriptorMetadata = {
   text?: string;
 };
 
+type CachedDescriptorMetadata = {
+  timestamp: number;
+  data: Record<string, LinterDescriptorMetadata>;
+};
+
+const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache';
+const DESCRIPTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 export class ConfigurationPanel {
   public static currentPanel: ConfigurationPanel | undefined;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
+  private _state: vscode.Memento;
   private _configPath: string;
   private _webviewReady = false;
   private _pendingNavigation: NavigationTarget | null = null;
@@ -28,6 +37,7 @@ export class ConfigurationPanel {
 
   public static createOrShow(
     extensionUri: vscode.Uri,
+    context: vscode.ExtensionContext,
     configPath: string
   ): ConfigurationPanel {
     const column = vscode.window.activeTextEditor
@@ -59,6 +69,7 @@ export class ConfigurationPanel {
     ConfigurationPanel.currentPanel = new ConfigurationPanel(
       panel,
       extensionUri,
+      context.globalState,
       configPath
     );
 
@@ -68,10 +79,12 @@ export class ConfigurationPanel {
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
+    state: vscode.Memento,
     configPath: string
   ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
+    this._state = state;
     this._configPath = configPath;
 
     // Set the webview's initial html content
@@ -275,11 +288,28 @@ export class ConfigurationPanel {
       return this._linterMetadataCache;
     }
 
+    const cached = this._state.get<CachedDescriptorMetadata>(DESCRIPTOR_CACHE_KEY);
+    const now = Date.now();
+    const cacheIsFresh =
+      cached && typeof cached.timestamp === 'number' && now - cached.timestamp < DESCRIPTOR_CACHE_TTL_MS;
+
+    if (cacheIsFresh && cached?.data && Object.keys(cached.data).length > 0) {
+      this._linterMetadataCache = cached.data;
+      return cached.data;
+    }
+
     const metadata: Record<string, LinterDescriptorMetadata> = {};
 
     const loadedRemotely = await this._loadRemoteDescriptorMetadata(metadata);
     if (!loadedRemotely) {
       this._loadLocalDescriptorMetadata(metadata);
+    }
+
+    if (loadedRemotely && Object.keys(metadata).length > 0) {
+      await this._state.update(DESCRIPTOR_CACHE_KEY, {
+        data: metadata,
+        timestamp: Date.now()
+      } satisfies CachedDescriptorMetadata);
     }
 
     this._linterMetadataCache = metadata;
