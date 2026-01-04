@@ -23,9 +23,13 @@ import {
   Tab
 } from './menuUtils';
 import './styles.css';
+import megalinterBannerLocal from './assets/megalinter-banner.png';
 
 const OX_SECURITY_LOGO = 'https://www.ox.security/wp-content/uploads/2025/10/logo-short-new.svg';
 const OX_SECURITY_LOGO_FALLBACK = 'https://avatars.githubusercontent.com/u/89921661?s=200&v=4';
+const MEGALINTER_BANNER_URL =
+  'https://github.com/oxsecurity/megalinter/raw/main/docs/assets/images/megalinter-banner.png';
+const MEGALINTER_BANNER_FALLBACK = megalinterBannerLocal;
 
 type NavigationTarget =
   | { type: 'home' }
@@ -585,6 +589,8 @@ export const App: React.FC = () => {
               onOpenReporters={() => openCategory(firstGenericCategoryId)}
               logoUrl={OX_SECURITY_LOGO}
               logoFallbackUrl={OX_SECURITY_LOGO_FALLBACK}
+              bannerUrl={MEGALINTER_BANNER_URL}
+              bannerFallbackUrl={MEGALINTER_BANNER_FALLBACK}
               descriptorLabel={firstDescriptorLabel}
               reportersLabel={firstGenericCategoryLabel}
               hasConfiguration={configuredKeyCount > 0}
@@ -634,6 +640,8 @@ type HomePanelProps = {
   onOpenReporters: () => void;
   logoUrl: string;
   logoFallbackUrl: string;
+  bannerUrl: string;
+  bannerFallbackUrl: string;
   descriptorLabel: string;
   reportersLabel: string;
   hasConfiguration: boolean;
@@ -654,6 +662,8 @@ const HomePanel: React.FC<HomePanelProps> = ({
   onOpenReporters,
   logoUrl,
   logoFallbackUrl,
+  bannerUrl,
+  bannerFallbackUrl,
   descriptorLabel,
   reportersLabel,
   hasConfiguration,
@@ -661,11 +671,24 @@ const HomePanel: React.FC<HomePanelProps> = ({
   reporterNavigationReady
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>(logoUrl);
+  const [bannerSrc, setBannerSrc] = useState<string>(bannerUrl);
   const schemaBadge = schemaSource === 'remote' ? 'Remote schema (live)' : schemaSource === 'local' ? 'Bundled schema' : 'Schema not loaded yet';
   const configBadge = configPath ? configPath : 'No configuration file selected yet';
 
   return (
     <div className="home">
+      <div className="home__banner">
+        <img
+          src={bannerSrc}
+          alt="MegaLinter banner"
+          className="home__banner-image"
+          onError={(event) => {
+            if (event.currentTarget.src !== bannerFallbackUrl) {
+              setBannerSrc(bannerFallbackUrl);
+            }
+          }}
+        />
+      </div>
       <div className="home__hero">
         <div className="home__logo-tile">
           <img
