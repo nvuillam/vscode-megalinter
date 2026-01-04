@@ -13,12 +13,12 @@ export type MenuChild = {
 export type MenuItem = {
   id: string;
   label: string;
-  type: 'summary' | 'general' | 'category' | 'descriptor';
+  type: 'home' | 'summary' | 'general' | 'category' | 'descriptor';
   hasValues: boolean;
   children?: MenuChild[];
 };
 
-export type MenuSectionId = 'summary' | 'general' | 'generic' | 'descriptors';
+export type MenuSectionId = 'home' | 'summary' | 'general' | 'generic' | 'descriptors';
 
 export type MenuSection = {
   id: MenuSectionId;
@@ -26,7 +26,7 @@ export type MenuSection = {
   items: MenuItem[];
 };
 
-const SECTION_ORDER: MenuSectionId[] = ['summary', 'general', 'generic', 'descriptors'];
+const SECTION_ORDER: MenuSectionId[] = ['home', 'summary', 'general', 'generic', 'descriptors'];
 
 export const prettifyId = (id: string): string => {
   const spaced = id.replace(/_/g, ' ').toLowerCase();
@@ -53,11 +53,26 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
   const hasAnyConfig = Object.keys(formData || {}).length > 0;
 
   const sectionMap: Record<MenuSectionId, MenuItem[]> = {
+    home: [],
     summary: [],
     general: [],
     generic: [],
     descriptors: []
   };
+
+  sectionMap.home.push({
+    id: 'home',
+    label: 'Home',
+    type: 'home',
+    hasValues: hasAnyConfig
+  });
+
+  sectionMap.summary.push({
+    id: 'summary',
+    label: 'Summary',
+    type: 'summary',
+    hasValues: hasAnyConfig
+  });
 
   const generalLabel = categoryLabel('GENERAL', groups.categoryMeta['GENERAL']);
 
@@ -112,8 +127,13 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
     });
 
   const sections: MenuSection[] = SECTION_ORDER.reduce<MenuSection[]>((acc, id) => {
+    if (id === 'home') {
+      acc.push({ id, label: 'Home', items: sectionMap.home });
+      return acc;
+    }
+
     if (id === 'summary') {
-      acc.push({ id, label: 'Summary', items: [] });
+      acc.push({ id, label: 'Summary', items: sectionMap.summary });
       return acc;
     }
 

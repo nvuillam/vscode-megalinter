@@ -24,7 +24,11 @@ import {
 } from './menuUtils';
 import './styles.css';
 
+const OX_SECURITY_LOGO = 'https://ox.security/wp-content/uploads/2022/05/Logo_OX-Color.svg';
+const OX_SECURITY_LOGO_FALLBACK = 'https://avatars.githubusercontent.com/u/118941864?s=200&v=4';
+
 type NavigationTarget =
+  | { type: 'home' }
   | { type: 'general' }
   | { type: 'summary' }
   | { type: 'category'; categoryId: string }
@@ -79,7 +83,7 @@ export const App: React.FC = () => {
     null
   );
 
-  const [activeMainTab, setActiveMainTab] = useState<string>('general');
+  const [activeMainTab, setActiveMainTab] = useState<string>('home');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDescriptor, setSelectedDescriptor] = useState<string | null>(
     null
@@ -105,6 +109,74 @@ export const App: React.FC = () => {
     () => (groups ? buildNavigationModel(groups, formData) : null),
     [groups, formData]
   );
+
+  const configuredKeyCount = useMemo(() => {
+    const entries = Object.entries(formData || {});
+    const isValueSet = (value: any) => {
+      if (value === undefined || value === null) {
+        return false;
+      }
+      if (typeof value === 'string') {
+        return value.trim() !== '';
+      }
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return true;
+    };
+    return entries.reduce((acc, [, value]) => (isValueSet(value) ? acc + 1 : acc), 0);
+  }, [formData]);
+
+  const totalSchemaKeys = useMemo(() => {
+    if (!schema || !schema.properties) {
+      return 0;
+    }
+    return Object.keys(schema.properties as Record<string, unknown>).length;
+  }, [schema]);
+
+  const descriptorCount = useMemo(
+    () => navigationModel?.descriptorOrder.length ?? 0,
+    [navigationModel]
+  );
+
+  const linterCount = useMemo(() => {
+    if (!groups) {
+      return 0;
+    }
+    return Object.values(groups.linterKeys || {}).reduce((acc, linters) => {
+      return acc + Object.keys(linters || {}).length;
+    }, 0);
+  }, [groups]);
+
+  const firstDescriptorId = useMemo(
+    () => navigationModel?.descriptorOrder[0] || null,
+    [navigationModel]
+  );
+
+  const firstGenericCategoryId = useMemo(() => {
+    if (!groups) {
+      return null;
+    }
+    const ids = Object.keys(groups.genericCategoryKeys);
+    const preferred = ids.find((id) => id.toLowerCase().includes('report'));
+    return preferred || ids[0] || null;
+  }, [groups]);
+
+  const firstDescriptorLabel = useMemo(() => {
+    if (!firstDescriptorId || !groups) {
+      return '';
+    }
+    const meta = groups.categoryMeta[firstDescriptorId];
+    return prettifyId(meta?.label || firstDescriptorId);
+  }, [firstDescriptorId, groups]);
+
+  const firstGenericCategoryLabel = useMemo(() => {
+    if (!firstGenericCategoryId || !groups) {
+      return '';
+    }
+    const meta = groups.categoryMeta[firstGenericCategoryId];
+    return prettifyId(meta?.label || firstGenericCategoryId);
+  }, [firstGenericCategoryId, groups]);
 
   useEffect(() => {
     const viewState: ViewState = {
@@ -180,6 +252,14 @@ export const App: React.FC = () => {
   }, []);
 
   const handleNavigationSelect = (item: MenuItem | MenuChild) => {
+    if (item.type === 'home') {
+      setActiveMainTab('home');
+      setSelectedCategory(null);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
     if (item.type === 'summary') {
       setActiveMainTab('summary');
       setSelectedCategory(null);
@@ -223,6 +303,14 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (target.type === 'home') {
+      setActiveMainTab('home');
+      setSelectedCategory(null);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
     if (target.type === 'general') {
       setActiveMainTab('general');
       setSelectedCategory(null);
@@ -259,6 +347,40 @@ export const App: React.FC = () => {
       setSelectedDescriptor(target.descriptorId);
       setSelectedScope(target.linterId);
     }
+  };
+
+  const openSummary = () => {
+    setActiveMainTab('summary');
+    setSelectedCategory(null);
+    setSelectedDescriptor(null);
+    setSelectedScope(null);
+  };
+
+  const openGeneral = () => {
+    setActiveMainTab('general');
+    setSelectedCategory(null);
+    setSelectedDescriptor(null);
+    setSelectedScope(null);
+  };
+
+  const openCategory = (categoryId: string | null) => {
+    if (!categoryId) {
+      return;
+    }
+    setActiveMainTab('category');
+    setSelectedCategory(categoryId);
+    setSelectedDescriptor(null);
+    setSelectedScope(null);
+  };
+
+  const openDescriptor = (descriptorId: string | null, scopeId?: string | null) => {
+    if (!descriptorId) {
+      return;
+    }
+    setActiveMainTab('descriptors');
+    setSelectedCategory(null);
+    setSelectedDescriptor(descriptorId);
+    setSelectedScope(scopeId || 'descriptor');
   };
 
   useEffect(() => {
@@ -428,44 +550,229 @@ export const App: React.FC = () => {
     );
   }
 
+  const selectedNavId =
+    activeMainTab === 'home'
+      ? 'home'
+      : activeMainTab === 'general'
+      ? 'general'
+      : activeMainTab === 'summary'
+      ? 'summary'
+      : activeMainTab === 'category'
+      ? selectedCategory || ''
+      : selectedScope || selectedDescriptor || '';
+
   return (
     <div className="container">
       <div className="layout">
         <NavigationMenu
           sections={navigationModel?.sections || []}
-          selectedId={
-            activeMainTab === 'general'
-              ? 'general'
-              : activeMainTab === 'category'
-              ? selectedCategory || ''
-              : selectedScope || selectedDescriptor || ''
-          }
+          selectedId={selectedNavId}
           activeDescriptorId={selectedDescriptor}
           onSelect={handleNavigationSelect}
         />
         <div className="form-container">
-          <MainTabs
-            schema={schema}
-            groups={groups}
-            formData={formData}
-            uiSchema={uiSchema}
-            onSubsetChange={handleSubsetChange}
-            descriptorOrder={navigationModel?.descriptorOrder || []}
-            activeMainTab={activeMainTab}
-            selectedCategory={selectedCategory}
-            selectedDescriptor={selectedDescriptor}
-            setSelectedDescriptor={setSelectedDescriptor}
-            selectedScope={selectedScope}
-            setSelectedScope={setSelectedScope}
-            activeGeneralTheme={activeGeneralTheme}
-            setActiveGeneralTheme={setActiveGeneralTheme}
-            activeDescriptorThemes={activeDescriptorThemes}
-            setActiveDescriptorThemes={setActiveDescriptorThemes}
-            activeLinterThemes={activeLinterThemes}
-            setActiveLinterThemes={setActiveLinterThemes}
-            highlightedKeys={highlightedKeys}
-            linterMetadata={linterMetadata}
+          {activeMainTab === 'home' ? (
+            <HomePanel
+              configPath={configPath}
+              schemaSource={schemaSource}
+              configuredCount={configuredKeyCount}
+              totalKeys={totalSchemaKeys}
+              descriptorCount={descriptorCount}
+              linterCount={linterCount}
+              onOpenGeneral={openGeneral}
+              onOpenSummary={openSummary}
+              onOpenFirstDescriptor={() => openDescriptor(firstDescriptorId, 'descriptor')}
+              onOpenReporters={() => openCategory(firstGenericCategoryId)}
+              logoUrl={OX_SECURITY_LOGO}
+              logoFallbackUrl={OX_SECURITY_LOGO_FALLBACK}
+              descriptorLabel={firstDescriptorLabel}
+              reportersLabel={firstGenericCategoryLabel}
+              hasConfiguration={configuredKeyCount > 0}
+              descriptorNavigationReady={!!firstDescriptorId}
+              reporterNavigationReady={!!firstGenericCategoryId}
+            />
+          ) : (
+            <MainTabs
+              schema={schema}
+              groups={groups}
+              formData={formData}
+              uiSchema={uiSchema}
+              onSubsetChange={handleSubsetChange}
+              descriptorOrder={navigationModel?.descriptorOrder || []}
+              activeMainTab={activeMainTab}
+              selectedCategory={selectedCategory}
+              selectedDescriptor={selectedDescriptor}
+              setSelectedDescriptor={setSelectedDescriptor}
+              selectedScope={selectedScope}
+              setSelectedScope={setSelectedScope}
+              activeGeneralTheme={activeGeneralTheme}
+              setActiveGeneralTheme={setActiveGeneralTheme}
+              activeDescriptorThemes={activeDescriptorThemes}
+              setActiveDescriptorThemes={setActiveDescriptorThemes}
+              activeLinterThemes={activeLinterThemes}
+              setActiveLinterThemes={setActiveLinterThemes}
+              highlightedKeys={highlightedKeys}
+              linterMetadata={linterMetadata}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type HomePanelProps = {
+  configPath: string;
+  schemaSource: 'remote' | 'local' | null;
+  configuredCount: number;
+  totalKeys: number;
+  descriptorCount: number;
+  linterCount: number;
+  onOpenGeneral: () => void;
+  onOpenSummary: () => void;
+  onOpenFirstDescriptor: () => void;
+  onOpenReporters: () => void;
+  logoUrl: string;
+  logoFallbackUrl: string;
+  descriptorLabel: string;
+  reportersLabel: string;
+  hasConfiguration: boolean;
+  descriptorNavigationReady: boolean;
+  reporterNavigationReady: boolean;
+};
+
+const HomePanel: React.FC<HomePanelProps> = ({
+  configPath,
+  schemaSource,
+  configuredCount,
+  totalKeys,
+  descriptorCount,
+  linterCount,
+  onOpenGeneral,
+  onOpenSummary,
+  onOpenFirstDescriptor,
+  onOpenReporters,
+  logoUrl,
+  logoFallbackUrl,
+  descriptorLabel,
+  reportersLabel,
+  hasConfiguration,
+  descriptorNavigationReady,
+  reporterNavigationReady
+}) => {
+  const [logoSrc, setLogoSrc] = useState<string>(logoUrl);
+  const schemaBadge = schemaSource === 'remote' ? 'Remote schema (live)' : schemaSource === 'local' ? 'Bundled schema' : 'Schema not loaded yet';
+  const configBadge = configPath ? configPath : 'No configuration file selected yet';
+
+  return (
+    <div className="home">
+      <div className="home__hero">
+        <div className="home__logo-tile">
+          <img
+            src={logoSrc}
+            alt="OX Security logo"
+            className="home__logo"
+            onError={(event) => {
+              if (event.currentTarget.src !== logoFallbackUrl) {
+                setLogoSrc(logoFallbackUrl);
+              }
+            }}
           />
+          <div className="home__logo-caption">Powered by OX Security</div>
+        </div>
+        <div className="home__intro">
+          <p className="eyebrow">MegaLinter workspace home</p>
+          <h1 className="home__title">Configure once, ship confidently</h1>
+          <p className="home__subtitle">
+            Tailor MegaLinter to your repository, preview the impact, and keep every run aligned with your team.
+          </p>
+          <div className="home__actions">
+            <button type="button" className="pill-button pill-button--primary" onClick={onOpenGeneral}>
+              Start with general settings
+            </button>
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={onOpenSummary}
+              disabled={!hasConfiguration}
+            >
+              Review configured values
+            </button>
+          </div>
+          <div className="home__badges" aria-label="Quick context">
+            <span className="pill-chip pill-chip--accent">{schemaBadge}</span>
+            <span className="pill-chip pill-chip--muted" title={configBadge}>
+              {configBadge}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="home__grid" role="list">
+        <div className="home__card" role="listitem">
+          <div className="home__card-label">Configured values</div>
+          <div className="home__card-value">
+            {configuredCount}
+            <span className="home__card-sub">of {totalKeys || '-'} fields</span>
+          </div>
+          <p className="home__card-note">
+            {hasConfiguration
+              ? 'Great start - keep adding detail or jump to Summary.'
+              : 'No overrides yet. Begin with general settings to set the foundation.'}
+          </p>
+        </div>
+
+        <div className="home__card" role="listitem">
+          <div className="home__card-label">Coverage</div>
+          <div className="home__card-value">
+            {descriptorCount}
+            <span className="home__card-sub">descriptors</span>
+          </div>
+          <p className="home__card-note">{linterCount} linters available across your stack.</p>
+        </div>
+
+        <div className="home__card" role="listitem">
+          <div className="home__card-label">Schema source</div>
+          <div className="home__pill-row">
+            <span className="pill-chip pill-chip--accent">{schemaBadge}</span>
+          </div>
+          <p className="home__card-note">Schema keeps your form aligned with the latest MegaLinter release.</p>
+        </div>
+      </div>
+
+      <div className="home__shortcuts">
+        <div className="home__shortcut">
+          <div className="home__shortcut-body">
+            <p className="home__shortcut-title">Jump into descriptors</p>
+            <p className="home__shortcut-text">
+              Configure {descriptorLabel || 'the first descriptor'} and its linters side by side.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="pill-button pill-button--solid"
+            onClick={onOpenFirstDescriptor}
+            disabled={!descriptorNavigationReady}
+          >
+            Open {descriptorLabel || 'descriptor'}
+          </button>
+        </div>
+
+        <div className="home__shortcut">
+          <div className="home__shortcut-body">
+            <p className="home__shortcut-title">Tune reporters</p>
+            <p className="home__shortcut-text">
+              Adjust {reportersLabel || 'reporter categories'} to match your workflows.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="pill-button pill-button--solid"
+            onClick={onOpenReporters}
+            disabled={!reporterNavigationReady}
+          >
+            Open {reportersLabel || 'reporters'}
+          </button>
         </div>
       </div>
     </div>
@@ -479,6 +786,7 @@ const NavigationMenu: React.FC<{
   onSelect: (item: MenuItem | MenuChild) => void;
 }> = ({ sections, selectedId, activeDescriptorId, onSelect }) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    home: true,
     summary: true,
     general: true,
     generic: false,
@@ -518,11 +826,11 @@ const NavigationMenu: React.FC<{
           (item) => item.hasValues || (item.children && item.children.some((child) => child.hasValues))
         );
 
-        if (section.id === 'summary') {
+        if (section.id === 'home' || section.id === 'summary') {
           const targetItem: MenuItem = {
             id: section.id,
             label: section.label,
-            type: section.id,
+            type: section.id as MenuItem['type'],
             hasValues: sectionHasValues
           };
           const isActive = selectedId === section.id;
