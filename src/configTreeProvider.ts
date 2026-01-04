@@ -26,7 +26,7 @@ class SectionNode extends vscode.TreeItem {
   }
 }
 
-export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> {
+export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode>, vscode.Disposable {
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -34,33 +34,38 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
   private _schemaLoaded = false;
   private _configPath?: string;
   private _configKeys: Set<string> = new Set();
-  private _configWatcher?: fs.FSWatcher;
+  private _configWatcher?: vscode.FileSystemWatcher;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
+  dispose() {
+    this._configWatcher?.dispose();
+    this._onDidChangeTreeData.dispose();
+  }
+
   setConfigPath(configPath: string) {
     if (this._configWatcher) {
-      this._configWatcher.close();
+      this._configWatcher.dispose();
+      this._configWatcher = undefined;
     }
     this._configPath = configPath;
-    this._configWatcher = undefined;
+    
     if (configPath) {
-      try {
-        if (fs.existsSync(configPath)) {
-          this._configWatcher = fs.watch(configPath, () => this.refresh());
-        } else {
-          const dir = path.dirname(configPath);
-          if (dir && fs.existsSync(dir)) {
-            this._configWatcher = fs.watch(dir, () => {
-              if (fs.existsSync(configPath)) {
-                this.refresh();
-              }
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to watch config file', err);
+      // Create a relative pattern if possible, or use absolute path
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(configPath));
+      if (workspaceFolder) {
+        const relativePath = path.relative(workspaceFolder.uri.fsPath, configPath);
+        this._configWatcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(workspaceFolder, relativePath)
+        );
+      } else {
+        // Fallback for files outside workspace (less common but possible)
+        this._configWatcher = vscode.workspace.createFileSystemWatcher(configPath);
       }
+
+      this._configWatcher.onDidChange(() => this.refresh());
+      this._configWatcher.onDidCreate(() => this.refresh());
+      this._configWatcher.onDidDelete(() => this.refresh());
     }
     this.refresh();
   }
@@ -199,7 +204,8 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<SectionNode> 
       const schemaPath = path.join(
         this.context.extensionPath,
         'src',
-        'schema',
+        'descriptors',
+        'schemas',
         'megalinter-configuration.jsonschema.json'
       );
 
