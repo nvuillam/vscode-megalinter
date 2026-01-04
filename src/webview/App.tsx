@@ -606,7 +606,9 @@ export const App: React.FC = () => {
               onSubsetChange={handleSubsetChange}
               descriptorOrder={navigationModel?.descriptorOrder || []}
               activeMainTab={activeMainTab}
+              setActiveMainTab={setActiveMainTab}
               selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
               selectedDescriptor={selectedDescriptor}
               setSelectedDescriptor={setSelectedDescriptor}
               selectedScope={selectedScope}
@@ -949,7 +951,9 @@ const MainTabs: React.FC<{
   onSubsetChange: (keys: string[], subsetData: any) => void;
   descriptorOrder: string[];
   activeMainTab: string;
+  setActiveMainTab: (id: string) => void;
   selectedCategory: string | null;
+  setSelectedCategory: (id: string | null) => void;
   selectedDescriptor: string | null;
   setSelectedDescriptor: (id: string | null) => void;
   selectedScope: string | null;
@@ -970,7 +974,9 @@ const MainTabs: React.FC<{
   onSubsetChange,
   descriptorOrder: descriptorOrderProp,
   activeMainTab,
+  setActiveMainTab,
   selectedCategory,
+  setSelectedCategory,
   selectedDescriptor,
   setSelectedDescriptor,
   selectedScope,
@@ -1010,6 +1016,13 @@ const MainTabs: React.FC<{
       return resolveCategoryLabel(a).localeCompare(resolveCategoryLabel(b));
     }
     return orderA - orderB;
+  };
+
+  const goHome = () => {
+    setActiveMainTab('home');
+    setSelectedCategory(null);
+    setSelectedDescriptor(null);
+    setSelectedScope(null);
   };
 
     const renderSummary = () => {
@@ -1114,47 +1127,73 @@ const MainTabs: React.FC<{
       });
 
       if (!configuredKeys.length) {
-        return <p className="muted">No configuration values set yet.</p>;
+        return (
+          <div className="summary-panel">
+            <Breadcrumbs
+              items={[
+                { id: 'home', label: 'MegaLinter home', onClick: goHome },
+                { id: 'summary', label: 'Summary' }
+              ]}
+            />
+            <p className="muted">No configuration values set yet.</p>
+          </div>
+        );
       }
 
       const summarySchema = buildSubsetSchema(schema, orderedKeys, 'Configured values');
       const summaryUiSchema = buildScopedUiSchema(schema, orderedKeys, uiSchema, highlightedKeys);
 
       return (
-        <Form
-          schema={summarySchema}
-          formData={filterFormData(formData, orderedKeys)}
-          onChange={(e) => {
-            const data = e.formData;
-            onSubsetChange(orderedKeys, data);
-          }}
-          validator={validator}
-          uiSchema={summaryUiSchema}
-          liveValidate
-          noHtml5Validate
-          showErrorList={false}
-          widgets={{ dualList: DualListWidget }}
-          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
-          idPrefix="summary"
-        >
-          <></>
-        </Form>
+        <div className="summary-panel">
+          <Breadcrumbs
+            items={[
+              { id: 'home', label: 'MegaLinter home', onClick: goHome },
+              { id: 'summary', label: 'Summary' }
+            ]}
+          />
+          <Form
+            schema={summarySchema}
+            formData={filterFormData(formData, orderedKeys)}
+            onChange={(e) => {
+              const data = e.formData;
+              onSubsetChange(orderedKeys, data);
+            }}
+            validator={validator}
+            uiSchema={summaryUiSchema}
+            liveValidate
+            noHtml5Validate
+            showErrorList={false}
+            widgets={{ dualList: DualListWidget }}
+            templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
+            idPrefix="summary"
+          >
+            <></>
+          </Form>
+        </div>
       );
     };
 
   const renderGeneral = () => (
-    <ThemedForm
-      baseSchema={schema}
-      keys={groups.generalKeys}
-      title="General settings"
-      uiSchema={uiSchema}
-      formData={filterFormData(formData, groups.generalKeys)}
-      onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
-      activeThemeTab={activeGeneralTheme}
-      setActiveThemeTab={setActiveGeneralTheme}
-      sectionMeta={groups.sectionMeta}
-      highlightedKeys={highlightedKeys}
-    />
+    <div className="general-panel">
+      <Breadcrumbs
+        items={[
+          { id: 'home', label: 'MegaLinter home', onClick: goHome },
+          { id: 'general', label: 'General settings' }
+        ]}
+      />
+      <ThemedForm
+        baseSchema={schema}
+        keys={groups.generalKeys}
+        title="General settings"
+        uiSchema={uiSchema}
+        formData={filterFormData(formData, groups.generalKeys)}
+        onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
+        activeThemeTab={activeGeneralTheme}
+        setActiveThemeTab={setActiveGeneralTheme}
+        sectionMeta={groups.sectionMeta}
+        highlightedKeys={highlightedKeys}
+      />
+    </div>
   );
 
   const renderCategory = () => {
@@ -1163,27 +1202,54 @@ const MainTabs: React.FC<{
       (selectedCategory && categoryIds.includes(selectedCategory) && selectedCategory) || categoryIds[0];
 
     if (!categoryId) {
-      return <p className="muted">No categories available</p>;
+      return (
+        <div className="category-panel">
+          <Breadcrumbs
+            items={[
+              { id: 'home', label: 'MegaLinter home', onClick: goHome },
+              { id: 'category', label: 'Categories' }
+            ]}
+          />
+          <p className="muted">No categories available</p>
+        </div>
+      );
     }
 
     const categoryKeys = groups.genericCategoryKeys[categoryId] || [];
     const label = resolveCategoryLabel(categoryId);
 
+    const categoryOptions = categoryIds.map((id) => ({
+      id,
+      label: resolveCategoryLabel(id),
+      onSelect: () => {
+        setSelectedCategory(id);
+        setActiveMainTab('category');
+      }
+    }));
+
     return (
-      <ThemedForm
-        baseSchema={schema}
-        keys={categoryKeys}
-        title={`${label} settings`}
-        uiSchema={uiSchema}
-        formData={filterFormData(formData, categoryKeys)}
-        onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
-        activeThemeTab={activeDescriptorThemes[categoryId] || null}
-        setActiveThemeTab={(id) =>
-          setActiveDescriptorThemes({ ...activeDescriptorThemes, [categoryId]: id || '' })
-        }
-        sectionMeta={groups.sectionMeta}
-        highlightedKeys={highlightedKeys}
-      />
+      <div className="category-panel">
+        <Breadcrumbs
+          items={[
+            { id: 'home', label: 'MegaLinter home', onClick: goHome },
+            { id: categoryId, label, options: categoryOptions }
+          ]}
+        />
+        <ThemedForm
+          baseSchema={schema}
+          keys={categoryKeys}
+          title={`${label} settings`}
+          uiSchema={uiSchema}
+          formData={filterFormData(formData, categoryKeys)}
+          onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
+          activeThemeTab={activeDescriptorThemes[categoryId] || null}
+          setActiveThemeTab={(id) =>
+            setActiveDescriptorThemes({ ...activeDescriptorThemes, [categoryId]: id || '' })
+          }
+          sectionMeta={groups.sectionMeta}
+          highlightedKeys={highlightedKeys}
+        />
+      </div>
     );
   };
 
@@ -1232,6 +1298,7 @@ const MainTabs: React.FC<{
     }));
 
     const breadcrumbItems = [
+      { id: 'home', label: 'MegaLinter home', onClick: goHome },
       {
         id: descriptorId,
         label: resolveCategoryLabel(descriptorId),
@@ -1354,7 +1421,7 @@ const TabBar: React.FC<{
 type BreadcrumbOption = { id: string; label: string; onSelect: () => void };
 
 const Breadcrumbs: React.FC<{
-  items: Array<{ id: string; label: string; options?: BreadcrumbOption[] }>;
+  items: Array<{ id: string; label: string; onClick?: () => void; options?: BreadcrumbOption[] }>;
 }> = ({ items }) => {
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -1395,6 +1462,10 @@ const Breadcrumbs: React.FC<{
                   </ul>
                 )}
               </div>
+            ) : item.onClick ? (
+              <button type="button" className="breadcrumbs__link" onClick={item.onClick}>
+                {item.label}
+              </button>
             ) : (
               <span className="breadcrumbs__current">{item.label}</span>
             )}
