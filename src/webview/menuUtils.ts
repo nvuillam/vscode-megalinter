@@ -34,6 +34,9 @@ export const prettifyId = (id: string): string => {
 };
 
 const categoryLabel = (id: string, meta?: CategoryMeta) => {
+  if (id === 'LLM') {
+    return 'LLM Advisor';
+  }
   if (!meta) {
     return prettifyId(id);
   }

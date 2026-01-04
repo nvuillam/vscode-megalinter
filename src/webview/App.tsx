@@ -840,41 +840,6 @@ const HomePanel: React.FC<HomePanelProps> = ({
         </div>
       </div>
 
-      <div className="home__shortcuts">
-        <div className="home__shortcut">
-          <div className="home__shortcut-body">
-            <p className="home__shortcut-title">Jump into descriptors</p>
-            <p className="home__shortcut-text">
-              Configure {descriptorLabel || 'the first descriptor'} and its linters side by side.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="pill-button pill-button--solid"
-            onClick={onOpenFirstDescriptor}
-            disabled={!descriptorNavigationReady}
-          >
-            Open {descriptorLabel || 'descriptor'}
-          </button>
-        </div>
-
-        <div className="home__shortcut">
-          <div className="home__shortcut-body">
-            <p className="home__shortcut-title">Tune reporters</p>
-            <p className="home__shortcut-text">
-              Adjust {reportersLabel || 'reporter categories'} to match your workflows.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="pill-button pill-button--solid"
-            onClick={onOpenReporters}
-            disabled={!reporterNavigationReady}
-          >
-            Open {reportersLabel || 'reporters'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
