@@ -1,43 +1,49 @@
-name: Release
+---
+#
+# Documentation:
+# https://help.github.com/en/articles/workflow-syntax-for-github-actions
+#
 
+##################################################
+# Start the job when a GitHub release is created #
+##################################################
+name: "Build & Deploy - RELEASE"
 on:
   release:
-    types: [ published ]
+    # Want to run the automation when a release is created
+    types: ["created"]
+
+permissions: read-all
 
 jobs:
-  package-extension:
+  deploy:
+    name: Deploy on VsCode MarketPlace
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    permissions: read-all
+    environment:
+      name: release
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - run: yarn
+      - uses: lannonbr/vsce-action@master
+        with:
+          args: "publish -p $VSCE_TOKEN --allow-package-secrets github"
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+  deploy_ovsx:
+    name: Deploy on Open VSX
+    runs-on: ubuntu-latest
+    permissions: read-all
+    environment:
+      name: release
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build extension
-        run: npm run build
-        env:
-          CI: true
-
-      - name: Package VSIX
-        run: npx --yes @vscode/vsce package --out vscode-megalinter-${{ github.ref_name }}.vsix
-
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v4
+      - run: yarn
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v1
         with:
-          name: vsce-package
-          path: vscode-megalinter-${{ github.ref_name }}.vsix
-
-      - name: Publish to Visual Studio Marketplace
-        if: secrets.VSCE_PAT != ''
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --yes @vscode/vsce publish -p "$VSCE_PAT"
+          pat: ${{ secrets.OPENVSX_TOKEN }}
