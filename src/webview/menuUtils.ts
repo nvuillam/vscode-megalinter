@@ -61,11 +61,19 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
 
   const generalLabel = categoryLabel('GENERAL', groups.categoryMeta['GENERAL']);
 
+  sectionMap.general.push({
+    id: 'general',
+    label: 'Configuration',
+    type: 'general',
+    hasValues: generalHasValues
+  });
+
   Object.keys(groups.genericCategoryKeys)
     .sort((a, b) => categoryLabel(a, groups.categoryMeta[a]).localeCompare(categoryLabel(b, groups.categoryMeta[b])))
     .forEach((categoryId) => {
       const meta = groups.categoryMeta[categoryId];
-      sectionMap.generic.push({
+      const targetSection: MenuSectionId = categoryId === 'LLM' ? 'general' : 'generic';
+      sectionMap[targetSection].push({
         id: categoryId,
         label: categoryLabel(categoryId, meta),
         type: 'category',
@@ -110,7 +118,7 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
     }
 
     if (id === 'general') {
-      acc.push({ id, label: generalLabel, items: [] });
+      acc.push({ id, label: generalLabel, items: sectionMap.general });
       return acc;
     }
 

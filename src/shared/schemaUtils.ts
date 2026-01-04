@@ -192,6 +192,14 @@ export const extractGroups = (schema: RJSFSchema): SchemaGroups => {
       return;
     }
 
+    if (categoryId) {
+      // Catch-all: support categories present in x-category but missing from enums (e.g., LLM)
+      const label = resolveGenericLabel(categoryId);
+      ensureCategoryMeta(categoryId, 'generic', label || categoryId);
+      assignToCategory(categoryId, 'generic');
+      return;
+    }
+
     const linterPrefix = linterPrefixes.find((p) => propKey.startsWith(p));
     if (linterPrefix) {
       const linterKey = linterPrefix.slice(0, -1);

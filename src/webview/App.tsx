@@ -503,7 +503,7 @@ const NavigationMenu: React.FC<{
           (item) => item.hasValues || (item.children && item.children.some((child) => child.hasValues))
         );
 
-        if (section.id === 'summary' || section.id === 'general') {
+        if (section.id === 'summary') {
           const targetItem: MenuItem = {
             id: section.id,
             label: section.label,
@@ -534,14 +534,17 @@ const NavigationMenu: React.FC<{
               className="nav__title nav__title--toggle"
               onClick={() => toggleSection(section.id)}
               aria-expanded={isExpanded}
+              disabled={section.id === 'general'}
             >
               <span className="nav__title-label">
                 <span>{section.label}</span>
                 {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
               </span>
-              <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
+              {section.id !== 'general' && (
+                <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
+              )}
             </button>
-            {isExpanded && (
+            {isExpanded && section.items.length > 0 && (
               <ul className="nav__list">
                 {section.items.map((item) => {
                   const isActive = selectedId === item.id;
