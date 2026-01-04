@@ -1,6 +1,6 @@
 import { RJSFSchema, UiSchema } from '@rjsf/utils';
 import { buildPresenceMaps, hasAnyKeySet } from '../shared/configPresence';
-import { SchemaGroups } from '../shared/schemaUtils';
+import { CategoryMeta, SchemaGroups } from '../shared/schemaUtils';
 
 export type MenuChild = {
   id: string;
@@ -13,12 +13,12 @@ export type MenuChild = {
 export type MenuItem = {
   id: string;
   label: string;
-  type: 'general' | 'descriptor';
+  type: 'summary' | 'general' | 'category' | 'descriptor';
   hasValues: boolean;
   children?: MenuChild[];
 };
 
-export type MenuSectionId = 'general' | 'reporters' | 'llm' | 'languages';
+export type MenuSectionId = 'summary' | 'general' | 'generic' | 'descriptors';
 
 export type MenuSection = {
   id: MenuSectionId;
@@ -26,95 +26,118 @@ export type MenuSection = {
   items: MenuItem[];
 };
 
-const SECTION_ORDER: MenuSectionId[] = ['general', 'reporters', 'llm', 'languages'];
+const SECTION_ORDER: MenuSectionId[] = ['summary', 'general', 'generic', 'descriptors'];
 
 export const prettifyId = (id: string): string => {
   const spaced = id.replace(/_/g, ' ').toLowerCase();
   return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const descriptorCategory = (descriptorId: string): MenuSectionId => {
-  const upper = descriptorId.toUpperCase();
-  if (upper.includes('REPORT')) {
-    return 'reporters';
+const categoryLabel = (id: string, meta?: CategoryMeta) => {
+  if (!meta) {
+    return prettifyId(id);
   }
-  if (upper.includes('LLM') || upper.includes('OPENAI')) {
-    return 'llm';
+  if (meta.kind === 'linter' && meta.parentId && id.startsWith(`${meta.parentId}_`)) {
+    return prettifyId(id.replace(`${meta.parentId}_`, ''));
   }
-  return 'languages';
+  return prettifyId(meta.label || id);
 };
 
+const categoryOrderValue = (id: string, meta?: CategoryMeta) => meta?.order ?? Number.MAX_SAFE_INTEGER;
+
 export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
-  const { generalHasValues, descriptorHasValues, linterHasValues } = buildPresenceMaps(groups, formData);
+  const { generalHasValues, genericHasValues, descriptorHasValues, linterHasValues } = buildPresenceMaps(
+    groups,
+    formData
+  );
+  const hasAnyConfig = Object.keys(formData || {}).length > 0;
 
   const sectionMap: Record<MenuSectionId, MenuItem[]> = {
+    summary: [
+      {
+        id: 'summary',
+        label: 'Summary',
+        type: 'summary',
+        hasValues: hasAnyConfig
+      }
+    ],
     general: [],
-    reporters: [],
-    llm: [],
-    languages: []
+    generic: [],
+    descriptors: []
   };
 
-  const descriptors = Object.keys(groups.descriptorKeys);
+  const generalLabel = categoryLabel('GENERAL', groups.categoryMeta['GENERAL']);
+  sectionMap.general.push({
+    id: 'general',
+    label: generalLabel,
+    type: 'general',
+    hasValues: generalHasValues
+  });
 
-  descriptors.forEach((descriptorId) => {
-    const sectionId = descriptorCategory(descriptorId);
-    const linters = groups.linterKeys[descriptorId] || {};
-    const linterEntries = Object.keys(linters).sort();
-    const children: MenuChild[] = linterEntries.map((linterId) => ({
-      id: linterId,
-      parentId: descriptorId,
-      label: prettifyId(linterId.replace(`${descriptorId}_`, '')),
-      type: 'linter',
-      hasValues: !!linterHasValues[descriptorId]?.[linterId]
-    }));
-    sectionMap[sectionId].push({
-      id: descriptorId,
-      label: prettifyId(descriptorId),
-      type: 'descriptor',
-      hasValues: !!descriptorHasValues[descriptorId],
-      children
+  Object.keys(groups.genericCategoryKeys)
+    .sort((a, b) => categoryLabel(a, groups.categoryMeta[a]).localeCompare(categoryLabel(b, groups.categoryMeta[b])))
+    .forEach((categoryId) => {
+      const meta = groups.categoryMeta[categoryId];
+      sectionMap.generic.push({
+        id: categoryId,
+        label: categoryLabel(categoryId, meta),
+        type: 'category',
+        hasValues: !!genericHasValues[categoryId]
+      });
     });
-  });
 
-  // Alphabetize items inside each section
-  SECTION_ORDER.forEach((sectionId) => {
-    sectionMap[sectionId] = sectionMap[sectionId].sort((a, b) => a.label.localeCompare(b.label));
-  });
+  Object.keys(groups.descriptorKeys)
+    .sort((a, b) => categoryLabel(a, groups.categoryMeta[a]).localeCompare(categoryLabel(b, groups.categoryMeta[b])))
+    .forEach((descriptorId) => {
+      const linters = groups.linterKeys[descriptorId] || {};
+      const linterEntries = Object.keys(linters).sort((a, b) => {
+        const orderA = categoryOrderValue(a, groups.categoryMeta[a]);
+        const orderB = categoryOrderValue(b, groups.categoryMeta[b]);
+        if (orderA === orderB) {
+          return categoryLabel(a, groups.categoryMeta[a]).localeCompare(categoryLabel(b, groups.categoryMeta[b]));
+        }
+        return orderA - orderB;
+      });
+
+      const children: MenuChild[] = linterEntries.map((linterId) => ({
+        id: linterId,
+        parentId: descriptorId,
+        label: categoryLabel(linterId, groups.categoryMeta[linterId]),
+        type: 'linter',
+        hasValues: !!linterHasValues[descriptorId]?.[linterId]
+      }));
+
+      sectionMap.descriptors.push({
+        id: descriptorId,
+        label: categoryLabel(descriptorId, groups.categoryMeta[descriptorId]),
+        type: 'descriptor',
+        hasValues: !!descriptorHasValues[descriptorId],
+        children
+      });
+    });
 
   const sections: MenuSection[] = SECTION_ORDER.reduce<MenuSection[]>((acc, id) => {
+    if (id === 'summary') {
+      acc.push({ id, label: 'Summary', items: sectionMap.summary });
+      return acc;
+    }
+
     if (id === 'general') {
-      acc.push({
-        id,
-        label: 'General Configuration',
-        items: [
-          {
-            id: 'general',
-            label: 'General Configuration',
-            type: 'general',
-            hasValues: generalHasValues
-          }
-        ]
-      });
+      acc.push({ id, label: generalLabel, items: sectionMap.general });
       return acc;
     }
 
     const items = sectionMap[id];
-    if (items.length) {
-      const label =
-        id === 'reporters'
-          ? 'Reporters'
-          : id === 'llm'
-          ? 'LLM Integration'
-          : 'Languages / Formats';
-      acc.push({ id, label, items });
+    if (!items.length) {
+      return acc;
     }
+
+    const label = id === 'generic' ? 'Categories' : 'Descriptors';
+    acc.push({ id, label, items });
     return acc;
   }, []);
 
-  const descriptorOrder = SECTION_ORDER.filter((s) => s !== 'general').flatMap((sectionId) =>
-    sectionMap[sectionId].map((item) => item.id)
-  );
-
+  const descriptorOrder = sectionMap.descriptors.map((item) => item.id);
   return { sections, descriptorOrder };
 };
 
@@ -122,43 +145,73 @@ export type Tab = { id: string; label: string; hasValues?: boolean };
 
 export const groupKeysByTheme = (
   keys: string[],
-  prefixToStrip?: string,
-  values?: Record<string, any>
+  _prefixToStrip: string | undefined,
+  values: Record<string, any> | undefined,
+  schema: RJSFSchema,
+  sectionMeta?: { labels: Record<string, string>; order: string[] }
 ): { tabs: Tab[]; grouped: Record<string, string[]> } => {
-  const categoryOrder = ['command', 'scope', 'severity', 'prepost', 'misc'];
-  const categoryLabels: Record<string, string> = {
-    command: 'Linter command',
-    scope: 'Scope (filters)',
-    severity: 'Severity',
-    prepost: 'Pre-Post commands',
-    misc: 'Misc'
+  const grouped: Record<string, string[]> = {};
+  const sectionHasValues: Record<string, boolean> = {};
+  const properties = (schema.properties as Record<string, any>) || {};
+  const orderConfig = sectionMeta?.order || [];
+  const labelConfig = sectionMeta?.labels || {};
+
+  const resolveSectionId = (key: string): string => {
+    const prop = properties[key];
+    const sectionId = (prop && prop['x-section']) || 'MISC';
+    return typeof sectionId === 'string' ? sectionId : 'MISC';
   };
 
-  const grouped: Record<string, string[]> = {};
-  const categoryHasValues: Record<string, boolean> = {};
+  const resolveSectionLabel = (id: string): string => {
+    if (labelConfig[id]) {
+      return labelConfig[id];
+    }
+    return prettifyId(id);
+  };
 
   keys.forEach((key) => {
-    const stripped = prefixToStrip && key.startsWith(prefixToStrip) ? key.slice(prefixToStrip.length) : key;
-    const [themeRaw] = stripped.split('_');
-    const theme = themeRaw || 'misc';
-    const category = categorizeTheme(theme, stripped, key);
+    const sectionId = resolveSectionId(key);
     const isSet = values ? hasAnyKeySet([key], values) : false;
-    if (!grouped[category]) {
-      grouped[category] = [];
+    if (!grouped[sectionId]) {
+      grouped[sectionId] = [];
     }
     if (isSet) {
-      categoryHasValues[category] = true;
+      sectionHasValues[sectionId] = true;
     }
-    grouped[category].push(key);
+    grouped[sectionId].push(key);
   });
 
-  Object.keys(grouped).forEach((cat) => {
-    grouped[cat] = sortKeysWithinCategory(grouped[cat], cat);
+  Object.keys(grouped).forEach((sectionId) => {
+    grouped[sectionId] = grouped[sectionId].sort((a, b) => {
+      const orderA = typeof properties[a]?.['x-order'] === 'number' ? (properties[a]['x-order'] as number) : Number.MAX_SAFE_INTEGER;
+      const orderB = typeof properties[b]?.['x-order'] === 'number' ? (properties[b]['x-order'] as number) : Number.MAX_SAFE_INTEGER;
+      if (orderA === orderB) {
+        return a.localeCompare(b);
+      }
+      return orderA - orderB;
+    });
   });
 
-  const tabs: Tab[] = categoryOrder
-    .filter((id) => grouped[id]?.length)
-    .map((id) => ({ id, label: categoryLabels[id] || id, hasValues: categoryHasValues[id] }));
+  const sectionOrdering = Object.keys(grouped).sort((a, b) => {
+    const idxA = orderConfig.indexOf(a);
+    const idxB = orderConfig.indexOf(b);
+    if (idxA !== -1 && idxB !== -1 && idxA !== idxB) {
+      return idxA - idxB;
+    }
+    if (idxA !== -1) {
+      return -1;
+    }
+    if (idxB !== -1) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  });
+
+  const tabs: Tab[] = sectionOrdering.map((id) => ({
+    id,
+    label: resolveSectionLabel(id),
+    hasValues: sectionHasValues[id]
+  }));
 
   return { tabs, grouped };
 };
@@ -345,34 +398,7 @@ export const stripDescriptionPrefix = (description: string, prefix: string): str
 };
 
 export const categorizeTheme = (theme: string, strippedKey: string, fullKey: string): string => {
-  const upper = theme.toUpperCase();
-  const keyUpper = strippedKey.toUpperCase();
-
-  if (/(FILE_EXTENSIONS|FILE_NAME.*REGEX)/.test(keyUpper)) {
-    return 'scope';
-  }
-
-  if (keyUpper.includes('CONFIG_FILE')) {
-    return 'command';
-  }
-
-  if (['FILTER', 'SCOPE'].includes(upper)) {
-    return 'scope';
-  }
-
-  if (['COMMAND', 'CLI', 'CONFIG', 'FILE', 'ARGUMENTS'].includes(upper)) {
-    return 'command';
-  }
-
-  if (['RULES', 'DISABLE', 'SEVERITY'].includes(upper)) {
-    return 'severity';
-  }
-
-  if (['PRE', 'POST'].includes(upper)) {
-    return 'prepost';
-  }
-
-  return 'misc';
+  return theme || strippedKey || fullKey;
 };
 
 export const isDeprecatedPropertyTitle = (schema: RJSFSchema, key: string): boolean => {

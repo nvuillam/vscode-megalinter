@@ -25,11 +25,14 @@ import './styles.css';
 
 type NavigationTarget =
   | { type: 'general' }
+  | { type: 'summary' }
+  | { type: 'category'; categoryId: string }
   | { type: 'descriptor'; descriptorId: string }
   | { type: 'linter'; descriptorId: string; linterId: string };
 
 type ViewState = {
   activeMainTab: string;
+  selectedCategory: string | null;
   selectedDescriptor: string | null;
   selectedScope: string | null;
   activeGeneralTheme: string | null;
@@ -64,6 +67,7 @@ export const App: React.FC = () => {
   );
 
   const [activeMainTab, setActiveMainTab] = useState<string>('general');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDescriptor, setSelectedDescriptor] = useState<string | null>(
     null
   );
@@ -92,6 +96,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const viewState: ViewState = {
       activeMainTab,
+      selectedCategory,
       selectedDescriptor,
       selectedScope,
       activeGeneralTheme,
@@ -101,6 +106,7 @@ export const App: React.FC = () => {
     vscode.setState?.(viewState);
   }, [
     activeMainTab,
+    selectedCategory,
     selectedDescriptor,
     selectedScope,
     activeGeneralTheme,
@@ -113,6 +119,9 @@ export const App: React.FC = () => {
     if (saved) {
       if (saved.activeMainTab) {
         setActiveMainTab(saved.activeMainTab);
+      }
+      if (saved.selectedCategory !== undefined) {
+        setSelectedCategory(saved.selectedCategory || null);
       }
       if (saved.selectedDescriptor !== undefined) {
         setSelectedDescriptor(saved.selectedDescriptor);
@@ -158,8 +167,25 @@ export const App: React.FC = () => {
   }, []);
 
   const handleNavigationSelect = (item: MenuItem | MenuChild) => {
+    if (item.type === 'summary') {
+      setActiveMainTab('summary');
+      setSelectedCategory(null);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
     if (item.type === 'general') {
       setActiveMainTab('general');
+      setSelectedCategory(null);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
+    if (item.type === 'category') {
+      setActiveMainTab('category');
+      setSelectedCategory(item.id);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
@@ -167,12 +193,14 @@ export const App: React.FC = () => {
 
     if (item.type === 'linter') {
       setActiveMainTab('descriptors');
+      setSelectedCategory(null);
       setSelectedDescriptor(item.parentId);
       setSelectedScope(item.id);
       return;
     }
 
     setActiveMainTab('descriptors');
+    setSelectedCategory(null);
     setSelectedDescriptor(item.id);
     setSelectedScope('descriptor');
   };
@@ -184,11 +212,29 @@ export const App: React.FC = () => {
 
     if (target.type === 'general') {
       setActiveMainTab('general');
+      setSelectedCategory(null);
+      return;
+    }
+
+    if (target.type === 'summary') {
+      setActiveMainTab('summary');
+      setSelectedCategory(null);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
+      return;
+    }
+
+    if (target.type === 'category') {
+      setActiveMainTab('category');
+      setSelectedCategory(target.categoryId);
+      setSelectedDescriptor(null);
+      setSelectedScope(null);
       return;
     }
 
     if (target.type === 'descriptor') {
       setActiveMainTab('descriptors');
+      setSelectedCategory(null);
       setSelectedDescriptor(target.descriptorId);
       setSelectedScope('descriptor');
       return;
@@ -196,6 +242,7 @@ export const App: React.FC = () => {
 
     if (target.type === 'linter') {
       setActiveMainTab('descriptors');
+      setSelectedCategory(null);
       setSelectedDescriptor(target.descriptorId);
       setSelectedScope(target.linterId);
     }
@@ -272,7 +319,7 @@ export const App: React.FC = () => {
       const grouped = extractGroups(schema);
       setGroups(grouped);
     }
-  }, [schema, selectedDescriptor]);
+  }, [schema]);
 
   useEffect(() => {
     if (!navigationModel || !navigationModel.descriptorOrder.length) {
@@ -292,6 +339,26 @@ export const App: React.FC = () => {
     }
   }, [navigationModel, selectedDescriptor, activeMainTab]);
 
+  useEffect(() => {
+    if (!groups) {
+      return;
+    }
+
+    const categoryIds = Object.keys(groups.genericCategoryKeys);
+    if (activeMainTab !== 'category') {
+      return;
+    }
+
+    if (!categoryIds.length) {
+      setSelectedCategory(null);
+      return;
+    }
+
+    if (!selectedCategory || !categoryIds.includes(selectedCategory)) {
+      setSelectedCategory(categoryIds[0]);
+    }
+  }, [groups, activeMainTab, selectedCategory]);
+
   const handleSubsetChange = (keys: string[], subsetData: any) => {
     setFormData((prev: any) => {
       const next = { ...prev };
@@ -310,11 +377,11 @@ export const App: React.FC = () => {
     });
   };
 
-  const uiSchema: UiSchema = {
-    'ui:submitButtonOptions': {
-      norender: true
-    }
-  };
+    const uiSchema: UiSchema = {
+      'ui:submitButtonOptions': {
+        norender: true
+      }
+    };
 
   if (loading) {
     return (
@@ -355,6 +422,8 @@ export const App: React.FC = () => {
           selectedId={
             activeMainTab === 'general'
               ? 'general'
+              : activeMainTab === 'category'
+              ? selectedCategory || ''
               : selectedScope || selectedDescriptor || ''
           }
           activeDescriptorId={selectedDescriptor}
@@ -369,6 +438,7 @@ export const App: React.FC = () => {
             onSubsetChange={handleSubsetChange}
             descriptorOrder={navigationModel?.descriptorOrder || []}
             activeMainTab={activeMainTab}
+            selectedCategory={selectedCategory}
             selectedDescriptor={selectedDescriptor}
             setSelectedDescriptor={setSelectedDescriptor}
             selectedScope={selectedScope}
@@ -447,6 +517,7 @@ const MainTabs: React.FC<{
   onSubsetChange: (keys: string[], subsetData: any) => void;
   descriptorOrder: string[];
   activeMainTab: string;
+  selectedCategory: string | null;
   selectedDescriptor: string | null;
   setSelectedDescriptor: (id: string | null) => void;
   selectedScope: string | null;
@@ -466,6 +537,7 @@ const MainTabs: React.FC<{
   onSubsetChange,
   descriptorOrder: descriptorOrderProp,
   activeMainTab,
+  selectedCategory,
   selectedDescriptor,
   setSelectedDescriptor,
   selectedScope,
@@ -484,10 +556,71 @@ const MainTabs: React.FC<{
     }
     return Object.keys(groups.descriptorKeys).sort();
   }, [descriptorOrderProp, groups]);
-  const { descriptorHasValues, linterHasValues } = useMemo(
-    () => buildPresenceMaps(groups, formData),
-    [groups, formData]
-  );
+  const presence = useMemo(() => buildPresenceMaps(groups, formData), [groups, formData]);
+  const linterHasValues = presence.linterHasValues;
+  const resolveCategoryLabel = (categoryId: string) => {
+    const meta = groups.categoryMeta[categoryId];
+    if (meta?.kind === 'linter' && meta.parentId && categoryId.startsWith(`${meta.parentId}_`)) {
+      return prettifyId(categoryId.replace(`${meta.parentId}_`, ''));
+    }
+    if (meta?.label) {
+      return prettifyId(meta.label);
+    }
+    return prettifyId(categoryId);
+  };
+
+  const compareCategories = (a: string, b: string) => {
+    const orderA = groups.categoryMeta[a]?.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = groups.categoryMeta[b]?.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA === orderB) {
+      return resolveCategoryLabel(a).localeCompare(resolveCategoryLabel(b));
+    }
+    return orderA - orderB;
+  };
+
+    const renderSummary = () => {
+      const configuredKeys = Object.keys(formData || {}).filter((key) => {
+        const value = formData?.[key];
+        if (value === undefined || value === null) {
+          return false;
+        }
+        if (typeof value === 'string' && value.trim() === '') {
+          return false;
+        }
+        if (Array.isArray(value) && value.length === 0) {
+          return false;
+        }
+        return true;
+      });
+
+      if (!configuredKeys.length) {
+        return <p className="muted">No configuration values set yet.</p>;
+      }
+
+      const summarySchema = buildSubsetSchema(schema, configuredKeys, 'Configured values');
+      const summaryUiSchema = buildScopedUiSchema(schema, configuredKeys, uiSchema, highlightedKeys);
+
+      return (
+        <Form
+          schema={summarySchema}
+          formData={filterFormData(formData, configuredKeys)}
+          onChange={(e) => {
+            const data = e.formData;
+            onSubsetChange(configuredKeys, data);
+          }}
+          validator={validator}
+          uiSchema={summaryUiSchema}
+          liveValidate
+          noHtml5Validate
+          showErrorList={false}
+          widgets={{ dualList: DualListWidget }}
+          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
+          idPrefix="summary"
+        >
+          <></>
+        </Form>
+      );
+    };
 
   const renderGeneral = () => (
     <ThemedForm
@@ -499,9 +632,40 @@ const MainTabs: React.FC<{
       onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
       activeThemeTab={activeGeneralTheme}
       setActiveThemeTab={setActiveGeneralTheme}
+      sectionMeta={groups.sectionMeta}
       highlightedKeys={highlightedKeys}
     />
   );
+
+  const renderCategory = () => {
+    const categoryIds = Object.keys(groups.genericCategoryKeys);
+    const categoryId =
+      (selectedCategory && categoryIds.includes(selectedCategory) && selectedCategory) || categoryIds[0];
+
+    if (!categoryId) {
+      return <p className="muted">No categories available</p>;
+    }
+
+    const categoryKeys = groups.genericCategoryKeys[categoryId] || [];
+    const label = resolveCategoryLabel(categoryId);
+
+    return (
+      <ThemedForm
+        baseSchema={schema}
+        keys={categoryKeys}
+        title={`${label} settings`}
+        uiSchema={uiSchema}
+        formData={filterFormData(formData, categoryKeys)}
+        onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
+        activeThemeTab={activeDescriptorThemes[categoryId] || null}
+        setActiveThemeTab={(id) =>
+          setActiveDescriptorThemes({ ...activeDescriptorThemes, [categoryId]: id || '' })
+        }
+        sectionMeta={groups.sectionMeta}
+        highlightedKeys={highlightedKeys}
+      />
+    );
+  };
 
   const renderDescriptorArea = () => {
     const descriptorId = selectedDescriptor || descriptorOrder[0];
@@ -513,16 +677,16 @@ const MainTabs: React.FC<{
     const linters = groups.linterKeys[descriptorId] || {};
     const linterValueMap = linterHasValues[descriptorId] || {};
 
-    const linterEntries = Object.entries(linters).sort(([a], [b]) => a.localeCompare(b));
+    const linterEntries = Object.entries(linters).sort(([a], [b]) => compareCategories(a, b));
 
     const scopeOptions: Tab[] = [
       {
         id: 'descriptor',
-        label: `${descriptorId} variables${hasAnyKeySet(descriptorKeys, formData) ? ' *' : ''}`
+        label: `${resolveCategoryLabel(descriptorId)} variables${hasAnyKeySet(descriptorKeys, formData) ? ' *' : ''}`
       },
       ...linterEntries.map(([linter]) => ({
         id: linter,
-        label: `${linter.replace(`${descriptorId}_`, '')}${linterValueMap[linter] ? ' *' : ''}`,
+        label: `${resolveCategoryLabel(linter)}${linterValueMap[linter] ? ' *' : ''}`,
         hasValues: linterValueMap[linter]
       }))
     ];
@@ -531,7 +695,7 @@ const MainTabs: React.FC<{
 
     const descriptorBreadcrumbOptions = descriptorOrder.map((id) => ({
       id,
-      label: prettifyId(id),
+      label: resolveCategoryLabel(id),
       onSelect: () => {
         setSelectedDescriptor(id);
         setSelectedScope('descriptor');
@@ -540,7 +704,7 @@ const MainTabs: React.FC<{
 
     const scopeBreadcrumbOptions = scopeOptions.map((opt) => ({
       id: opt.id,
-      label: opt.id === 'descriptor' ? 'Variables' : prettifyId(opt.id.replace(`${descriptorId}_`, '')),
+      label: opt.id === 'descriptor' ? 'Variables' : resolveCategoryLabel(opt.id),
       onSelect: () => {
         setSelectedDescriptor(descriptorId);
         setSelectedScope(opt.id);
@@ -550,7 +714,7 @@ const MainTabs: React.FC<{
     const breadcrumbItems = [
       {
         id: descriptorId,
-        label: prettifyId(descriptorId),
+        label: resolveCategoryLabel(descriptorId),
         options: descriptorBreadcrumbOptions
       },
       {
@@ -558,7 +722,7 @@ const MainTabs: React.FC<{
         label:
           activeScope === 'descriptor'
             ? 'Variables'
-            : prettifyId(activeScope.replace(`${descriptorId}_`, '')),
+            : resolveCategoryLabel(activeScope),
         options: scopeBreadcrumbOptions
       }
     ];
@@ -567,7 +731,7 @@ const MainTabs: React.FC<{
       <ThemedForm
         baseSchema={schema}
         keys={descriptorKeys}
-        title={`${descriptorId} variables`}
+        title={`${resolveCategoryLabel(descriptorId)} variables`}
         uiSchema={uiSchema}
         formData={filterFormData(formData, descriptorKeys)}
         onSubsetChange={(keys, subset) => onSubsetChange(keys, subset)}
@@ -576,7 +740,8 @@ const MainTabs: React.FC<{
           setActiveDescriptorThemes({ ...activeDescriptorThemes, [descriptorId]: id || '' })
         }
         prefixToStrip={`${descriptorId}_`}
-          highlightedKeys={highlightedKeys}
+        sectionMeta={groups.sectionMeta}
+        highlightedKeys={highlightedKeys}
       />
     );
 
@@ -584,7 +749,7 @@ const MainTabs: React.FC<{
       <ThemedForm
         baseSchema={schema}
         keys={keys}
-        title={`${linterKey} linter`}
+        title={`${resolveCategoryLabel(linterKey)} linter`}
         uiSchema={uiSchema}
         formData={filterFormData(formData, keys)}
         onSubsetChange={(k, subset) => onSubsetChange(k, subset)}
@@ -599,6 +764,7 @@ const MainTabs: React.FC<{
           })
         }
         prefixToStrip={`${linterKey}_`}
+        sectionMeta={groups.sectionMeta}
         highlightedKeys={highlightedKeys}
       />
     );
@@ -616,7 +782,19 @@ const MainTabs: React.FC<{
     );
   };
 
-  return activeMainTab === 'general' ? renderGeneral() : renderDescriptorArea();
+  if (activeMainTab === 'summary') {
+    return renderSummary();
+  }
+
+  if (activeMainTab === 'general') {
+    return renderGeneral();
+  }
+
+  if (activeMainTab === 'category') {
+    return renderCategory();
+  }
+
+  return renderDescriptorArea();
 };
 
 const TabBar: React.FC<{
@@ -702,6 +880,7 @@ const ThemedForm: React.FC<{
   onSubsetChange: (keys: string[], subset: any) => void;
   activeThemeTab: string | null;
   setActiveThemeTab: (id: string | null) => void;
+  sectionMeta: SchemaGroups['sectionMeta'];
   prefixToStrip?: string;
   highlightedKeys: Set<string>;
 }> = ({
@@ -713,6 +892,7 @@ const ThemedForm: React.FC<{
   onSubsetChange,
   activeThemeTab,
   setActiveThemeTab,
+  sectionMeta,
   prefixToStrip,
   highlightedKeys
 }) => {
@@ -722,8 +902,8 @@ const ThemedForm: React.FC<{
   );
 
   const { tabs, grouped } = useMemo(
-    () => groupKeysByTheme(filteredKeys, prefixToStrip, formData),
-    [filteredKeys, prefixToStrip, formData]
+    () => groupKeysByTheme(filteredKeys, prefixToStrip, formData, baseSchema, sectionMeta),
+    [filteredKeys, prefixToStrip, formData, baseSchema, sectionMeta]
   );
 
   const effectiveActive = useMemo(() => {

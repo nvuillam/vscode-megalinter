@@ -15,7 +15,12 @@ export const hasAnyKeySet = (keys: string[], data: KeyContainer): boolean =>
 export const buildPresenceMaps = (groups: SchemaGroups, data: KeyContainer) => {
   const descriptorHasValues: Record<string, boolean> = {};
   const linterHasValues: Record<string, Record<string, boolean>> = {};
+  const genericHasValues: Record<string, boolean> = {};
   const generalHasValues = hasAnyKeySet(groups.generalKeys, data);
+
+  Object.entries(groups.genericCategoryKeys).forEach(([categoryId, keys]) => {
+    genericHasValues[categoryId] = hasAnyKeySet(keys, data);
+  });
 
   Object.entries(groups.descriptorKeys).forEach(([descriptorId, keys]) => {
     const linters = groups.linterKeys[descriptorId] || {};
@@ -30,5 +35,5 @@ export const buildPresenceMaps = (groups: SchemaGroups, data: KeyContainer) => {
     descriptorHasValues[descriptorId] = descriptorValue;
   });
 
-  return { generalHasValues, descriptorHasValues, linterHasValues };
+  return { generalHasValues, genericHasValues, descriptorHasValues, linterHasValues };
 };

@@ -5,6 +5,7 @@ import { ConfigurationPanel } from './configurationPanel';
 
 export type NavigationTarget =
   | { type: 'general' }
+  | { type: 'category'; categoryId: string }
   | { type: 'descriptor'; descriptorId: string }
   | { type: 'linter'; descriptorId: string; linterId: string };
 
