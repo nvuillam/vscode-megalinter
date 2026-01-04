@@ -479,10 +479,17 @@ const NavigationMenu: React.FC<{
       )
     );
 
-    if (matchingSection && !expandedSections[matchingSection.id]) {
-      setExpandedSections((prev) => ({ ...prev, [matchingSection.id]: true }));
+    if (!matchingSection) {
+      return;
     }
-  }, [selectedId, sections, expandedSections]);
+
+    setExpandedSections((prev) => {
+      if (prev[matchingSection.id]) {
+        return prev;
+      }
+      return { ...prev, [matchingSection.id]: true };
+    });
+  }, [selectedId, sections]);
 
   const toggleSection = (id: string) => {
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -492,6 +499,9 @@ const NavigationMenu: React.FC<{
     <nav className="nav" aria-label="Configuration sections">
       {sections.map((section) => {
         const isExpanded = expandedSections[section.id] ?? true;
+        const sectionHasValues = section.items.some(
+          (item) => item.hasValues || (item.children && item.children.some((child) => child.hasValues))
+        );
         return (
           <div key={section.id} className="nav__section">
             <button
@@ -500,7 +510,10 @@ const NavigationMenu: React.FC<{
               onClick={() => toggleSection(section.id)}
               aria-expanded={isExpanded}
             >
-              <span>{section.label}</span>
+              <span className="nav__title-label">
+                <span>{section.label}</span>
+                {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
+              </span>
               <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
             </button>
             {isExpanded && (

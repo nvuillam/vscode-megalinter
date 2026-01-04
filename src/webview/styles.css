@@ -236,6 +236,12 @@ body {
   transition: border-color 120ms ease, background 120ms ease;
 }
 
+.nav__title-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .nav__title--toggle:hover,
 .nav__title--toggle:focus-visible {
   border-color: var(--vscode-panel-border);

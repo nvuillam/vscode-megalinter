@@ -132,7 +132,7 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
       return acc;
     }
 
-    const label = id === 'generic' ? 'Categories' : 'Descriptors';
+    const label = id === 'generic' ? 'Reporters' : 'Descriptors';
     acc.push({ id, label, items });
     return acc;
   }, []);
