@@ -579,6 +579,10 @@ const MainTabs: React.FC<{
   };
 
     const renderSummary = () => {
+      const properties = (schema.properties as Record<string, any>) || {};
+      const sectionOrder = groups.sectionMeta.order || [];
+      const sectionLabels = groups.sectionMeta.labels || {};
+
       const configuredKeys = Object.keys(formData || {}).filter((key) => {
         const value = formData?.[key];
         if (value === undefined || value === null) {
@@ -593,20 +597,102 @@ const MainTabs: React.FC<{
         return true;
       });
 
+      const categoryKindRank: Record<string, number> = {
+        generic: 1,
+        descriptor: 2,
+        linter: 3,
+        other: 4
+      };
+
+      const resolveCategory = (key: string) => {
+        const prop = properties[key] || {};
+        const categoryId = prop['x-category'] as string | undefined;
+        const meta = categoryId ? groups.categoryMeta[categoryId] : undefined;
+        if (groups.generalKeys.includes(key)) {
+          return { id: 'GENERAL', label: 'General', kind: 'generic' as const, meta: groups.categoryMeta['GENERAL'] };
+        }
+        const genericEntry = Object.entries(groups.genericCategoryKeys).find(([, keys]) => keys.includes(key));
+        if (genericEntry) {
+          const [id] = genericEntry;
+          return { id, label: resolveCategoryLabel(id), kind: 'generic' as const, meta: groups.categoryMeta[id] };
+        }
+        const descriptorEntry = Object.entries(groups.descriptorKeys).find(([, keys]) => keys.includes(key));
+        if (descriptorEntry) {
+          const [id] = descriptorEntry;
+          return { id, label: resolveCategoryLabel(id), kind: 'descriptor' as const, meta: groups.categoryMeta[id] };
+        }
+        const linterEntry = Object.entries(groups.linterKeys).find(([, linters]) =>
+          Object.entries(linters).some(([, keys]) => keys.includes(key))
+        );
+        if (linterEntry) {
+          const [descriptorId, linters] = linterEntry;
+          const linterId = Object.keys(linters).find((l) => linters[l].includes(key));
+          if (linterId) {
+            return {
+              id: linterId,
+              label: resolveCategoryLabel(linterId),
+              kind: 'linter' as const,
+              meta: groups.categoryMeta[linterId],
+              parent: descriptorId
+            };
+          }
+        }
+        if (meta) {
+          return { id: meta.id, label: resolveCategoryLabel(meta.id), kind: meta.kind, meta };
+        }
+        return { id: 'OTHER', label: 'Other', kind: 'other' as const, meta: undefined };
+      };
+
+      const resolveSection = (key: string) => {
+        const sectionId = typeof properties[key]?.['x-section'] === 'string' ? (properties[key]['x-section'] as string) : 'MISC';
+        const index = sectionOrder.indexOf(sectionId);
+        const sectionLabel = sectionLabels[sectionId] || prettifyId(sectionId);
+        return { id: sectionId, index: index === -1 ? Number.MAX_SAFE_INTEGER : index, label: sectionLabel };
+      };
+
+      const orderedKeys = [...configuredKeys].sort((a, b) => {
+        const catA = resolveCategory(a);
+        const catB = resolveCategory(b);
+        const kindA = catA.kind === 'generic' && catA.id === 'GENERAL' ? -1 : categoryKindRank[catA.kind] ?? 99;
+        const kindB = catB.kind === 'generic' && catB.id === 'GENERAL' ? -1 : categoryKindRank[catB.kind] ?? 99;
+        if (kindA !== kindB) {
+          return kindA - kindB;
+        }
+        if (catA.label !== catB.label) {
+          return catA.label.localeCompare(catB.label);
+        }
+
+        const secA = resolveSection(a);
+        const secB = resolveSection(b);
+        if (secA.index !== secB.index) {
+          return secA.index - secB.index;
+        }
+        if (secA.label !== secB.label) {
+          return secA.label.localeCompare(secB.label);
+        }
+
+        const orderA = typeof properties[a]?.['x-order'] === 'number' ? (properties[a]['x-order'] as number) : Number.MAX_SAFE_INTEGER;
+        const orderB = typeof properties[b]?.['x-order'] === 'number' ? (properties[b]['x-order'] as number) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.localeCompare(b);
+      });
+
       if (!configuredKeys.length) {
         return <p className="muted">No configuration values set yet.</p>;
       }
 
-      const summarySchema = buildSubsetSchema(schema, configuredKeys, 'Configured values');
-      const summaryUiSchema = buildScopedUiSchema(schema, configuredKeys, uiSchema, highlightedKeys);
+      const summarySchema = buildSubsetSchema(schema, orderedKeys, 'Configured values');
+      const summaryUiSchema = buildScopedUiSchema(schema, orderedKeys, uiSchema, highlightedKeys);
 
       return (
         <Form
           schema={summarySchema}
-          formData={filterFormData(formData, configuredKeys)}
+          formData={filterFormData(formData, orderedKeys)}
           onChange={(e) => {
             const data = e.formData;
-            onSubsetChange(configuredKeys, data);
+            onSubsetChange(orderedKeys, data);
           }}
           validator={validator}
           uiSchema={summaryUiSchema}
