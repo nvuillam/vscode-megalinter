@@ -823,13 +823,14 @@ body {
 }
 
 .linter-description__image {
-  width: 72px;
-  height: 72px;
+  width: clamp(96px, 20vw, 200px);
+  height: auto;
+  max-height: 200px;
   object-fit: contain;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
-  padding: 6px;
+  padding: 10px;
 }
 
 .linter-description__titles {
