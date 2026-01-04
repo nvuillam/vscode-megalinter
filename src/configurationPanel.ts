@@ -87,7 +87,7 @@ export class ConfigurationPanel {
         switch (message.type) {
           case 'ready':
             this._webviewReady = true;
-            this._sendConfig();
+            await this._sendConfig();
             if (this._pendingNavigation) {
               this._panel.webview.postMessage({
                 type: 'navigate',
@@ -97,7 +97,7 @@ export class ConfigurationPanel {
             }
             break;
           case 'getConfig':
-            this._sendConfig();
+            await this._sendConfig();
             break;
           case 'saveConfig':
             await this._saveConfig(message.config);
@@ -122,17 +122,76 @@ export class ConfigurationPanel {
     }
   }
 
-  private _loadDescriptorMetadata(): Record<string, LinterDescriptorMetadata> {
-    if (this._linterMetadataCache) {
-      return this._linterMetadataCache;
-    }
+  private _ingestDescriptorContent(
+    fileName: string,
+    content: string,
+    metadata: Record<string, LinterDescriptorMetadata>
+  ) {
+    try {
+      const parsed = YAML.parse(content) as any;
+      const descriptorId = typeof parsed?.descriptor_id === 'string' ? parsed.descriptor_id : undefined;
+      const linters = Array.isArray(parsed?.linters) ? parsed.linters : [];
 
+      linters.forEach((linter: any) => {
+        const nameField = typeof linter?.name === 'string' ? linter.name : undefined;
+        const linterName = typeof linter?.linter_name === 'string' ? linter.linter_name : undefined;
+
+        const deriveKey = (): string | undefined => {
+          if (nameField) {
+            return nameField;
+          }
+          if (descriptorId && linterName) {
+            const normalized = `${descriptorId}_${linterName}`
+              .replace(/[^A-Za-z0-9_]+/g, '_')
+              .replace(/_{2,}/g, '_')
+              .replace(/_+$/, '')
+              .toUpperCase();
+            return normalized;
+          }
+          return undefined;
+        };
+
+        const primaryKey = deriveKey();
+        if (!primaryKey) {
+          return;
+        }
+
+        const meta: LinterDescriptorMetadata = {
+          descriptorId,
+          name: primaryKey,
+          linterName,
+          url: typeof linter?.linter_url === 'string' ? linter.linter_url : undefined,
+          repo: typeof linter?.linter_repo === 'string' ? linter.linter_repo : undefined,
+          imageUrl: typeof linter?.linter_image_url === 'string' ? linter.linter_image_url : undefined,
+          bannerImageUrl:
+            typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
+          text: typeof linter?.linter_text === 'string' ? linter.linter_text : undefined
+        };
+
+        metadata[primaryKey] = meta;
+
+        // Also index by descriptor-linter combination when a name field was present, to cover both forms
+        if (nameField && descriptorId && linterName) {
+          const aliasKey = `${descriptorId}_${linterName}`
+            .replace(/[^A-Za-z0-9_]+/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/_+$/, '')
+            .toUpperCase();
+          metadata[aliasKey] = meta;
+        }
+      });
+    } catch (err) {
+      console.warn(`Failed to parse descriptor metadata from ${fileName}`, err);
+    }
+  }
+
+  private _loadLocalDescriptorMetadata(
+    metadata: Record<string, LinterDescriptorMetadata>
+  ): boolean {
     const descriptorDir = path.join(this._extensionUri.fsPath, 'src', 'descriptors');
-    const metadata: Record<string, LinterDescriptorMetadata> = {};
 
     if (!fs.existsSync(descriptorDir)) {
-      this._linterMetadataCache = metadata;
-      return metadata;
+      return false;
     }
 
     const descriptorFiles = fs
@@ -143,68 +202,85 @@ export class ConfigurationPanel {
       const fullPath = path.join(descriptorDir, file);
       try {
         const content = fs.readFileSync(fullPath, 'utf8');
-        const parsed = YAML.parse(content) as any;
-        const descriptorId = typeof parsed?.descriptor_id === 'string' ? parsed.descriptor_id : undefined;
-        const linters = Array.isArray(parsed?.linters) ? parsed.linters : [];
-
-        linters.forEach((linter: any) => {
-          const nameField = typeof linter?.name === 'string' ? linter.name : undefined;
-          const linterName = typeof linter?.linter_name === 'string' ? linter.linter_name : undefined;
-
-          const deriveKey = (): string | undefined => {
-            if (nameField) {
-              return nameField;
-            }
-            if (descriptorId && linterName) {
-              const normalized = `${descriptorId}_${linterName}`
-                .replace(/[^A-Za-z0-9_]+/g, '_')
-                .replace(/_{2,}/g, '_')
-                .replace(/_+$/, '')
-                .toUpperCase();
-              return normalized;
-            }
-            return undefined;
-          };
-
-          const primaryKey = deriveKey();
-          if (!primaryKey) {
-            return;
-          }
-
-          const meta: LinterDescriptorMetadata = {
-            descriptorId,
-            name: primaryKey,
-            linterName,
-            url: typeof linter?.linter_url === 'string' ? linter.linter_url : undefined,
-            repo: typeof linter?.linter_repo === 'string' ? linter.linter_repo : undefined,
-            imageUrl: typeof linter?.linter_image_url === 'string' ? linter.linter_image_url : undefined,
-            bannerImageUrl:
-              typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
-            text: typeof linter?.linter_text === 'string' ? linter.linter_text : undefined
-          };
-
-          metadata[primaryKey] = meta;
-
-          // Also index by descriptor-linter combination when a name field was present, to cover both forms
-          if (nameField && descriptorId && linterName) {
-            const aliasKey = `${descriptorId}_${linterName}`
-              .replace(/[^A-Za-z0-9_]+/g, '_')
-              .replace(/_{2,}/g, '_')
-              .replace(/_+$/, '')
-              .toUpperCase();
-            metadata[aliasKey] = meta;
-          }
-        });
+        this._ingestDescriptorContent(file, content, metadata);
       } catch (err) {
         console.warn(`Failed to read descriptor metadata from ${file}`, err);
       }
     });
 
+    return descriptorFiles.length > 0;
+  }
+
+  private async _loadRemoteDescriptorMetadata(
+    metadata: Record<string, LinterDescriptorMetadata>
+  ): Promise<boolean> {
+    const apiUrl = 'https://api.github.com/repos/oxsecurity/megalinter/contents/megalinter/descriptors';
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(apiUrl, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'vscode-megalinter-extension'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const files = (await response.json()) as Array<{ name: string; download_url?: string; type?: string }>;
+      const descriptorFiles = files.filter(
+        (item) => item.type === 'file' && item.name.toLowerCase().endsWith('.megalinter-descriptor.yml')
+      );
+
+      for (const file of descriptorFiles) {
+        if (!file.download_url) {
+          continue;
+        }
+        try {
+          const fileController = new AbortController();
+          const fileTimeout = setTimeout(() => fileController.abort(), 8000);
+          const descriptorResponse = await fetch(file.download_url, { signal: fileController.signal });
+          clearTimeout(fileTimeout);
+
+          if (!descriptorResponse.ok) {
+            continue;
+          }
+
+          const content = await descriptorResponse.text();
+          this._ingestDescriptorContent(file.name, content, metadata);
+        } catch (fileErr) {
+          console.warn(`Failed to download descriptor ${file.name}`, fileErr);
+        }
+      }
+
+      return descriptorFiles.length > 0 && Object.keys(metadata).length > 0;
+    } catch (err) {
+      console.warn('Remote descriptor metadata fetch failed', err);
+      return false;
+    }
+  }
+
+  private async _loadDescriptorMetadata(): Promise<Record<string, LinterDescriptorMetadata>> {
+    if (this._linterMetadataCache) {
+      return this._linterMetadataCache;
+    }
+
+    const metadata: Record<string, LinterDescriptorMetadata> = {};
+
+    const loadedRemotely = await this._loadRemoteDescriptorMetadata(metadata);
+    if (!loadedRemotely) {
+      this._loadLocalDescriptorMetadata(metadata);
+    }
+
     this._linterMetadataCache = metadata;
     return metadata;
   }
 
-  private _sendConfig() {
+  private async _sendConfig() {
     let config: any = {};
 
     if (fs.existsSync(this._configPath)) {
@@ -218,7 +294,13 @@ export class ConfigurationPanel {
       }
     }
 
-    const linterMetadata = this._loadDescriptorMetadata();
+    let linterMetadata: Record<string, LinterDescriptorMetadata> = {};
+
+    try {
+      linterMetadata = await this._loadDescriptorMetadata();
+    } catch (err) {
+      console.warn('Unable to load linter metadata', err);
+    }
 
     this._panel.webview.postMessage({
       type: 'configData',
@@ -283,7 +365,7 @@ export class ConfigurationPanel {
         2000
       );
 
-      this._sendConfig();
+      await this._sendConfig();
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to save configuration: ${error}`
@@ -313,7 +395,7 @@ export class ConfigurationPanel {
     const webview = this._panel.webview;
     this._webviewReady = false;
     this._panel.webview.html = this._getHtmlForWebview(webview);
-    this._sendConfig();
+    void this._sendConfig();
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {

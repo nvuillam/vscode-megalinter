@@ -24,8 +24,8 @@ import {
 } from './menuUtils';
 import './styles.css';
 
-const OX_SECURITY_LOGO = 'https://ox.security/wp-content/uploads/2022/05/Logo_OX-Color.svg';
-const OX_SECURITY_LOGO_FALLBACK = 'https://avatars.githubusercontent.com/u/118941864?s=200&v=4';
+const OX_SECURITY_LOGO = 'https://www.ox.security/wp-content/uploads/2025/10/logo-short-new.svg';
+const OX_SECURITY_LOGO_FALLBACK = 'https://avatars.githubusercontent.com/u/89921661?s=200&v=4';
 
 type NavigationTarget =
   | { type: 'home' }
@@ -851,7 +851,7 @@ const NavigationMenu: React.FC<{
               >
                 <span className="nav__title-label">
                   <span>{section.label}</span>
-                  {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
+                  {section.id !== 'home' && sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
                 </span>
               </button>
             </div>
@@ -865,15 +865,12 @@ const NavigationMenu: React.FC<{
               className="nav__title nav__title--toggle"
               onClick={() => toggleSection(section.id)}
               aria-expanded={isExpanded}
-              disabled={section.id === 'general'}
             >
               <span className="nav__title-label">
                 <span>{section.label}</span>
                 {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
               </span>
-              {section.id !== 'general' && (
-                <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
-              )}
+              <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
             </button>
             {isExpanded && section.items.length > 0 && (
               <ul className="nav__list">
