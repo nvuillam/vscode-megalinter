@@ -698,6 +698,14 @@ const HomePanel: React.FC<HomePanelProps> = ({
             >
               Review configured values
             </button>
+            <a
+              className="pill-button pill-button--ghost"
+              href="https://megalinter.io/latest/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open MegaLinter docs
+            </a>
           </div>
           <div className="home__badges" aria-label="Quick context">
             <span className="pill-chip pill-chip--accent">{schemaBadge}</span>
