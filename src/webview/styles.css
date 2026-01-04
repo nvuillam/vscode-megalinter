@@ -210,16 +210,50 @@ body {
 }
 
 .nav__section + .nav__section {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--vscode-panel-border);
 }
 
 .nav__title {
   font-weight: 650;
   font-size: 13px;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: var(--vscode-foreground);
+}
+
+.nav__title--toggle {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.nav__title--toggle:hover,
+.nav__title--toggle:focus-visible {
+  border-color: var(--vscode-panel-border);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  outline: none;
+}
+
+.nav__chevron {
+  width: 8px;
+  height: 8px;
+  border: solid var(--vscode-descriptionForeground);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+
+.nav__chevron--open {
+  transform: rotate(-135deg);
 }
 
 .nav__list {

@@ -462,52 +462,92 @@ const NavigationMenu: React.FC<{
   selectedId: string;
   activeDescriptorId: string | null;
   onSelect: (item: MenuItem | MenuChild) => void;
-}> = ({ sections, selectedId, activeDescriptorId, onSelect }) => (
-  <nav className="nav" aria-label="Configuration sections">
-    {sections.map((section) => (
-      <div key={section.id} className="nav__section">
-        <div className="nav__title">{section.label}</div>
-        <ul className="nav__list">
-          {section.items.map((item) => {
-            const isActive = selectedId === item.id;
-            const isExpanded = activeDescriptorId === item.id || isActive;
-            return (
-              <li key={item.id} className="nav__list-item">
-                <button
-                  type="button"
-                  className={`nav__item ${isActive ? 'nav__item--active' : ''}`}
-                  onClick={() => onSelect(item)}
-                >
-                  <span className="nav__label">{item.label}</span>
-                  {item.hasValues && <span className="nav__dot" aria-hidden="true" />}
-                </button>
-                {item.children && item.children.length && isExpanded && (
-                  <ul className="nav__child-list">
-                    {item.children.map((child) => {
-                      const childActive = selectedId === child.id;
-                      return (
-                        <li key={child.id} className="nav__child-item">
-                          <button
-                            type="button"
-                            className={`nav__item nav__item--child ${childActive ? 'nav__item--active' : ''}`}
-                            onClick={() => onSelect(child)}
-                          >
-                            <span className="nav__label">{child.label}</span>
-                            {child.hasValues && <span className="nav__dot" aria-hidden="true" />}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    ))}
-  </nav>
-);
+}> = ({ sections, selectedId, activeDescriptorId, onSelect }) => {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    summary: true,
+    general: true,
+    generic: false,
+    descriptors: true
+  });
+
+  useEffect(() => {
+    const matchingSection = sections.find((section) =>
+      section.items.some(
+        (item) =>
+          item.id === selectedId ||
+          (item.children && item.children.some((child) => child.id === selectedId))
+      )
+    );
+
+    if (matchingSection && !expandedSections[matchingSection.id]) {
+      setExpandedSections((prev) => ({ ...prev, [matchingSection.id]: true }));
+    }
+  }, [selectedId, sections, expandedSections]);
+
+  const toggleSection = (id: string) => {
+    setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  return (
+    <nav className="nav" aria-label="Configuration sections">
+      {sections.map((section) => {
+        const isExpanded = expandedSections[section.id] ?? true;
+        return (
+          <div key={section.id} className="nav__section">
+            <button
+              type="button"
+              className="nav__title nav__title--toggle"
+              onClick={() => toggleSection(section.id)}
+              aria-expanded={isExpanded}
+            >
+              <span>{section.label}</span>
+              <span className={`nav__chevron ${isExpanded ? 'nav__chevron--open' : ''}`} aria-hidden="true" />
+            </button>
+            {isExpanded && (
+              <ul className="nav__list">
+                {section.items.map((item) => {
+                  const isActive = selectedId === item.id;
+                  const isItemExpanded = activeDescriptorId === item.id || isActive;
+                  return (
+                    <li key={item.id} className="nav__list-item">
+                      <button
+                        type="button"
+                        className={`nav__item ${isActive ? 'nav__item--active' : ''}`}
+                        onClick={() => onSelect(item)}
+                      >
+                        <span className="nav__label">{item.label}</span>
+                        {item.hasValues && <span className="nav__dot" aria-hidden="true" />}
+                      </button>
+                      {item.children && item.children.length && isItemExpanded && (
+                        <ul className="nav__child-list">
+                          {item.children.map((child) => {
+                            const childActive = selectedId === child.id;
+                            return (
+                              <li key={child.id} className="nav__child-item">
+                                <button
+                                  type="button"
+                                  className={`nav__item nav__item--child ${childActive ? 'nav__item--active' : ''}`}
+                                  onClick={() => onSelect(child)}
+                                >
+                                  <span className="nav__label">{child.label}</span>
+                                  {child.hasValues && <span className="nav__dot" aria-hidden="true" />}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+};
 
 const MainTabs: React.FC<{
   schema: RJSFSchema;
