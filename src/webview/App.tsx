@@ -82,10 +82,8 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [configPath, setConfigPath] = useState<string>('');
+  const [configExists, setConfigExists] = useState<boolean>(false);
   const [linterMetadata, setLinterMetadata] = useState<Record<string, LinterDescriptorMetadata>>({});
-  const [schemaSource, setSchemaSource] = useState<'remote' | 'local' | null>(
-    null
-  );
 
   const [activeMainTab, setActiveMainTab] = useState<string>('home');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -406,14 +404,12 @@ export const App: React.FC = () => {
         const schemaData = await response.json();
         const filtered = filterRemovedLintersFromSchema(schemaData as RJSFSchema);
         setSchema(filtered);
-        setSchemaSource('remote');
         setGroups(extractGroups(filtered));
       } catch (err) {
         console.warn('Remote schema fetch failed, using bundled schema', err);
         try {
           const filtered = filterRemovedLintersFromSchema(fallbackSchema);
           setSchema(filtered);
-          setSchemaSource('local');
           setGroups(extractGroups(filtered));
           vscode.postMessage({
             type: 'info',
@@ -443,6 +439,7 @@ export const App: React.FC = () => {
         setFormData(message.config);
         setOriginalConfig(message.config || {});
         setConfigPath(message.configPath);
+        setConfigExists(!!message.configExists);
         setLinterMetadata(message.linterMetadata || {});
         setConfigLoaded(true);
       } else if (message.type === 'navigate' && message.target) {
@@ -578,7 +575,8 @@ export const App: React.FC = () => {
           {activeMainTab === 'home' ? (
             <HomePanel
               configPath={configPath}
-              schemaSource={schemaSource}
+              configExists={configExists}
+              configLoaded={configLoaded}
               configuredCount={configuredKeyCount}
               totalKeys={totalSchemaKeys}
               descriptorCount={descriptorCount}
@@ -631,7 +629,8 @@ export const App: React.FC = () => {
 
 type HomePanelProps = {
   configPath: string;
-  schemaSource: 'remote' | 'local' | null;
+  configExists: boolean;
+  configLoaded: boolean;
   configuredCount: number;
   totalKeys: number;
   descriptorCount: number;
@@ -653,7 +652,8 @@ type HomePanelProps = {
 
 const HomePanel: React.FC<HomePanelProps> = ({
   configPath,
-  schemaSource,
+  configExists,
+  configLoaded,
   configuredCount,
   totalKeys,
   descriptorCount,
@@ -674,8 +674,39 @@ const HomePanel: React.FC<HomePanelProps> = ({
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>(logoUrl);
   const [bannerSrc, setBannerSrc] = useState<string>(bannerUrl);
-  const schemaBadge = schemaSource === 'remote' ? 'Remote schema (live)' : schemaSource === 'local' ? 'Bundled schema' : 'Schema not loaded yet';
   const configBadge = configPath ? configPath : 'No configuration file selected yet';
+  const renderInstallOrUpgrade = () => {
+    if (!configLoaded) {
+      return (
+        <div className="home__cta-spinner" role="status" aria-live="polite">
+          <span className="home__spinner" aria-hidden="true" />
+          <span>Loading setup…</span>
+        </div>
+      );
+    }
+
+    if (!configExists) {
+      return (
+        <button
+          type="button"
+          className="pill-button pill-button--solid"
+          onClick={() => vscode.postMessage({ type: 'installMegaLinter' })}
+        >
+          Install MegaLinter
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="pill-button pill-button--solid"
+        onClick={() => vscode.postMessage({ type: 'upgradeMegaLinter' })}
+      >
+        Upgrade MegaLinter
+      </button>
+    );
+  };
 
   return (
     <div className="home">
@@ -712,7 +743,13 @@ const HomePanel: React.FC<HomePanelProps> = ({
             Tailor MegaLinter to your repository, preview the impact, and keep every run aligned with your team.
           </p>
           <div className="home__actions">
-            <button type="button" className="pill-button pill-button--primary" onClick={onOpenGeneral}>
+            {renderInstallOrUpgrade()}
+            <button
+              type="button"
+              className="pill-button pill-button--primary"
+              onClick={onOpenGeneral}
+              disabled={!configExists}
+            >
               Start with general settings
             </button>
             <button
@@ -733,7 +770,6 @@ const HomePanel: React.FC<HomePanelProps> = ({
             </a>
           </div>
           <div className="home__badges" aria-label="Quick context">
-            <span className="pill-chip pill-chip--accent">{schemaBadge}</span>
             <span className="pill-chip pill-chip--muted" title={configBadge}>
               {configBadge}
             </span>
@@ -762,14 +798,6 @@ const HomePanel: React.FC<HomePanelProps> = ({
             <span className="home__card-sub">descriptors</span>
           </div>
           <p className="home__card-note">{linterCount} linters available across your stack.</p>
-        </div>
-
-        <div className="home__card" role="listitem">
-          <div className="home__card-label">Schema source</div>
-          <div className="home__pill-row">
-            <span className="pill-chip pill-chip--accent">{schemaBadge}</span>
-          </div>
-          <p className="home__card-note">Schema keeps your form aligned with the latest MegaLinter release.</p>
         </div>
       </div>
 

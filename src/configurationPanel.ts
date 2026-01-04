@@ -102,6 +102,12 @@ export class ConfigurationPanel {
           case 'saveConfig':
             await this._saveConfig(message.config);
             break;
+          case 'installMegaLinter':
+            await this._runCommand('npx --yes mega-linter-runner@latest --install');
+            break;
+          case 'upgradeMegaLinter':
+            await this._runCommand('npx --yes mega-linter-runner@latest --upgrade');
+            break;
           case 'error':
             vscode.window.showErrorMessage(message.message);
             break;
@@ -282,8 +288,9 @@ export class ConfigurationPanel {
 
   private async _sendConfig() {
     let config: any = {};
+    const configExists = fs.existsSync(this._configPath);
 
-    if (fs.existsSync(this._configPath)) {
+    if (configExists) {
       try {
         const content = fs.readFileSync(this._configPath, 'utf8');
         const doc = YAML.parseDocument(content);
@@ -306,6 +313,7 @@ export class ConfigurationPanel {
       type: 'configData',
       config: config,
       configPath: this._configPath,
+      configExists,
       linterMetadata
     });
   }
@@ -396,6 +404,14 @@ export class ConfigurationPanel {
     this._webviewReady = false;
     this._panel.webview.html = this._getHtmlForWebview(webview);
     void this._sendConfig();
+  }
+
+  private async _runCommand(command: string) {
+    const cwd = this._configPath ? path.dirname(this._configPath) : undefined;
+    const terminal = vscode.window.createTerminal({ name: 'MegaLinter Setup', cwd });
+    terminal.show(true);
+    terminal.sendText(command, true);
+    vscode.window.showInformationMessage(`Running: ${command}`);
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
