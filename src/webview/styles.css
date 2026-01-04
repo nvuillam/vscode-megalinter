@@ -242,6 +242,29 @@ body {
   gap: 6px;
 }
 
+.nav__title--link {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+  text-align: left;
+}
+
+.nav__title--link:hover,
+.nav__title--link:focus-visible,
+.nav__title--active {
+  border-color: var(--vscode-panel-border);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  outline: none;
+}
+
 .nav__title--toggle:hover,
 .nav__title--toggle:focus-visible {
   border-color: var(--vscode-panel-border);

@@ -502,6 +502,31 @@ const NavigationMenu: React.FC<{
         const sectionHasValues = section.items.some(
           (item) => item.hasValues || (item.children && item.children.some((child) => child.hasValues))
         );
+
+        if (section.id === 'summary' || section.id === 'general') {
+          const targetItem: MenuItem = {
+            id: section.id,
+            label: section.label,
+            type: section.id,
+            hasValues: sectionHasValues
+          };
+          const isActive = selectedId === section.id;
+          return (
+            <div key={section.id} className="nav__section">
+              <button
+                type="button"
+                className={`nav__title nav__title--link ${isActive ? 'nav__title--active' : ''}`}
+                onClick={() => onSelect(targetItem)}
+              >
+                <span className="nav__title-label">
+                  <span>{section.label}</span>
+                  {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
+                </span>
+              </button>
+            </div>
+          );
+        }
+
         return (
           <div key={section.id} className="nav__section">
             <button

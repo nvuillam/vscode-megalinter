@@ -53,26 +53,13 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
   const hasAnyConfig = Object.keys(formData || {}).length > 0;
 
   const sectionMap: Record<MenuSectionId, MenuItem[]> = {
-    summary: [
-      {
-        id: 'summary',
-        label: 'Summary',
-        type: 'summary',
-        hasValues: hasAnyConfig
-      }
-    ],
+    summary: [],
     general: [],
     generic: [],
     descriptors: []
   };
 
   const generalLabel = categoryLabel('GENERAL', groups.categoryMeta['GENERAL']);
-  sectionMap.general.push({
-    id: 'general',
-    label: generalLabel,
-    type: 'general',
-    hasValues: generalHasValues
-  });
 
   Object.keys(groups.genericCategoryKeys)
     .sort((a, b) => categoryLabel(a, groups.categoryMeta[a]).localeCompare(categoryLabel(b, groups.categoryMeta[b])))
@@ -118,12 +105,12 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
 
   const sections: MenuSection[] = SECTION_ORDER.reduce<MenuSection[]>((acc, id) => {
     if (id === 'summary') {
-      acc.push({ id, label: 'Summary', items: sectionMap.summary });
+      acc.push({ id, label: 'Summary', items: [] });
       return acc;
     }
 
     if (id === 'general') {
-      acc.push({ id, label: generalLabel, items: sectionMap.general });
+      acc.push({ id, label: generalLabel, items: [] });
       return acc;
     }
 
@@ -155,11 +142,15 @@ export const groupKeysByTheme = (
   const properties = (schema.properties as Record<string, any>) || {};
   const orderConfig = sectionMeta?.order || [];
   const labelConfig = sectionMeta?.labels || {};
+  const allowedSections = new Set(orderConfig.concat('MISC'));
 
   const resolveSectionId = (key: string): string => {
     const prop = properties[key];
     const sectionId = (prop && prop['x-section']) || 'MISC';
-    return typeof sectionId === 'string' ? sectionId : 'MISC';
+    if (typeof sectionId !== 'string') {
+      return 'MISC';
+    }
+    return allowedSections.has(sectionId) ? sectionId : 'MISC';
   };
 
   const resolveSectionLabel = (id: string): string => {
