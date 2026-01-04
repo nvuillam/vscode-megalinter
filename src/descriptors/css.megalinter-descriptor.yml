@@ -1,0 +1,86 @@
+descriptor_id: CSS
+descriptor_type: format
+descriptor_flavors:
+  - all_flavors # Any project can contain CSS
+  - cupcake
+file_extensions:
+  - ".css"
+  - ".scss"
+  - ".saas"
+linters:
+  # StyleLint
+  - class: StyleLintLinter
+    linter_name: stylelint
+    linter_text: |
+      **Stylelint** is a mighty CSS linter that helps you avoid errors and enforce coding conventions in your stylesheets. It's designed to catch both syntax errors and problematic patterns while maintaining code consistency across projects.
+
+      **Key Features:**
+
+      - **Comprehensive Rule Set**: Over 100 built-in rules covering modern CSS syntax, features, and best practices
+      - **Multi-Language Support**: Handles CSS, SCSS, Sass, Less, SugarSS, and CSS-in-JS with embedded style extraction
+      - **Automatic Fixing**: Automatically repairs problems where possible, saving manual effort
+      - **Highly Extensible**: Plugin architecture allows custom rules and shareable configurations
+      - **Error Prevention**: Detects invalid syntax, problematic patterns, unknown properties, and malformed selectors
+      - **Convention Enforcement**: Enforces naming patterns, limits complexity, and maintains consistent code style
+      - **Robust Testing**: 15,000+ unit tests ensure reliability and accuracy
+      - **Industry Trusted**: Used by major companies like Google and GitHub for production codebases
+    name: CSS_STYLELINT
+    linter_spdx_license: MIT
+    linter_url: https://stylelint.io
+    linter_rules_url: https://stylelint.io/user-guide/rules/list
+    linter_repo: https://github.com/stylelint/stylelint
+    linter_banner_image_url: https://github.com/stylelint/stylelint/raw/main/identity/stylelint-icon-and-text-white.png
+    linter_rules_configuration_url: https://stylelint.io/user-guide/configure
+    linter_rules_inline_disable_url: https://stylelint.io/user-guide/ignore-code
+    # linter_megalinter_ref_url: https://stylelint.io/user-guide/integrations/other#analysis-platform-engines
+    cli_lint_mode: list_of_files
+    config_file_name: .stylelintrc.json
+    cli_config_arg_name: "--config"
+    cli_lint_fix_arg_name: "--fix"
+    cli_lint_errors_count: regex_number
+    cli_lint_errors_regex: "([0-9]+) errors"
+    cli_lint_warnings_count: regex_number
+    cli_lint_warnings_regex: "([0-9]+) warnings"
+    examples:
+      - "stylelint myfile.css"
+      - "stylelint --config .stylelintrc.json myfile.css myfile2.css myfile3.css"
+      - "stylelint --fix --config .stylelintrc.json myfile.css myfile2.css myfile3.css"
+    install:
+      dockerfile:
+        - |-
+          # renovate: datasource=npm depName=stylelint
+          ARG NPM_STYLELINT_VERSION=16.26.1
+        - |-
+          # renovate: datasource=npm depName=stylelint-config-standard
+          ARG NPM_STYLELINT_CONFIG_STANDARD_VERSION=39.0.1
+        - |-
+          # renovate: datasource=npm depName=stylelint-config-sass-guidelines
+          ARG NPM_STYLELINT_CONFIG_SASS_GUIDELINES_VERSION=12.1.0
+        - |-
+          # renovate: datasource=npm depName=stylelint-scss
+          ARG NPM_STYLELINT_SCSS_VERSION=6.14.0
+        - |-
+          # renovate: datasource=pypi depName=cpplint
+          ARG PIP_CPPLINT_VERSION=2.0.2
+      npm:
+        - stylelint@${NPM_STYLELINT_VERSION}
+        - stylelint-config-standard@${NPM_STYLELINT_CONFIG_STANDARD_VERSION}
+        - stylelint-config-sass-guidelines@${NPM_STYLELINT_CONFIG_SASS_GUIDELINES_VERSION}
+        - stylelint-scss@${NPM_STYLELINT_SCSS_VERSION}
+      pip:
+        - cpplint==${PIP_CPPLINT_VERSION}
+    ide:
+      emacs:
+        - name: flycheck
+          url: https://github.com/flycheck/flycheck
+      sublime:
+        - name: SublimeLinter-stylelint
+          url: https://github.com/SublimeLinter/SublimeLinter-stylelint
+        - name: SublimeLinter-contrib-stylelint_d
+          url: https://github.com/jo-sm/SublimeLinter-contrib-stylelint_d
+      vim:
+        - name: ale
+          url: https://github.com/dense-analysis/ale
+      vscode:
+        - name: vscode-stylelint
+          url: https://marketplace.visualstudio.com/items?itemName=stylelint.vscode-stylelint

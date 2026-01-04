@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 src/**
+!src/descriptors/**
 .gitignore
 .eslintrc.json
 tsconfig.json

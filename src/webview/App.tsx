@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { marked } from 'marked';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { ArrayFieldTemplateProps, RJSFSchema, UiSchema, WidgetProps } from '@rjsf/utils';
@@ -40,6 +41,17 @@ type ViewState = {
   activeLinterThemes: Record<string, Record<string, string>>;
 };
 
+type LinterDescriptorMetadata = {
+  descriptorId?: string;
+  name?: string;
+  linterName?: string;
+  url?: string;
+  repo?: string;
+  imageUrl?: string;
+  bannerImageUrl?: string;
+  text?: string;
+};
+
 // VS Code API type
 declare global {
   interface Window {
@@ -62,6 +74,7 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [configPath, setConfigPath] = useState<string>('');
+  const [linterMetadata, setLinterMetadata] = useState<Record<string, LinterDescriptorMetadata>>({});
   const [schemaSource, setSchemaSource] = useState<'remote' | 'local' | null>(
     null
   );
@@ -304,6 +317,7 @@ export const App: React.FC = () => {
         setFormData(message.config);
         setOriginalConfig(message.config || {});
         setConfigPath(message.configPath);
+        setLinterMetadata(message.linterMetadata || {});
         setConfigLoaded(true);
       } else if (message.type === 'navigate' && message.target) {
         applyNavigation(message.target as NavigationTarget);
@@ -450,6 +464,7 @@ export const App: React.FC = () => {
             activeLinterThemes={activeLinterThemes}
             setActiveLinterThemes={setActiveLinterThemes}
             highlightedKeys={highlightedKeys}
+            linterMetadata={linterMetadata}
           />
         </div>
       </div>
@@ -610,6 +625,7 @@ const MainTabs: React.FC<{
   activeLinterThemes: Record<string, Record<string, string>>;
   setActiveLinterThemes: (value: Record<string, Record<string, string>>) => void;
   highlightedKeys: Set<string>;
+  linterMetadata: Record<string, LinterDescriptorMetadata>;
 }> = ({
   schema,
   groups,
@@ -629,7 +645,8 @@ const MainTabs: React.FC<{
   setActiveDescriptorThemes,
   activeLinterThemes,
   setActiveLinterThemes,
-  highlightedKeys
+  highlightedKeys,
+  linterMetadata
 }) => {
   const descriptorOrder = useMemo(() => {
     if (descriptorOrderProp.length) {
@@ -912,29 +929,44 @@ const MainTabs: React.FC<{
       />
     );
 
-    const linterForm = (linterKey: string, keys: string[]) => (
-      <ThemedForm
-        baseSchema={schema}
-        keys={keys}
-        title={`${resolveCategoryLabel(linterKey)} linter`}
-        uiSchema={uiSchema}
-        formData={filterFormData(formData, keys)}
-        onSubsetChange={(k, subset) => onSubsetChange(k, subset)}
-        activeThemeTab={activeLinterThemes[descriptorId]?.[linterKey] || null}
-        setActiveThemeTab={(id) =>
-          setActiveLinterThemes({
-            ...activeLinterThemes,
-            [descriptorId]: {
-              ...(activeLinterThemes[descriptorId] || {}),
-              [linterKey]: id || ''
-            }
-          })
-        }
-        prefixToStrip={`${linterKey}_`}
-        sectionMeta={groups.sectionMeta}
-        highlightedKeys={highlightedKeys}
-      />
-    );
+    const linterForm = (linterKey: string, keys: string[]) => {
+      const linterLabel = resolveCategoryLabel(linterKey);
+      const introTab = {
+        id: 'description',
+        label: 'Description',
+        content: (
+          <LinterDescription
+            metadata={linterMetadata[linterKey]}
+            linterLabel={linterLabel}
+          />
+        )
+      };
+
+      return (
+        <ThemedForm
+          baseSchema={schema}
+          keys={keys}
+          title={`${linterLabel} linter`}
+          uiSchema={uiSchema}
+          formData={filterFormData(formData, keys)}
+          onSubsetChange={(k, subset) => onSubsetChange(k, subset)}
+          activeThemeTab={activeLinterThemes[descriptorId]?.[linterKey] || null}
+          setActiveThemeTab={(id) =>
+            setActiveLinterThemes({
+              ...activeLinterThemes,
+              [descriptorId]: {
+                ...(activeLinterThemes[descriptorId] || {}),
+                [linterKey]: id || ''
+              }
+            })
+          }
+          prefixToStrip={`${linterKey}_`}
+          sectionMeta={groups.sectionMeta}
+          highlightedKeys={highlightedKeys}
+          introTab={introTab}
+        />
+      );
+    };
 
     const activeContent =
       activeScope === 'descriptor'
@@ -1038,6 +1070,40 @@ const Breadcrumbs: React.FC<{
   );
 };
 
+const LinterDescription: React.FC<{
+  metadata?: LinterDescriptorMetadata;
+  linterLabel: string;
+}> = ({ metadata, linterLabel }) => {
+  const title = metadata?.linterName || metadata?.name || linterLabel;
+  const link = metadata?.url || metadata?.repo;
+  const linkLabel = link ? link.replace(/^https?:\/\//i, '') : '';
+  const image = metadata?.bannerImageUrl || metadata?.imageUrl;
+  const description = metadata?.text?.trim();
+  const html = useMemo(() => (description ? marked.parse(description) : ''), [description]);
+
+  return (
+    <div className="linter-description">
+      <div className="linter-description__header">
+        {image && <img src={image} alt={`${title} logo`} className="linter-description__image" />}
+        <div className="linter-description__titles">
+          <p className="eyebrow">Linter overview</p>
+          <h3 className="linter-description__name">{title}</h3>
+          {link && (
+            <a className="linter-description__link" href={link} target="_blank" rel="noreferrer">
+              {linkLabel || 'Open linter homepage'}
+            </a>
+          )}
+        </div>
+      </div>
+      {description ? (
+        <div className="linter-description__text" dangerouslySetInnerHTML={{ __html: html }} />
+      ) : (
+        <p className="muted">No description available for this linter yet.</p>
+      )}
+    </div>
+  );
+};
+
 const ThemedForm: React.FC<{
   baseSchema: RJSFSchema;
   keys: string[];
@@ -1050,6 +1116,7 @@ const ThemedForm: React.FC<{
   sectionMeta: SchemaGroups['sectionMeta'];
   prefixToStrip?: string;
   highlightedKeys: Set<string>;
+  introTab?: { id: string; label: string; content: ReactNode };
 }> = ({
   baseSchema,
   keys,
@@ -1061,7 +1128,8 @@ const ThemedForm: React.FC<{
   setActiveThemeTab,
   sectionMeta,
   prefixToStrip,
-  highlightedKeys
+  highlightedKeys,
+  introTab
 }) => {
   const filteredKeys = useMemo(
     () => keys.filter((key) => !isDeprecatedPropertyTitle(baseSchema, key)),
@@ -1073,49 +1141,59 @@ const ThemedForm: React.FC<{
     [filteredKeys, prefixToStrip, formData, baseSchema, sectionMeta]
   );
 
+  const combinedTabs = useMemo<Tab[]>(
+    () => (introTab ? [{ id: introTab.id, label: introTab.label }, ...tabs] : tabs),
+    [introTab, tabs]
+  );
+
   const effectiveActive = useMemo(() => {
-    if (activeThemeTab && grouped[activeThemeTab]) {
+    if (activeThemeTab && combinedTabs.some((t) => t.id === activeThemeTab)) {
       return activeThemeTab;
     }
-    return tabs[0]?.id || null;
-  }, [activeThemeTab, grouped, tabs]);
+    return combinedTabs[0]?.id || null;
+  }, [activeThemeTab, combinedTabs]);
 
   useEffect(() => {
-    if (!activeThemeTab && tabs[0]) {
-      setActiveThemeTab(tabs[0].id);
+    if (!activeThemeTab && combinedTabs[0]) {
+      setActiveThemeTab(combinedTabs[0].id);
     }
-  }, [activeThemeTab, setActiveThemeTab, tabs]);
+  }, [activeThemeTab, combinedTabs, setActiveThemeTab]);
 
-  if (!tabs.length) {
+  if (!combinedTabs.length) {
     return <p className="muted">No fields available</p>;
   }
 
-  const activeKeys = effectiveActive ? grouped[effectiveActive] || [] : [];
-  const activeLabel = tabs.find((t) => t.id === effectiveActive)?.label || title;
+  const isIntroTabActive = introTab && effectiveActive === introTab.id;
+  const activeKeys = !isIntroTabActive && effectiveActive ? grouped[effectiveActive] || [] : [];
+  const activeLabel = combinedTabs.find((t) => t.id === effectiveActive)?.label || title;
   const widgets = useMemo(() => ({ dualList: DualListWidget }), []);
   const templates = useMemo(() => ({ ArrayFieldTemplate: TagArrayFieldTemplate }), []);
 
-  if (!filteredKeys.length) {
+  if (!filteredKeys.length && !introTab) {
     return <p className="muted">No fields available</p>;
   }
 
   return (
     <div className="tab-content">
-      {tabs.length > 1 && (
-        <TabBar tabs={tabs} activeTab={effectiveActive || ''} onSelect={(id) => setActiveThemeTab(id)} />
+      {combinedTabs.length > 1 && (
+        <TabBar tabs={combinedTabs} activeTab={effectiveActive || ''} onSelect={(id) => setActiveThemeTab(id)} />
       )}
-      <Form
-        key={`${title}-${effectiveActive || 'default'}`}
-        schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
-        uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema, highlightedKeys)}
-        formData={filterFormData(formData, activeKeys)}
-        validator={validator}
-        templates={templates}
-        widgets={widgets}
-        onChange={({ formData: subset }) => onSubsetChange(activeKeys, subset)}
-        liveValidate={false}
-        showErrorList="bottom"
-      />
+      {isIntroTabActive && introTab ? (
+        <div className="linter-description__panel">{introTab.content}</div>
+      ) : (
+        <Form
+          key={`${title}-${effectiveActive || 'default'}`}
+          schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
+          uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema, highlightedKeys)}
+          formData={filterFormData(formData, activeKeys)}
+          validator={validator}
+          templates={templates}
+          widgets={widgets}
+          onChange={({ formData: subset }) => onSubsetChange(activeKeys, subset)}
+          liveValidate={false}
+          showErrorList="bottom"
+        />
+      )}
     </div>
   );
 };

@@ -14,10 +14,7 @@
   "categories": [
     "Other"
   ],
-  "icon": "media/megalinter.svg",
   "activationEvents": [
-    "onCommand:megalinter.openConfiguration",
-    "onCommand:megalinter.revealSection",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -91,6 +88,7 @@
     "@rjsf/validator-ajv8": "^5.13.0",
     "@types/yaml": "^1.9.6",
     "js-yaml": "^4.1.0",
+    "marked": "^11.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "yaml": "^2.8.2"

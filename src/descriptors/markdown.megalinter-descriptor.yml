@@ -1,0 +1,226 @@
+descriptor_id: MARKDOWN
+descriptor_type: format
+descriptor_flavors:
+  - all_flavors # Any project can contain Markdown
+  - cupcake
+  - formatters
+file_extensions:
+  - ".md"
+linters:
+  # MarkdownLint
+  - linter_name: markdownlint
+    is_formatter: true
+    activation_rules:
+      - type: variable
+        variable: MARKDOWN_DEFAULT_STYLE
+        expected_value: markdownlint
+        default_value: markdownlint
+    linter_text: |
+      **markdownlint** is a Node.js static analysis tool and linter for Markdown files that enforces standards and consistency across your documentation. It uses the micromark parser and honors CommonMark specifications while supporting popular GitHub Flavored Markdown extensions.
+
+      **Key Features:**
+
+      - **Comprehensive Rule Set**: Over 50 built-in rules covering heading styles, list formatting, line length, whitespace management, and link validation
+      - **Format Support**: Full CommonMark compliance with GitHub Flavored Markdown, tables, autolinks, and extension support for directives, footnotes, and math
+      - **Automatic Fixing**: Many rules can automatically repair formatting issues, saving manual effort
+      - **Flexible Configuration**: Extensive customization through JSON configuration files with rule-specific settings and style presets
+      - **Inline Control**: HTML comment syntax for enabling/disabling rules within documents (`<!-- markdownlint-disable -->`)
+      - **Custom Rules**: Extensible architecture allowing project-specific linting requirements
+      - **Performance Optimized**: Fast analysis suitable for large documentation projects
+
+      [MarkdownLint](https://github.com/DavidAnson/markdownlint) is run through [markdownlint-cli](https://github.com/igorshubovych/markdownlint-cli)
+    linter_url: https://github.com/DavidAnson/markdownlint
+    linter_repo: https://github.com/DavidAnson/markdownlint
+    linter_spdx_license: MIT
+    linter_rules_url: https://github.com/DavidAnson/markdownlint#rules--aliases
+    linter_image_url: https://davidanson.gallerycdn.vsassets.io/extensions/davidanson/vscode-markdownlint/0.37.1/1601748708034/Microsoft.VisualStudio.Services.Icons.Default
+    linter_rules_configuration_url: https://github.com/igorshubovych/markdownlint-cli#configuration
+    linter_rules_inline_disable_url: https://github.com/DavidAnson/markdownlint#configuration
+    linter_rules_ignore_config_url: https://github.com/igorshubovych/markdownlint-cli#ignoring-files
+    cli_lint_mode: list_of_files
+    config_file_name: .markdownlint.json
+    cli_lint_fix_arg_name: "--fix"
+    cli_lint_errors_count: total_lines
+    test_folder: markdown_markdownlint
+    examples:
+      - "markdownlint myfile.md"
+      - "markdownlint -c .markdownlint.json myfile.md"
+      - "markdownlint --fix -c .markdownlint.json myfile.md"
+    install:
+      dockerfile:
+        - |-
+          # renovate: datasource=npm depName=markdownlint-cli
+          ARG NPM_MARKDOWNLINT_CLI_VERSION=0.47.0
+      npm:
+        - markdownlint-cli@${NPM_MARKDOWNLINT_CLI_VERSION}
+    ide:
+      sublime:
+        - name: SublimeLinter-contrib-markdownlint
+          url: https://packagecontrol.io/packages/SublimeLinter-contrib-markdownlint
+      vim:
+        - name: coc-markdownlint
+          url: https://github.com/fannheyward/coc-markdownlint
+      vscode:
+        - name: vscode-markdownlint
+          url: https://marketplace.visualstudio.com/items/DavidAnson.vscode-markdownlint
+  # remark-lint
+  - linter_name: remark-lint
+    linter_text: |
+      **remark-lint** is a powerful plugin for the remark markdown processor that provides comprehensive linting and formatting capabilities for Markdown files. Built on the unified collective's remark ecosystem, it offers extensive rule-based validation with automatic fixing capabilities and a rich plugin architecture for customized Markdown processing workflows.
+
+      **Key Features:**
+
+      - **Unified Ecosystem**: Part of the remark/unified processing pipeline with access to a vast plugin ecosystem
+      - **Comprehensive Rule Set**: Extensive built-in rules for syntax consistency, formatting standards, and structural validation
+      - **Automatic Fixing**: Many rules can automatically repair Markdown issues, improving workflow efficiency
+      - **Plugin Architecture**: Highly extensible with 100+ community plugins for specialized linting requirements
+      - **AST-Based Processing**: Uses Abstract Syntax Tree parsing for deep, accurate Markdown analysis
+      - **Configurable Presets**: Pre-configured rule sets for common style guides and formatting conventions
+      - **Inline Control**: Marker-based comments for enabling/disabling rules within documents
+      - **Performance Optimized**: Efficient processing suitable for large documentation projects and automated pipelines
+      - **Standards Compliant**: Supports CommonMark and GitHub Flavored Markdown specifications with extension support
+    disabled: true
+    disabled_reason: "Bug in remark-lint: <https://github.com/remarkjs/remark-lint/issues/322>"
+    is_formatter: true
+    activation_rules:
+      - type: variable
+        variable: MARKDOWN_DEFAULT_STYLE
+        expected_value: remark-lint
+        default_value: markdownlint
+    linter_url: https://remark.js.org/
+    linter_repo: https://github.com/remarkjs/remark-lint
+    linter_spdx_license: MIT
+    linter_image_url: https://raw.githubusercontent.com/remarkjs/remark-lint/02295bc/logo.svg?sanitize=true
+    linter_rules_url: https://github.com/remarkjs/remark-lint/blob/main/doc/rules.md#list-of-rules
+    linter_rules_configuration_url: https://github.com/remarkjs/remark-lint#configuring-remark-lint
+    linter_rules_inline_disable_url: https://github.com/remarkjs/remark-message-control#markers
+    config_file_name: ".remarkrc"
+    cli_executable: remark
+    cli_config_arg_name: "--rc-path"
+    cli_lint_extra_args:
+      - "--frail"
+    cli_lint_fix_arg_name: "-o"
+    test_folder: markdown_remark
+    test_variables:
+      MARKDOWN_DEFAULT_STYLE: remark-lint
+    examples:
+      - "remark --frail myfile.md"
+      - "remark --frail --rc-path .remarkrc myfile.md"
+      - "remark --frail -o --rc-path .remarkrc myfile.md"
+    install:
+      dockerfile:
+        - |-
+          # renovate: datasource=npm depName=remark-cli
+          ARG NPM_REMARK_CLI_VERSION=12.0.1
+        - |-
+          # renovate: datasource=npm depName=remark-preset-lint-recommended
+          ARG NPM_REMARK_PRESET_LINT_RECOMMENDED_VERSION=7.0.1
+      npm:
+        - remark-cli@${NPM_REMARK_CLI_VERSION}
+        - remark-preset-lint-recommended@${NPM_REMARK_PRESET_LINT_RECOMMENDED_VERSION}
+    ide:
+      sublime:
+        - name: SublimeLinter-contrib-remark-lint
+          url: https://packagecontrol.io/packages/SublimeLinter-contrib-remark-lint
+      vim:
+        - name: ale
+          url: https://github.com/w0rp/ale
+      vscode:
+        - name: vscode-remark-lint
+          url: https://github.com/drewbourne/vscode-remark-lint
+  # Markdown table formatter
+  - linter_name: markdown-table-formatter
+    is_formatter: true
+    linter_text: |
+      **markdown-table-formatter** is a specialized formatting tool that detects and automatically corrects improperly formatted Markdown tables, ensuring consistent presentation and improved readability across documentation.
+
+      **Key Features:**
+
+      - **Automatic Table Detection**: Identifies poorly formatted Markdown tables with misaligned columns and inconsistent spacing
+      - **Intelligent Alignment**: Automatically aligns table columns and adjusts padding for optimal readability
+      - **Consistent Formatting**: Standardizes table structure with uniform spacing, borders, and column alignment
+      - **Preserves Content**: Maintains all table data while improving presentation and formatting
+      - **Batch Processing**: Efficiently formats multiple tables within single or multiple Markdown files
+      - **Non-Destructive**: Only modifies table formatting without affecting other Markdown content
+      - **Standards Compliance**: Ensures tables follow Markdown table formatting best practices and conventions
+    linter_url: https://www.npmjs.com/package/markdown-table-formatter
+    linter_repo: https://github.com/nvuillam/markdown-table-formatter
+    linter_spdx_license: MIT
+    linter_rules_configuration_url: https://github.com/nvuillam/markdown-table-formatter#options
+    linter_rules_inline_disable_url: https://github.com/nvuillam/markdown-table-formatter#ignoring-code-blocks
+    cli_lint_mode: list_of_files
+    cli_lint_extra_args:
+      - "--check"
+    cli_lint_fix_arg_name: "--megalinter-fix-flag" # Workaround for MegaLinter
+    cli_lint_fix_remove_args:
+      - "--check"
+    examples:
+      - "markdown-table-formatter --check myfile.md" # Check only
+      - "markdown-table-formatter myfile.md" # Apply formatting
+      - "markdown-table-formatter myfile.md myfile2.md myfile3.md" # Apply formatting
+    install:
+      dockerfile:
+        - |-
+          # renovate: datasource=npm depName=markdown-table-formatter
+          ARG NPM_MARKDOWN_TABLE_FORMATTER_VERSION=1.7.0
+      npm:
+        - markdown-table-formatter@${NPM_MARKDOWN_TABLE_FORMATTER_VERSION}
+    ide:
+      vscode:
+        - name: Markdown Table Prettify Extension
+          url: https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt
+  # rumdl
+  - linter_name: rumdl
+    can_output_sarif: true
+    is_formatter: true
+    activation_rules:
+      - type: variable
+        variable: MARKDOWN_DEFAULT_STYLE
+        expected_value: rumdl
+        default_value: markdownlint
+    linter_text: |
+      **rumdl** is a high-performance Markdown linter and formatter that helps ensure consistency and best practices in your Markdown files. Inspired by ruff 's approach to Python linting, rumdl brings similar speed and developer experience improvements to the Markdown ecosystem.
+
+      **Key Features:**
+
+      - Built for speed with Rust - significantly faster than alternatives
+      - 57 lint rules covering common Markdown issues
+      - Automatic formatting with --fix for files and stdin/stdout
+      - Zero dependencies - single binary with no runtime requirements
+      - Highly configurable with TOML-based config files
+      - Multiple installation options - Rust, Python, standalone binaries
+      - Installable via pip for Python users
+      - Modern CLI with detailed error reporting
+      - CI/CD friendly with non-zero exit code on errors
+    linter_url: https://github.com/rvben/rumdl
+    linter_repo: https://github.com/rvben/rumdl
+    linter_spdx_license: MIT
+    linter_rules_url: https://github.com/rvben/rumdl/blob/main/docs/RULES.md
+    linter_rules_configuration_url: https://github.com/rvben/rumdl/blob/main/docs/global-settings.md
+    linter_rules_inline_disable_url: https://github.com/rvben/rumdl/blob/main/docs/inline-configuration.md
+    config_file_name: .rumdl.toml
+    test_folder: markdown_rumdl
+    test_variables:
+      MARKDOWN_DEFAULT_STYLE: rumdl
+    cli_lint_mode: list_of_files
+    cli_lint_extra_args:
+      - "check"
+    cli_lint_fix_arg_name: "--fix"
+    cli_sarif_args:
+      - --output-format
+      - sarif
+    examples:
+      - "rumdl check myfile.md" # Check only
+      - "rumdl check --fix myfile.md" # Apply formatting
+      - "rumdl check --fix myfile.md myfile2.md myfile3.md" # Apply formatting
+    install:
+      dockerfile:
+        - |-
+          # renovate: datasource=pypi depName=rumdl
+          ARG RUMDL_MYPY_VERSION=0.0.208
+      pip:
+        - rumdl==${RUMDL_MYPY_VERSION}
+    ide:
+      vscode:
+        - name: rumdl - Markdown Linter
+          url: https://marketplace.visualstudio.com/items?itemName=rvben.rumdl

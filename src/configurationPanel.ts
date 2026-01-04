@@ -4,6 +4,17 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import type { NavigationTarget } from './extension';
 
+type LinterDescriptorMetadata = {
+  descriptorId?: string;
+  name?: string;
+  linterName?: string;
+  url?: string;
+  repo?: string;
+  imageUrl?: string;
+  bannerImageUrl?: string;
+  text?: string;
+};
+
 export class ConfigurationPanel {
   public static currentPanel: ConfigurationPanel | undefined;
   private readonly _panel: vscode.WebviewPanel;
@@ -13,6 +24,7 @@ export class ConfigurationPanel {
   private _pendingNavigation: NavigationTarget | null = null;
   private _statusMessage?: vscode.Disposable;
   private _disposables: vscode.Disposable[] = [];
+  private _linterMetadataCache: Record<string, LinterDescriptorMetadata> | null = null;
 
   public static createOrShow(
     extensionUri: vscode.Uri,
@@ -110,6 +122,88 @@ export class ConfigurationPanel {
     }
   }
 
+  private _loadDescriptorMetadata(): Record<string, LinterDescriptorMetadata> {
+    if (this._linterMetadataCache) {
+      return this._linterMetadataCache;
+    }
+
+    const descriptorDir = path.join(this._extensionUri.fsPath, 'src', 'descriptors');
+    const metadata: Record<string, LinterDescriptorMetadata> = {};
+
+    if (!fs.existsSync(descriptorDir)) {
+      this._linterMetadataCache = metadata;
+      return metadata;
+    }
+
+    const descriptorFiles = fs
+      .readdirSync(descriptorDir)
+      .filter((file) => file.toLowerCase().endsWith('.megalinter-descriptor.yml'));
+
+    descriptorFiles.forEach((file) => {
+      const fullPath = path.join(descriptorDir, file);
+      try {
+        const content = fs.readFileSync(fullPath, 'utf8');
+        const parsed = YAML.parse(content) as any;
+        const descriptorId = typeof parsed?.descriptor_id === 'string' ? parsed.descriptor_id : undefined;
+        const linters = Array.isArray(parsed?.linters) ? parsed.linters : [];
+
+        linters.forEach((linter: any) => {
+          const nameField = typeof linter?.name === 'string' ? linter.name : undefined;
+          const linterName = typeof linter?.linter_name === 'string' ? linter.linter_name : undefined;
+
+          const deriveKey = (): string | undefined => {
+            if (nameField) {
+              return nameField;
+            }
+            if (descriptorId && linterName) {
+              const normalized = `${descriptorId}_${linterName}`
+                .replace(/[^A-Za-z0-9_]+/g, '_')
+                .replace(/_{2,}/g, '_')
+                .replace(/_+$/, '')
+                .toUpperCase();
+              return normalized;
+            }
+            return undefined;
+          };
+
+          const primaryKey = deriveKey();
+          if (!primaryKey) {
+            return;
+          }
+
+          const meta: LinterDescriptorMetadata = {
+            descriptorId,
+            name: primaryKey,
+            linterName,
+            url: typeof linter?.linter_url === 'string' ? linter.linter_url : undefined,
+            repo: typeof linter?.linter_repo === 'string' ? linter.linter_repo : undefined,
+            imageUrl: typeof linter?.linter_image_url === 'string' ? linter.linter_image_url : undefined,
+            bannerImageUrl:
+              typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
+            text: typeof linter?.linter_text === 'string' ? linter.linter_text : undefined
+          };
+
+          metadata[primaryKey] = meta;
+
+          // Also index by descriptor-linter combination when a name field was present, to cover both forms
+          if (nameField && descriptorId && linterName) {
+            const aliasKey = `${descriptorId}_${linterName}`
+              .replace(/[^A-Za-z0-9_]+/g, '_')
+              .replace(/_{2,}/g, '_')
+              .replace(/_+$/, '')
+              .toUpperCase();
+            metadata[aliasKey] = meta;
+          }
+        });
+      } catch (err) {
+        console.warn(`Failed to read descriptor metadata from ${file}`, err);
+      }
+    });
+
+    this._linterMetadataCache = metadata;
+    return metadata;
+  }
+
   private _sendConfig() {
     let config: any = {};
 
@@ -124,10 +218,13 @@ export class ConfigurationPanel {
       }
     }
 
+    const linterMetadata = this._loadDescriptorMetadata();
+
     this._panel.webview.postMessage({
       type: 'configData',
       config: config,
-      configPath: this._configPath
+      configPath: this._configPath,
+      linterMetadata
     });
   }
 
