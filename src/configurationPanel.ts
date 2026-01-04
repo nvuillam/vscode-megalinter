@@ -13,6 +13,7 @@ type LinterDescriptorMetadata = {
   imageUrl?: string;
   bannerImageUrl?: string;
   text?: string;
+  urls?: Array<{ label: string; href: string }>;
 };
 
 type CachedDescriptorMetadata = {
@@ -20,7 +21,7 @@ type CachedDescriptorMetadata = {
   data: Record<string, LinterDescriptorMetadata>;
 };
 
-const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache';
+const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache.v3';
 const DESCRIPTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class ConfigurationPanel {
@@ -155,6 +156,52 @@ export class ConfigurationPanel {
         const nameField = typeof linter?.name === 'string' ? linter.name : undefined;
         const linterName = typeof linter?.linter_name === 'string' ? linter.linter_name : undefined;
 
+        const seenLinks = new Set<string>();
+        const labelFromKey = (key: string): string => {
+          const lower = key.toLowerCase();
+          const explicit: Record<string, string> = {
+            linter_rules_url: 'Rules',
+            linter_rules_configuration_url: 'Rules Configuration',
+            linter_rules_inline_disable_url: 'Inline disable',
+            linter_rules_ignore_config_url: 'Ignoring files',
+            linter_megalinter_ref_url: 'Link to MegaLinter'
+          };
+
+          if (explicit[lower]) {
+            return explicit[lower];
+          }
+
+          if (lower.includes('rules_configuration')) {
+            return 'Rules Configuration';
+          }
+          const withoutLinter = key.replace(/linter/gi, '');
+          const withoutUrl = withoutLinter.replace(/url/gi, '');
+          const cleaned = withoutUrl.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+          if (!cleaned) {
+            return 'Link';
+          }
+          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        };
+
+        const imagePattern = /(\.)(png|jpe?g|gif|webp|svg|ico|bmp|avif)(\?|#|$)/i;
+
+        const addLink = (label: string, href?: string) => {
+          if (!href || typeof href !== 'string' || !href.startsWith('http')) {
+            return;
+          }
+          if (imagePattern.test(href)) {
+            return;
+          }
+          const normalized = href.trim();
+          if (!normalized || seenLinks.has(normalized)) {
+            return;
+          }
+          seenLinks.add(normalized);
+          urls.push({ label: label || normalized, href: normalized });
+        };
+
+        const urls: Array<{ label: string; href: string }> = [];
+
         const deriveKey = (): string | undefined => {
           if (nameField) {
             return nameField;
@@ -186,6 +233,26 @@ export class ConfigurationPanel {
             typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
           text: typeof linter?.linter_text === 'string' ? linter.linter_text : undefined
         };
+
+        addLink('Homepage', meta.url);
+        addLink('Repository', meta.repo);
+
+        Object.entries(linter).forEach(([key, value]) => {
+          if (typeof value !== 'string') {
+            return;
+          }
+          const lowerKey = key.toLowerCase();
+          if (lowerKey.includes('banner_image_url') || lowerKey.includes('image_url')) {
+            return;
+          }
+          if (value.startsWith('http')) {
+            addLink(labelFromKey(key), value);
+          }
+        });
+
+        if (urls.length) {
+          meta.urls = urls;
+        }
 
         metadata[primaryKey] = meta;
 
@@ -292,8 +359,11 @@ export class ConfigurationPanel {
     const now = Date.now();
     const cacheIsFresh =
       cached && typeof cached.timestamp === 'number' && now - cached.timestamp < DESCRIPTOR_CACHE_TTL_MS;
+    const cacheHasLinks = cached?.data
+      ? Object.values(cached.data).some((meta) => Array.isArray(meta?.urls) && meta.urls.length > 0)
+      : false;
 
-    if (cacheIsFresh && cached?.data && Object.keys(cached.data).length > 0) {
+    if (cacheIsFresh && cacheHasLinks && cached?.data && Object.keys(cached.data).length > 0) {
       this._linterMetadataCache = cached.data;
       return cached.data;
     }

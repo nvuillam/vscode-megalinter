@@ -888,6 +888,42 @@ body {
   margin: 4px 0;
 }
 
+.linter-description__body {
+  display: grid;
+  grid-template-columns: minmax(0, 2.25fr) minmax(140px, 180px);
+  gap: 12px;
+  align-items: start;
+}
+
+.linter-description__links {
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.linter-description__links {
+  padding: 8px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.linter-description__link-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 960px) {
+  .linter-description__body {
+    grid-template-columns: 1fr;
+  }
+}
+
 .descriptor-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

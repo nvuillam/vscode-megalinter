@@ -58,6 +58,7 @@ type LinterDescriptorMetadata = {
   imageUrl?: string;
   bannerImageUrl?: string;
   text?: string;
+  urls?: Array<{ label: string; href: string }>;
 };
 
 type CachedSchema = {
@@ -1552,6 +1553,7 @@ const LinterDescription: React.FC<{
   const linkLabel = link ? link.replace(/^https?:\/\//i, '') : '';
   const image = metadata?.bannerImageUrl || metadata?.imageUrl;
   const description = metadata?.text?.trim();
+  const links = metadata?.urls || [];
   const html = useMemo(() => (description ? marked.parse(description) : ''), [description]);
 
   return (
@@ -1568,11 +1570,30 @@ const LinterDescription: React.FC<{
           )}
         </div>
       </div>
-      {description ? (
-        <div className="linter-description__text" dangerouslySetInnerHTML={{ __html: html }} />
-      ) : (
-        <p className="muted">No description available for this linter yet.</p>
-      )}
+      <div className="linter-description__body">
+        {description ? (
+          <div className="linter-description__text" dangerouslySetInnerHTML={{ __html: html }} />
+        ) : (
+          <p className="muted">No description available for this linter yet.</p>
+        )}
+        {links.length > 0 && (
+          <div className="linter-description__links">
+            <p className="eyebrow">Links</p>
+            <ul className="linter-description__link-list">
+              {links.map((item) => {
+                const label = item.label || item.href.replace(/^https?:\/\//i, '');
+                return (
+                  <li key={item.href}>
+                    <a className="linter-description__link" href={item.href} target="_blank" rel="noreferrer">
+                      {label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
