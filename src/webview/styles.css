@@ -8,6 +8,13 @@ body {
     var(--vscode-editor-background);
 }
 
+:root,
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -312,15 +319,15 @@ body {
 }
 
 .container {
-  max-width: 1180px;
   width: 100%;
-  margin: 0 auto;
-  padding: 0 20px 32px;
+  max-width: none;
+  margin: 0;
+  padding: 0 12px 32px;
 }
 
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
 }
@@ -633,6 +640,7 @@ body {
   border-radius: 10px;
   padding: 16px;
   box-shadow: none;
+  min-width: 0;
 }
 
 .tabs {

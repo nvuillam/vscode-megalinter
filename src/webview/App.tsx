@@ -4,7 +4,7 @@ import { marked } from 'marked';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { ArrayFieldTemplateProps, RJSFSchema, UiSchema, WidgetProps } from '@rjsf/utils';
-import bundledSchema from '../schema/megalinter-configuration.jsonschema.json';
+import bundledSchema from '../descriptors/schemas/megalinter-configuration.jsonschema.json';
 import { buildPresenceMaps, hasAnyKeySet } from '../shared/configPresence';
 import { extractGroups, filterRemovedLintersFromSchema, SchemaGroups } from '../shared/schemaUtils';
 import {
