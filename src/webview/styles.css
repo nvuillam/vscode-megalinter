@@ -1306,3 +1306,79 @@ body {
 .string-list__add {
   align-self: flex-start;
 }
+
+/* Search Component */
+.home__search-section {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.home__search-container {
+  position: relative;
+  width: 100%;
+}
+
+.home__search-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 1px solid var(--vscode-input-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.home__search-input:focus {
+  border-color: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.home__search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.home__search-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.home__search-item:last-child {
+  border-bottom: none;
+}
+
+.home__search-item:hover {
+  background: var(--vscode-list-hoverBackground);
+  color: var(--vscode-list-hoverForeground);
+}
+
+.home__search-item-label {
+  font-weight: 500;
+}
+
+.home__search-item-type {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  text-transform: uppercase;
+}

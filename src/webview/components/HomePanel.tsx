@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { HomePanelProps, VSCodeAPI } from '../types';
+import type { HomePanelProps, VSCodeAPI, SearchItem } from '../types';
 
 declare const vscode: VSCodeAPI;
 
@@ -23,10 +23,33 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   reportersLabel,
   hasConfiguration,
   descriptorNavigationReady,
-  reporterNavigationReady
+  reporterNavigationReady,
+  searchItems,
+  onSearchSelect
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>(logoUrl);
   const [bannerSrc, setBannerSrc] = useState<string>(bannerUrl);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const filteredItems = React.useMemo(() => {
+    if (!searchTerm || !searchItems) return [];
+    const lower = searchTerm.toLowerCase();
+    return searchItems.filter(item => item.label.toLowerCase().includes(lower)).slice(0, 10);
+  }, [searchTerm, searchItems]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setShowSuggestions(true);
+  };
+
+  const handleSelect = (item: SearchItem) => {
+    setSearchTerm('');
+    setShowSuggestions(false);
+    if (onSearchSelect) {
+      onSearchSelect(item);
+    }
+  };
 
   const renderInstallOrUpgrade = () => {
     if (!configLoaded) {
@@ -121,6 +144,34 @@ export const HomePanel: React.FC<HomePanelProps> = ({
             >
               Open MegaLinter docs
             </a>
+          </div>
+
+          <div className="home__search-section">
+            <div className="home__search-container">
+              <input
+                type="text"
+                className="home__search-input"
+                placeholder="Search for a descriptor, linter or reporter..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              />
+              {showSuggestions && searchTerm && filteredItems.length > 0 && (
+                <ul className="home__search-suggestions">
+                  {filteredItems.map((item) => (
+                    <li
+                      key={`${item.type}-${item.id}`}
+                      className="home__search-item"
+                      onClick={() => handleSelect(item)}
+                    >
+                      <span className="home__search-item-label">{item.label}</span>
+                      <span className="home__search-item-type">{item.type}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>

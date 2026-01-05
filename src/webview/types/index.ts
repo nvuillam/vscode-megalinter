@@ -157,6 +157,15 @@ export interface BreadcrumbItem {
   options?: BreadcrumbOption[];
 }
 
+export interface SearchItem {
+  id: string;
+  label: string;
+  type: 'descriptor' | 'linter' | 'reporter';
+  descriptorId?: string;
+  linterId?: string;
+  categoryId?: string;
+}
+
 // ============================================================================
 // Component Props Types
 // ============================================================================
@@ -182,6 +191,8 @@ export interface HomePanelProps {
   hasConfiguration: boolean;
   descriptorNavigationReady: boolean;
   reporterNavigationReady: boolean;
+  searchItems: SearchItem[];
+  onSearchSelect: (item: SearchItem) => void;
 }
 
 export interface NavigationMenuProps {

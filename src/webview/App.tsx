@@ -30,7 +30,8 @@ import type {
   NavigationTarget,
   PersistedState,
   VSCodeAPI,
-  WebViewMessage
+  WebViewMessage,
+  SearchItem
 } from './types';
 
 const OX_SECURITY_LOGO = 'https://www.ox.security/wp-content/uploads/2025/10/logo-short-new.svg';
@@ -165,6 +166,70 @@ export const App: React.FC = () => {
     const meta = groups.categoryMeta[firstGenericCategoryId];
     return prettifyId(meta?.label || firstGenericCategoryId);
   }, [firstGenericCategoryId, groups]);
+
+  const searchItems = useMemo(() => {
+    if (!groups) {
+      return [];
+    }
+    const items: SearchItem[] = [];
+
+    // Descriptors
+    Object.keys(groups.descriptorKeys).forEach((id) => {
+      const meta = groups.categoryMeta[id];
+      items.push({
+        id,
+        label: prettifyId(meta?.label || id),
+        type: 'descriptor',
+        descriptorId: id
+      });
+    });
+
+    // Reporters (Generic Categories)
+    Object.keys(groups.genericCategoryKeys).forEach((id) => {
+      const meta = groups.categoryMeta[id];
+      items.push({
+        id,
+        label: prettifyId(meta?.label || id),
+        type: 'reporter',
+        categoryId: id
+      });
+    });
+
+    // Linters
+    Object.entries(groups.linterKeys).forEach(([descriptorId, linters]) => {
+      const descriptorLabel = prettifyId(descriptorId);
+      Object.keys(linters).forEach((linterId) => {
+        const meta = groups.categoryMeta[linterId];
+        // Try to get a cleaner label if possible, otherwise prettify ID
+        let label = prettifyId(meta?.label || linterId);
+
+        // Remove descriptor name prefix if present to avoid duplication
+        if (label.toLowerCase().startsWith(descriptorLabel.toLowerCase() + ' ')) {
+          label = label.substring(descriptorLabel.length + 1);
+        }
+        
+        items.push({
+          id: linterId,
+          label: `${label} (${descriptorLabel})`, // Add context
+          type: 'linter',
+          descriptorId,
+          linterId
+        });
+      });
+    });
+
+    return items.sort((a, b) => a.label.localeCompare(b.label));
+  }, [groups]);
+
+  const handleSearchSelect = (item: SearchItem) => {
+    if (item.type === 'descriptor' && item.descriptorId) {
+      openDescriptor(item.descriptorId, 'descriptor');
+    } else if (item.type === 'reporter' && item.categoryId) {
+      openCategory(item.categoryId);
+    } else if (item.type === 'linter' && item.descriptorId && item.linterId) {
+      openDescriptor(item.descriptorId, item.linterId);
+    }
+  };
 
   useEffect(() => {
     const viewState: PersistedState = {
@@ -446,6 +511,8 @@ export const App: React.FC = () => {
               hasConfiguration={configuredKeyCount > 0}
               descriptorNavigationReady={!!firstDescriptorId}
               reporterNavigationReady={!!firstGenericCategoryId}
+              searchItems={searchItems}
+              onSearchSelect={handleSearchSelect}
             />
           ) : (
             <MainTabs
