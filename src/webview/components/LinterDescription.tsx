@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { marked } from 'marked';
 import type { LinterDescriptionProps } from '../types';
 
-export const LinterDescription: React.FC<LinterDescriptionProps> = ({ metadata, linterLabel }) => {
+export const LinterDescription: React.FC<LinterDescriptionProps> = ({ metadata, linterLabel, descriptorId, linterId }) => {
   const title = metadata?.linterName || metadata?.name || linterLabel;
   const link = metadata?.url || metadata?.repo;
   const linkLabel = link ? link.replace(/^https?:\/\//i, '') : '';
@@ -10,6 +10,14 @@ export const LinterDescription: React.FC<LinterDescriptionProps> = ({ metadata, 
   const description = metadata?.text?.trim();
   const links = metadata?.urls || [];
   const html = useMemo(() => (description ? marked.parse(description) : ''), [description]);
+
+  const megaLinterDocUrl = useMemo(() => {
+    if (descriptorId && metadata?.linterName) {
+      const normalizedLinterName = metadata.linterName.toLowerCase().replace(/-/g, '_');
+      return `https://megalinter.io/latest/descriptors/${descriptorId.toLowerCase()}_${normalizedLinterName}/`;
+    }
+    return null;
+  }, [descriptorId, metadata]);
 
   return (
     <div className="linter-description">
@@ -24,6 +32,17 @@ export const LinterDescription: React.FC<LinterDescriptionProps> = ({ metadata, 
             </a>
           )}
         </div>
+        {megaLinterDocUrl && (
+          <a
+            className="pill-button pill-button--solid"
+            href={megaLinterDocUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ marginLeft: 'auto' }}
+          >
+            MegaLinter Documentation
+          </a>
+        )}
       </div>
       <div className="linter-description__body">
         {description ? (

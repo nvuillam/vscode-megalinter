@@ -397,6 +397,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           <LinterDescription
             metadata={linterMetadata[linterKey]}
             linterLabel={linterLabel}
+            descriptorId={descriptorId}
+            linterId={linterKey}
           />
         )
       };

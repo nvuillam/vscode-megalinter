@@ -198,6 +198,8 @@ export interface BreadcrumbsProps {
 export interface LinterDescriptionProps {
   metadata?: LinterDescriptorMetadata;
   linterLabel: string;
+  descriptorId?: string;
+  linterId?: string;
 }
 
 export interface ThemedFormProps {
