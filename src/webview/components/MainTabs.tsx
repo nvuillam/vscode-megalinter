@@ -187,7 +187,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
         <div className="summary-panel">
           <Breadcrumbs
             items={[
-              { id: 'home', label: 'MegaLinter home', onClick: goHome },
+              { id: 'home', label: 'MegaLinter Home', onClick: goHome },
               { id: 'summary', label: 'Summary' }
             ]}
           />
@@ -203,7 +203,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
       <div className="summary-panel">
         <Breadcrumbs
           items={[
-            { id: 'home', label: 'MegaLinter home', onClick: goHome },
+            { id: 'home', label: 'MegaLinter Home', onClick: goHome },
             { id: 'summary', label: 'Summary' }
           ]}
         />
@@ -233,7 +233,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
     <div className="general-panel">
       <Breadcrumbs
         items={[
-          { id: 'home', label: 'MegaLinter home', onClick: goHome },
+          { id: 'home', label: 'MegaLinter Home', onClick: goHome },
           { id: 'general', label: 'General settings' }
         ]}
       />
@@ -262,7 +262,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
         <div className="category-panel">
           <Breadcrumbs
             items={[
-              { id: 'home', label: 'MegaLinter home', onClick: goHome },
+              { id: 'home', label: 'MegaLinter Home', onClick: goHome },
               { id: 'category', label: 'Categories' }
             ]}
           />
@@ -287,7 +287,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
       <div className="category-panel">
         <Breadcrumbs
           items={[
-            { id: 'home', label: 'MegaLinter home', onClick: goHome },
+            { id: 'home', label: 'MegaLinter Home', onClick: goHome },
             { id: categoryId, label, options: categoryOptions }
           ]}
         />
@@ -354,7 +354,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
     }));
 
     const breadcrumbItems: BreadcrumbItem[] = [
-      { id: 'home', label: 'MegaLinter home', onClick: goHome },
+      { id: 'home', label: 'MegaLinter Home', onClick: goHome },
       {
         id: descriptorId,
         label: resolveCategoryLabel(descriptorId),

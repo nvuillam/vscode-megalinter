@@ -27,7 +27,6 @@ export const HomePanel: React.FC<HomePanelProps> = ({
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>(logoUrl);
   const [bannerSrc, setBannerSrc] = useState<string>(bannerUrl);
-  const configBadge = configPath ? configPath : 'No configuration file selected yet';
 
   const renderInstallOrUpgrade = () => {
     if (!configLoaded) {
@@ -122,11 +121,6 @@ export const HomePanel: React.FC<HomePanelProps> = ({
             >
               Open MegaLinter docs
             </a>
-          </div>
-          <div className="home__badges" aria-label="Quick context">
-            <span className="pill-chip pill-chip--muted" title={configBadge}>
-              {configBadge}
-            </span>
           </div>
         </div>
       </div>

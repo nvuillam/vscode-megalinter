@@ -423,12 +423,6 @@ export const App: React.FC = () => {
   return (
     <div className="container">
       <div className="layout">
-        <NavigationMenu
-          sections={navigationModel?.sections || []}
-          selectedId={selectedNavId}
-          activeDescriptorId={selectedDescriptor}
-          onSelect={handleNavigationSelect}
-        />
         <div className="form-container">
           {activeMainTab === 'home' ? (
             <HomePanel
@@ -480,6 +474,12 @@ export const App: React.FC = () => {
             />
           )}
         </div>
+        <NavigationMenu
+          sections={navigationModel?.sections || []}
+          selectedId={selectedNavId}
+          activeDescriptorId={selectedDescriptor}
+          onSelect={handleNavigationSelect}
+        />
       </div>
     </div>
   );

@@ -372,7 +372,7 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
   gap: 16px;
   align-items: stretch;
 }
