@@ -1382,3 +1382,100 @@ body {
   color: var(--vscode-badge-foreground);
   text-transform: uppercase;
 }
+
+/* Linters List Tab */
+.linters-list-panel {
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04)),
+    var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+}
+
+.linters-list-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.linters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.linter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  min-height: 80px;
+}
+
+.linter-card:hover {
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.linter-card__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--vscode-foreground);
+}
+
+.linter-card__badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-weight: 500;
+}
+
+.descriptor-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Updated Linter Card Styles */
+.linter-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 12px;
+}
+
+.linter-card__icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: white;
+  padding: 2px;
+}
+
+.linter-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.linter-card__name {
+  word-break: break-word;
+}

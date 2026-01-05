@@ -429,10 +429,41 @@ export const MainTabs: React.FC<MainTabsProps> = ({
       );
     };
 
+    const renderLintersList = () => (
+      <div className="linters-list-panel">
+        <h3 className="linters-list-title">Available Linters</h3>
+        <div className="linters-grid">
+          {linterEntries.map(([linterId]) => {
+            const meta = linterMetadata[linterId];
+            return (
+              <button
+                key={linterId}
+                className="linter-card"
+                onClick={() => setSelectedScope(linterId)}
+              >
+                {meta?.imageUrl && (
+                  <img src={meta.imageUrl} alt="" className="linter-card__icon" />
+                )}
+                <div className="linter-card__content">
+                  <span className="linter-card__name">{resolveCategoryLabel(linterId)}</span>
+                  {linterValueMap[linterId] && <span className="linter-card__badge">Configured</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+
     const activeContent =
-      activeScope === 'descriptor'
-        ? descriptorForm
-        : linterForm(activeScope, linters[activeScope] || []);
+      activeScope === 'descriptor' ? (
+        <div className="descriptor-overview">
+          {linterEntries.length > 0 && renderLintersList()}
+          {descriptorForm}
+        </div>
+      ) : (
+        linterForm(activeScope, linters[activeScope] || [])
+      );
 
     return (
       <div className="descriptor-panel">
