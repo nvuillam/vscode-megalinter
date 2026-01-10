@@ -43,6 +43,8 @@ export type WebViewMessage =
 export type FlavorContextMessage = {
   type: 'flavorContext';
   workspaceFolders: Array<{ name: string; path: string }>;
+  defaultFolderPath?: string;
+  isWorkspaceFlavorRepo?: boolean;
 };
 
 export type FlavorFolderSelectedMessage = {

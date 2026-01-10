@@ -40,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
   updateCustomFlavorStatusVisibility();
 
   const watcher = vscode.workspace.createFileSystemWatcher(
-    '**/megalinter-custom-flavor.yml}'
+    '**/{mega-linter-flavor.yml,mega-linter-flavor.yaml,megalinter-custom-flavor.yml,megalinter-custom-flavor.yaml}'
   );
   watcher.onDidCreate(updateCustomFlavorStatusVisibility);
   watcher.onDidDelete(updateCustomFlavorStatusVisibility);
@@ -69,8 +69,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   const openCustomFlavorBuilder = vscode.commands.registerCommand(
     'megalinter.openCustomFlavorBuilder',
-    async () => {
-      CustomFlavorPanel.createOrShow(context.extensionUri);
+    async (uri?: vscode.Uri) => {
+      CustomFlavorPanel.createOrShow(context.extensionUri, uri);
     }
   );
 
@@ -104,6 +104,9 @@ function hasCustomFlavorFileInWorkspaceRoot(): boolean {
 
   const candidateNames = [
     'megalinter-custom-flavor.yml',
+    'megalinter-custom-flavor.yaml',
+    'mega-linter-flavor.yml',
+    'mega-linter-flavor.yaml'
   ];
 
   return workspaceFolders.some((folder) => {

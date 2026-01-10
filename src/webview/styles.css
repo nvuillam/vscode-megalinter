@@ -39,11 +39,18 @@ body {
 }
 
 .home__banner {
+  display: block;
+  text-decoration: none;
+  color: inherit;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 14px;
   overflow: hidden;
   background: var(--vscode-editor-background);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.home__banner:hover {
+  border-color: var(--vscode-focusBorder);
 }
 
 .home__banner-image {
@@ -67,6 +74,8 @@ body {
 }
 
 .home__logo-tile {
+  text-decoration: none;
+  color: inherit;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -78,14 +87,18 @@ body {
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.08));
 }
 
+.home__logo-tile:hover {
+  border-color: var(--vscode-focusBorder);
+}
+
 .home__logo {
   width: 120px;
   height: auto;
   object-fit: contain;
-  padding: 10px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.05));
-  border: 1px solid var(--vscode-panel-border);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
   filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.25));
 }
 

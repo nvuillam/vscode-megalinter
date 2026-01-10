@@ -15,13 +15,22 @@ type FlavorPanelOutboundMessage =
   | {
       type: 'flavorContext';
       workspaceFolders: Array<{ name: string; path: string }>;
+      defaultFolderPath?: string;
+      isWorkspaceFlavorRepo?: boolean;
     }
   | { type: 'flavorFolderSelected'; folderPath: string }
   | { type: 'flavorDefinition'; folderPath: string; exists: boolean; filePath: string; content?: string }
   | { type: 'info'; message: string }
   | { type: 'error'; message: string };
 
-const DEFAULT_FLAVOR_YML = 'mega-linter-flavor.yml';
+const FLAVOR_FILE_CANDIDATES = [
+  'megalinter-custom-flavor.yml',
+  'megalinter-custom-flavor.yaml',
+  'mega-linter-flavor.yml',
+  'mega-linter-flavor.yaml'
+] as const;
+
+const DEFAULT_FLAVOR_FILE = FLAVOR_FILE_CANDIDATES[0];
 
 const NOT_A_GIT_REPO_MESSAGE =
   'Selected folder is not a Git repository.\n\n' +
@@ -36,16 +45,19 @@ export class CustomFlavorPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
+  private _preferredFolderPath: string | undefined;
   private _webviewReady = false;
   private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(extensionUri: vscode.Uri): CustomFlavorPanel {
+  public static createOrShow(extensionUri: vscode.Uri, initialUri?: vscode.Uri): CustomFlavorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
 
     if (CustomFlavorPanel.currentPanel) {
       CustomFlavorPanel.currentPanel._panel.reveal(column);
+      CustomFlavorPanel.currentPanel._setPreferredFolderFromUri(initialUri);
+      CustomFlavorPanel.currentPanel._tryAutoSelectPreferredFolder();
       CustomFlavorPanel.currentPanel._update();
       return CustomFlavorPanel.currentPanel;
     }
@@ -66,13 +78,14 @@ export class CustomFlavorPanel {
       panel.iconPath = iconPath;
     }
 
-    CustomFlavorPanel.currentPanel = new CustomFlavorPanel(panel, extensionUri);
+    CustomFlavorPanel.currentPanel = new CustomFlavorPanel(panel, extensionUri, initialUri);
     return CustomFlavorPanel.currentPanel;
   }
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, initialUri?: vscode.Uri) {
     this._panel = panel;
     this._extensionUri = extensionUri;
+    this._setPreferredFolderFromUri(initialUri);
 
     this._update();
 
@@ -85,9 +98,11 @@ export class CustomFlavorPanel {
             case 'ready':
               this._webviewReady = true;
               await this._sendFlavorContext();
+              this._tryAutoSelectPreferredFolder();
               break;
             case 'getFlavorContext':
               await this._sendFlavorContext();
+              this._tryAutoSelectPreferredFolder();
               break;
             case 'pickFlavorFolder':
               await this._pickFlavorFolder();
@@ -165,10 +180,66 @@ export class CustomFlavorPanel {
 
   private async _sendFlavorContext() {
     const folders = vscode.workspace.workspaceFolders || [];
+
+    const workspaceRootPaths = folders.map((f) => f.uri.fsPath);
+    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(workspaceRootPaths);
+    const isWorkspaceFlavorRepo = workspaceFlavorRoot !== null;
+
+    const defaultFolderPath = this._preferredFolderPath
+      ? this._preferredFolderPath
+      : workspaceFlavorRoot;
+
     this._postMessage({
       type: 'flavorContext',
-      workspaceFolders: folders.map((f) => ({ name: f.name, path: f.uri.fsPath }))
+      workspaceFolders: folders.map((f) => ({ name: f.name, path: f.uri.fsPath })),
+      defaultFolderPath: defaultFolderPath || undefined,
+      isWorkspaceFlavorRepo
     });
+  }
+
+  private _setPreferredFolderFromUri(initialUri?: vscode.Uri) {
+    if (!initialUri) {
+      return;
+    }
+
+    const fsPath = initialUri.fsPath;
+    if (!fsPath) {
+      return;
+    }
+
+    try {
+      if (fs.existsSync(fsPath) && fs.lstatSync(fsPath).isDirectory()) {
+        this._preferredFolderPath = fsPath;
+        return;
+      }
+
+      // Invoked from a file context menu: use its parent folder.
+      this._preferredFolderPath = path.dirname(fsPath);
+    } catch {
+      // ignore
+    }
+  }
+
+  private _tryAutoSelectPreferredFolder() {
+    if (!this._webviewReady) {
+      return;
+    }
+
+    // Prefer explicit folder (e.g. invoked from right-click).
+    if (this._preferredFolderPath) {
+      this._postMessage({ type: 'flavorFolderSelected', folderPath: this._preferredFolderPath });
+      void this._sendFlavorDefinition(this._preferredFolderPath);
+      return;
+    }
+
+    // Otherwise, if the current workspace is already a flavor repo, select it.
+    const folders = vscode.workspace.workspaceFolders || [];
+    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(folders.map((f) => f.uri.fsPath));
+    if (workspaceFlavorRoot) {
+      this._preferredFolderPath = workspaceFlavorRoot;
+      this._postMessage({ type: 'flavorFolderSelected', folderPath: workspaceFlavorRoot });
+      void this._sendFlavorDefinition(workspaceFlavorRoot);
+    }
   }
 
   private async _pickFlavorFolder() {
@@ -197,6 +268,17 @@ export class CustomFlavorPanel {
       return;
     }
 
+    // If the current workspace is not already a custom flavor repo, reload VS Code
+    // with the selected folder as the workspace root.
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(workspaceFolders.map((f) => f.uri.fsPath));
+    if (!workspaceFlavorRoot) {
+      await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(folderPath), false);
+      return;
+    }
+
+    // Otherwise, just use it within the current window.
+    this._preferredFolderPath = folderPath;
     this._postMessage({ type: 'flavorFolderSelected', folderPath });
     await this._sendFlavorDefinition(folderPath);
   }
@@ -259,8 +341,9 @@ export class CustomFlavorPanel {
   }
 
   private async _sendFlavorDefinition(folderPath: string) {
-    const filePath = path.join(folderPath, DEFAULT_FLAVOR_YML);
-    const exists = fs.existsSync(filePath);
+    const resolvedPath = resolveFlavorFilePath(folderPath);
+    const filePath = resolvedPath ?? path.join(folderPath, DEFAULT_FLAVOR_FILE);
+    const exists = resolvedPath !== null;
 
     if (!exists) {
       this._postMessage({ type: 'flavorDefinition', folderPath, exists: false, filePath });
@@ -278,7 +361,7 @@ export class CustomFlavorPanel {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._postMessage({ type: 'error', message: `Failed to read ${DEFAULT_FLAVOR_YML}: ${msg}` });
+      this._postMessage({ type: 'error', message: `Failed to read ${path.basename(filePath)}: ${msg}` });
     }
   }
 
@@ -293,6 +376,25 @@ export class CustomFlavorPanel {
 
 function isGitRepository(folderPath: string): boolean {
   return getGitDir(folderPath) !== null;
+}
+
+function resolveFlavorFilePath(folderPath: string): string | null {
+  for (const name of FLAVOR_FILE_CANDIDATES) {
+    const candidate = path.join(folderPath, name);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function findWorkspaceRootWithFlavorFile(workspaceFolderPaths: string[]): string | null {
+  for (const folderPath of workspaceFolderPaths) {
+    if (resolveFlavorFilePath(folderPath)) {
+      return folderPath;
+    }
+  }
+  return null;
 }
 
 function getGitDir(folderPath: string): string | null {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RJSFSchema } from '@rjsf/utils';
+import * as YAML from 'yaml';
 import bundledSchema from '../descriptors/schemas/megalinter-configuration.jsonschema.json';
 import { extractGroups, filterRemovedLintersFromSchema } from '../shared/schemaUtils';
 import { useVSCodeApi } from './hooks';
@@ -16,6 +17,39 @@ import type {
 type FlavorWebviewMessage = FlavorContextMessage | FlavorFolderSelectedMessage | FlavorDefinitionMessage | { type: 'info'; message: string } | { type: 'error'; message: string };
 
 const CUSTOM_FLAVOR_DOC_URL = 'https://megalinter.io/latest/custom-flavors/';
+const DEFAULT_FLAVOR_FILE = 'megalinter-custom-flavor.yml';
+
+function basename(filePath: string): string {
+  if (!filePath) {
+    return '';
+  }
+  const parts = filePath.split(/\\|\//g);
+  return parts[parts.length - 1] || filePath;
+}
+
+function parseLintersFromFlavorYaml(content: string): string[] {
+  try {
+    const parsed = YAML.parse(content) as unknown;
+    if (!parsed || typeof parsed !== 'object') {
+      return [];
+    }
+
+    const linters = (parsed as any).linters;
+    if (!Array.isArray(linters)) {
+      return [];
+    }
+
+    const normalized = linters
+      .filter((v: unknown): v is string => typeof v === 'string')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => s.toUpperCase());
+
+    return Array.from(new Set(normalized)).sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
 
 export const FlavorApp: React.FC = () => {
   const { state: persistedState, updateState, postMessage } = useVSCodeApi();
@@ -27,10 +61,12 @@ export const FlavorApp: React.FC = () => {
   const [selectedLinters, setSelectedLinters] = useState<string[]>(initialSelected);
   const [search, setSearch] = useState<string>('');
   const [flavorFilePath, setFlavorFilePath] = useState<string>('');
+  const [flavorFileName, setFlavorFileName] = useState<string>(DEFAULT_FLAVOR_FILE);
   const [flavorExists, setFlavorExists] = useState<boolean>(false);
   const [flavorContent, setFlavorContent] = useState<string>('');
   const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [isWorkspaceFlavorRepo, setIsWorkspaceFlavorRepo] = useState<boolean>(false);
 
   useEffect(() => {
     const nextState: Partial<PersistedState> = {
@@ -133,12 +169,17 @@ export const FlavorApp: React.FC = () => {
 
       if (message.type === 'flavorDefinition') {
         setFlavorFilePath(message.filePath);
+        setFlavorFileName(basename(message.filePath) || DEFAULT_FLAVOR_FILE);
         setFlavorExists(message.exists);
         setFlavorContent(message.content || '');
         if (message.exists) {
-          setStatus('Loaded mega-linter-flavor.yml');
+          const parsedLinters = parseLintersFromFlavorYaml(message.content || '');
+          if (parsedLinters.length) {
+            setSelectedLinters(parsedLinters);
+          }
+          setStatus(`Loaded ${basename(message.filePath) || DEFAULT_FLAVOR_FILE}`);
         } else {
-          setStatus('mega-linter-flavor.yml not found yet (run generator first).');
+          setStatus(`${basename(message.filePath) || DEFAULT_FLAVOR_FILE} not found yet (run generator first).`);
         }
         return;
       }
@@ -154,7 +195,17 @@ export const FlavorApp: React.FC = () => {
       }
 
       if (message.type === 'flavorContext') {
-        // Currently unused (placeholder for future enhancements like opening the workspace root)
+        setIsWorkspaceFlavorRepo(Boolean(message.isWorkspaceFlavorRepo));
+        if (message.defaultFolderPath) {
+          setFolderPath((current) => {
+            if (message.isWorkspaceFlavorRepo) {
+              return message.defaultFolderPath as string;
+            }
+            return current || (message.defaultFolderPath as string);
+          });
+          setStatus(`Selected folder: ${message.defaultFolderPath}`);
+          setError('');
+        }
         return;
       }
     };
@@ -173,6 +224,9 @@ export const FlavorApp: React.FC = () => {
     ? `npx --yes mega-linter-runner@beta --custom-flavor-setup --custom-flavor-linters "${selectedLinters.join(',')}"`
     : 'npx --yes mega-linter-runner@beta --custom-flavor-setup';
 
+  const hasFolder = Boolean(folderPath);
+  const controlsDisabled = !hasFolder;
+
   return (
     <div className="container">
       <div className="page">
@@ -189,10 +243,12 @@ export const FlavorApp: React.FC = () => {
             </p>
           </div>
           <div className="home__actions">
-            <button className="pill-button pill-button--solid" onClick={pickFolder}>
-              Select folder
-            </button>
-            <button className="pill-button pill-button--primary" onClick={runGenerator}>
+            {!isWorkspaceFlavorRepo && (
+              <button className="pill-button pill-button--solid" onClick={pickFolder}>
+                Select Custom Flavor Repository
+              </button>
+            )}
+            <button className="pill-button pill-button--primary" onClick={runGenerator} disabled={controlsDisabled}>
               Run generator
             </button>
           </div>
@@ -203,11 +259,11 @@ export const FlavorApp: React.FC = () => {
             <p className="home__card-label">Repository folder</p>
             <p className="home__card-note">{folderPath || 'No folder selected yet.'}</p>
             <div className="home__actions" style={{ marginTop: 10 }}>
-              <button className="pill-button pill-button--ghost" onClick={refreshDefinition} disabled={!folderPath}>
-                Refresh mega-linter-flavor.yml
+              <button className="pill-button pill-button--ghost" onClick={refreshDefinition} disabled={controlsDisabled}>
+                Refresh {flavorFileName}
               </button>
-              <button className="pill-button pill-button--ghost" onClick={openFlavorFile} disabled={!flavorExists}>
-                Open mega-linter-flavor.yml
+              <button className="pill-button pill-button--ghost" onClick={openFlavorFile} disabled={!flavorExists || controlsDisabled}>
+                Open {flavorFileName}
               </button>
             </div>
           </div>
@@ -237,13 +293,14 @@ export const FlavorApp: React.FC = () => {
                 placeholder="Search linters (e.g. PYTHON_RUFF, REPOSITORY_TRIVY)"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                disabled={controlsDisabled}
               />
             </div>
             <div className="home__actions" style={{ marginTop: 10 }}>
-              <button className="pill-button pill-button--ghost" onClick={selectAllFiltered} disabled={!filteredLinters.length}>
+              <button className="pill-button pill-button--ghost" onClick={selectAllFiltered} disabled={!filteredLinters.length || controlsDisabled}>
                 Select all filtered
               </button>
-              <button className="pill-button pill-button--ghost" onClick={clearSelection} disabled={!selectedLinters.length}>
+              <button className="pill-button pill-button--ghost" onClick={clearSelection} disabled={!selectedLinters.length || controlsDisabled}>
                 Clear
               </button>
               <span className="pill-chip pill-chip--muted">Selected: {selectedLinters.length}</span>
@@ -263,7 +320,7 @@ export const FlavorApp: React.FC = () => {
                       borderBottom: '1px solid var(--vscode-panel-border)'
                     }}
                   >
-                    <input type="checkbox" checked={checked} onChange={() => toggleLinter(id)} />
+                    <input type="checkbox" checked={checked} onChange={() => toggleLinter(id)} disabled={controlsDisabled} />
                     <span style={{ fontWeight: 600 }}>{id}</span>
                   </label>
                 );
@@ -273,7 +330,7 @@ export const FlavorApp: React.FC = () => {
           </div>
 
           <div className="home__card">
-            <p className="home__card-label">mega-linter-flavor.yml preview</p>
+            <p className="home__card-label">{flavorFileName} preview</p>
             {!flavorExists ? (
               <p className="muted">Run the generator to create this file.</p>
             ) : (

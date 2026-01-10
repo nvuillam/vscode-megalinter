@@ -88,7 +88,13 @@ export const HomePanel: React.FC<HomePanelProps> = ({
 
   return (
     <div className="home">
-      <div className="home__banner">
+      <a
+        className="home__banner"
+        href="https://megalinter.io/latest/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Open MegaLinter website"
+      >
         <img
           src={bannerSrc}
           alt="MegaLinter banner"
@@ -99,9 +105,15 @@ export const HomePanel: React.FC<HomePanelProps> = ({
             }
           }}
         />
-      </div>
+      </a>
       <div className="home__hero">
-        <div className="home__logo-tile">
+        <a
+          className="home__logo-tile"
+          href="https://www.ox.security/?ref=megalinter-vscode"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Open OX Security website"
+        >
           <img
             src={logoSrc}
             alt="OX Security logo"
@@ -113,7 +125,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
             }}
           />
           <div className="home__logo-caption">Powered by OX Security</div>
-        </div>
+        </a>
         <div className="home__intro">
           <p className="eyebrow">MegaLinter workspace home</p>
           <h1 className="home__title">Configure once, ship confidently</h1>
