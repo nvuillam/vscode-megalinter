@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo } from 'react';
 import type { FieldTemplateProps } from '@rjsf/utils';
 import { getDocsUrlForVariable } from '../docsLinks';
+import { getCodiconForVariable } from '../iconResolver';
 import { useVSCodeApi } from '../hooks';
 
 const extractVariableName = (id: string): string | undefined => {
@@ -42,6 +43,10 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
     [variableName, props.schema]
   );
   const showDocs = !!docsUrl && isTopLevelFieldId(props.id);
+  const iconName = useMemo(
+    () => (variableName ? getCodiconForVariable(variableName, props.schema as Record<string, unknown>) : 'symbol-property'),
+    [variableName, props.schema]
+  );
 
   const handleOpenDocs = useCallback(() => {
     if (!docsUrl) {
@@ -60,6 +65,7 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
       {showLabelRow && (
         <div className="field-label-row">
           <label htmlFor={props.id}>
+            <span className={`codicon codicon-${iconName} field-label__icon`} aria-hidden="true" />
             {props.label}
             {props.required ? '*' : null}
           </label>

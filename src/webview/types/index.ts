@@ -173,6 +173,7 @@ export interface Tab {
   id: string;
   label: string;
   hasValues?: boolean;
+  icon?: string;
 }
 
 export interface BreadcrumbOption {

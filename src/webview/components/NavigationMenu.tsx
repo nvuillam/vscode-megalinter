@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useState } from 'react';
-import type { NavigationMenuProps, MenuItem, MenuChild, MenuSection } from '../types';
+import type { NavigationMenuProps, MenuItem } from '../types';
+import { getCodiconForNavigationItem, getCodiconForSection } from '../iconResolver';
 
 export const NavigationMenu: React.FC<NavigationMenuProps> = ({
   sections,
@@ -48,6 +50,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
           (item) => item.hasValues || (item.children && item.children.some((child) => child.hasValues))
         );
 
+        const sectionIcon = getCodiconForSection(section.id);
+
         if (section.id === 'home' || section.id === 'summary') {
           const targetItem: MenuItem = {
             id: section.id,
@@ -64,6 +68,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                 onClick={() => onSelect(targetItem)}
               >
                 <span className="nav__title-label">
+                  <span className={`nav__icon codicon codicon-${sectionIcon}`} aria-hidden="true" />
                   <span>{section.label}</span>
                   {section.id !== 'home' && sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
                 </span>
@@ -81,6 +86,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
               aria-expanded={isExpanded}
             >
               <span className="nav__title-label">
+                <span className={`nav__icon codicon codicon-${sectionIcon}`} aria-hidden="true" />
                 <span>{section.label}</span>
                 {sectionHasValues && <span className="nav__dot" aria-hidden="true" />}
               </span>
@@ -91,6 +97,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                 {section.items.map((item) => {
                   const isActive = selectedId === item.id;
                   const isItemExpanded = activeDescriptorId === item.id || isActive;
+                  const itemIcon = getCodiconForNavigationItem(item.type, item.id, section.id);
                   return (
                     <li key={item.id} className="nav__list-item">
                       <button
@@ -98,13 +105,17 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                         className={`nav__item ${isActive ? 'nav__item--active' : ''}`}
                         onClick={() => onSelect(item)}
                       >
-                        <span className="nav__label">{item.label}</span>
+                        <span className="nav__label">
+                          <span className={`nav__icon codicon codicon-${itemIcon}`} aria-hidden="true" />
+                          <span>{item.label}</span>
+                        </span>
                         {item.hasValues && <span className="nav__dot" aria-hidden="true" />}
                       </button>
                       {item.children && item.children.length && isItemExpanded && (
                         <ul className="nav__child-list">
                           {item.children.map((child) => {
                             const childActive = selectedId === child.id;
+                            const childIcon = getCodiconForNavigationItem('linter', child.id, section.id);
                             return (
                               <li key={child.id} className="nav__child-item">
                                 <button
@@ -112,7 +123,10 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                                   className={`nav__item nav__item--child ${childActive ? 'nav__item--active' : ''}`}
                                   onClick={() => onSelect(child)}
                                 >
-                                  <span className="nav__label">{child.label}</span>
+                                  <span className="nav__label">
+                                    <span className={`nav__icon codicon codicon-${childIcon}`} aria-hidden="true" />
+                                    <span>{child.label}</span>
+                                  </span>
                                   {child.hasValues && <span className="nav__dot" aria-hidden="true" />}
                                 </button>
                               </li>

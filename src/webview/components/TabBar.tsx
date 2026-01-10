@@ -1,5 +1,6 @@
 import React from 'react';
 import type { TabBarProps } from '../types';
+import { getCodiconForSection } from '../iconResolver';
 
 export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onSelect }) => (
   <div className="tabs">
@@ -10,6 +11,10 @@ export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onSelect }) => 
         onClick={() => onSelect(tab.id)}
         type="button"
       >
+        <span
+          className={`codicon codicon-${tab.icon || getCodiconForSection(tab.id)} tab__icon`}
+          aria-hidden="true"
+        />
         {tab.hasValues ? `${tab.label} *` : tab.label}
       </button>
     ))}

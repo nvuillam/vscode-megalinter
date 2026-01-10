@@ -58,6 +58,13 @@ const webviewConfig = {
         use: ['style-loader', 'css-loader']
       },
       {
+        test: /\.(ttf|woff2?|eot)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'assets/[name][ext]'
+        }
+      },
+      {
         test: /\.(png|jpe?g|gif|svg)$/i,
         type: 'asset/resource',
         generator: {

@@ -536,6 +536,12 @@ body {
   gap: 6px;
 }
 
+.nav__icon {
+  font-size: 14px;
+  opacity: 0.9;
+  flex: 0 0 auto;
+}
+
 .nav__title--link {
   width: 100%;
   display: inline-flex;
@@ -623,6 +629,9 @@ body {
 .nav__label {
   font-size: 13px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .nav__dot {
@@ -644,6 +653,10 @@ body {
 
 .nav__child-item .nav__item {
   padding: 6px 10px;
+  font-size: 12px;
+}
+
+.nav__child-item .nav__icon {
   font-size: 12px;
 }
 
@@ -1002,6 +1015,25 @@ body {
 
 .form-container .field-label-row label {
   margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-container .field-label__icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabs .tab__icon {
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .form-container .field-docs-button {

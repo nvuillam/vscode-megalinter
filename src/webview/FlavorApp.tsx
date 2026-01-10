@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useMemo, useState } from 'react';
+import '@vscode/codicons/dist/codicon.css';
 import type { RJSFSchema } from '@rjsf/utils';
 import * as YAML from 'yaml';
 import bundledSchema from '../descriptors/schemas/megalinter-configuration.jsonschema.json';

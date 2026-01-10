@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { RJSFSchema, UiSchema } from '@rjsf/utils';
 import { buildPresenceMaps, hasAnyKeySet } from '../shared/configPresence';
 import { CategoryMeta, SchemaGroups } from '../shared/schemaUtils';
+import { getCodiconForSection } from './iconResolver';
 
 export type MenuChild = {
   id: string;
@@ -159,7 +161,7 @@ export const buildNavigationModel = (groups: SchemaGroups, formData: any) => {
   return { sections, descriptorOrder };
 };
 
-export type Tab = { id: string; label: string; hasValues?: boolean };
+export type Tab = { id: string; label: string; hasValues?: boolean; icon?: string };
 
 export const groupKeysByTheme = (
   keys: string[],
@@ -232,7 +234,8 @@ export const groupKeysByTheme = (
   const tabs: Tab[] = sectionOrdering.map((id) => ({
     id,
     label: resolveSectionLabel(id),
-    hasValues: sectionHasValues[id]
+    hasValues: sectionHasValues[id],
+    icon: getCodiconForSection(id)
   }));
 
   return { tabs, grouped };
