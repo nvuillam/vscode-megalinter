@@ -92,6 +92,10 @@ export const getCodiconForVariable = (variableName: string, schema?: RJSFSchema 
   if (name.includes('SECURITY') || name.includes('SECRET') || name.includes('PASSWORD') || name.includes('TOKEN')) {
     return 'shield';
   }
+  if (name.includes('ARGUMENT')) {
+    // Keep "Custom arguments" and "Custom remove arguments" visually consistent.
+    return 'terminal';
+  }
   if (name.includes('ERROR')) {
     return 'error';
   }
