@@ -7,7 +7,8 @@ import {
   buildNavigationModel,
   computeNonDefaultKeys,
   prettifyId,
-  pruneDefaults
+  pruneDefaults,
+  sanitizeConfigForSave
 } from './menuUtils';
 import './styles.css';
 import megalinterBannerLocal from './assets/megalinter-banner.png';
@@ -279,12 +280,46 @@ export const App: React.FC = () => {
       return;
     }
 
+    const hasTransientArrayEntries = (value: unknown): boolean => {
+      const visit = (node: unknown, inArray: boolean): boolean => {
+        if (inArray) {
+          if (node === null || node === undefined) {
+            return true;
+          }
+          if (typeof node === 'string' && node.trim() === '') {
+            return true;
+          }
+        }
+
+        if (Array.isArray(node)) {
+          return node.some((item) => visit(item, true));
+        }
+
+        if (node && typeof node === 'object') {
+          return Object.values(node as Record<string, unknown>).some((entry) => visit(entry, false));
+        }
+
+        return false;
+      };
+
+      return visit(value, false);
+    };
+
     if (saveTimer.current) {
       window.clearTimeout(saveTimer.current);
     }
 
+    // Avoid writing intermediate/blank array values (e.g. "- null") while the user is
+    // adding a new item and has not typed yet. Saving those values causes a round-trip
+    // that resets the form immediately.
+    if (hasTransientArrayEntries(data)) {
+      saveTimer.current = null;
+      return;
+    }
+
     const timerId = window.setTimeout(() => {
-      const pruned = pruneDefaults(data, originalConfig, schema);
+      const sanitized = sanitizeConfigForSave(data);
+      const pruned = pruneDefaults(sanitized, originalConfig, schema);
       postMessage({ type: 'saveConfig', config: pruned });
     }, 400);
 

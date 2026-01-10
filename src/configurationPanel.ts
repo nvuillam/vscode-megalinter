@@ -431,6 +431,29 @@ export class ConfigurationPanel {
 
   private async _saveConfig(config: any) {
     try {
+      const sanitize = (value: any): any => {
+        if (value === null || value === undefined) {
+          return value;
+        }
+
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => sanitize(item))
+            .filter((item) => item !== null && item !== undefined);
+        }
+
+        if (typeof value === 'object') {
+          const result: Record<string, any> = {};
+          Object.keys(value).forEach((key) => {
+            result[key] = sanitize(value[key]);
+          });
+          return result;
+        }
+
+        return value;
+      };
+
+      const sanitizedConfig = sanitize(config || {});
       const existingText = fs.existsSync(this._configPath)
         ? fs.readFileSync(this._configPath, 'utf8')
         : '';
@@ -442,7 +465,7 @@ export class ConfigurationPanel {
         doc.contents = empty.contents;
       }
 
-      const configKeys = new Set(Object.keys(config || {}));
+      const configKeys = new Set(Object.keys(sanitizedConfig || {}));
 
       // Remove keys that are no longer present in the incoming config
       const existingKeys: string[] = [];
@@ -461,8 +484,8 @@ export class ConfigurationPanel {
           doc.deleteIn([key]);
         });
 
-      Object.keys(config || {}).forEach((key) => {
-        doc.setIn([key], config[key]);
+      Object.keys(sanitizedConfig || {}).forEach((key) => {
+        doc.setIn([key], sanitizedConfig[key]);
       });
 
       const yamlContent = doc.toString();
