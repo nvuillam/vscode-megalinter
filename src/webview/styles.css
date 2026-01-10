@@ -1546,11 +1546,40 @@ body {
 .linter-card__icon {
   width: 32px;
   height: 32px;
-  object-fit: contain;
   flex-shrink: 0;
   border-radius: 4px;
   background: white;
   padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+img.linter-card__icon {
+  object-fit: contain;
+}
+
+.linter-card__icon--fallback {
+  border-radius: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.06)),
+    var(--vscode-editor-inactiveSelectionBackground);
+  color: var(--vscode-foreground);
+  opacity: 0.85;
+  padding: 0;
+}
+
+/* Override codicon base rule (.codicon[class*='codicon-']) so we can truly center the glyph */
+.linter-card__icon--fallback.codicon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: normal normal normal 18px/1 codicon;
+  text-align: center;
+}
+
+.linter-card__icon--fallback.codicon::before {
+  display: block;
 }
 
 .linter-card__content {

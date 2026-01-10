@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import type { MainTabsProps, Tab, BreadcrumbItem, BreadcrumbOption } from '../types';
@@ -43,6 +43,17 @@ export const MainTabs: React.FC<MainTabsProps> = ({
   highlightedKeys,
   linterMetadata
 }) => {
+  const [brokenLinterIcons, setBrokenLinterIcons] = useState<Record<string, boolean>>({});
+
+  const markLinterIconBroken = useCallback((linterId: string) => {
+    setBrokenLinterIcons((prev) => {
+      if (prev[linterId]) {
+        return prev;
+      }
+      return { ...prev, [linterId]: true };
+    });
+  }, []);
+
   const descriptorOrder = useMemo(() => {
     if (descriptorOrderProp.length) {
       return descriptorOrderProp;
@@ -438,14 +449,25 @@ export const MainTabs: React.FC<MainTabsProps> = ({
         <div className="linters-grid">
           {linterEntries.map(([linterId]) => {
             const meta = linterMetadata[linterId];
+            const shouldShowFallbackIcon = !meta?.imageUrl || !!brokenLinterIcons[linterId];
             return (
               <button
                 key={linterId}
                 className="linter-card"
                 onClick={() => setSelectedScope(linterId)}
               >
-                {meta?.imageUrl && (
-                  <img src={meta.imageUrl} alt="" className="linter-card__icon" />
+                {shouldShowFallbackIcon ? (
+                  <span
+                    className="linter-card__icon linter-card__icon--fallback codicon codicon-shield"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <img
+                    src={meta?.imageUrl}
+                    alt=""
+                    className="linter-card__icon"
+                    onError={() => markLinterIconBroken(linterId)}
+                  />
                 )}
                 <div className="linter-card__content">
                   <span className="linter-card__name">{resolveCategoryLabel(linterId)}</span>
