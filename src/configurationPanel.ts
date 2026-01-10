@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import type { NavigationTarget } from './extension';
 import { CustomFlavorPanel } from './customFlavorPanel';
+import { resolveMegalinterPanelIcon } from './panelIcon';
 
 type LinterDescriptorMetadata = {
   descriptorId?: string;
@@ -68,6 +69,11 @@ export class ConfigurationPanel {
         ]
       }
     );
+
+    const iconPath = resolveMegalinterPanelIcon(extensionUri);
+    if (iconPath) {
+      panel.iconPath = iconPath;
+    }
 
     ConfigurationPanel.currentPanel = new ConfigurationPanel(
       panel,

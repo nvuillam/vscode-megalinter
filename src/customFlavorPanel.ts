@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolveMegalinterPanelIcon } from './panelIcon';
 
 type FlavorPanelInboundMessage =
   | { type: 'ready' }
@@ -59,6 +60,11 @@ export class CustomFlavorPanel {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')]
       }
     );
+
+    const iconPath = resolveMegalinterPanelIcon(extensionUri);
+    if (iconPath) {
+      panel.iconPath = iconPath;
+    }
 
     CustomFlavorPanel.currentPanel = new CustomFlavorPanel(panel, extensionUri);
     return CustomFlavorPanel.currentPanel;
