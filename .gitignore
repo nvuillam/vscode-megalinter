@@ -6,3 +6,5 @@ out
 .vscode/*
 !.vscode/launch.json
 !.vscode/tasks.json
+
+megalinter-reports/
