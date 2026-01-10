@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useMemo } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
@@ -15,6 +16,7 @@ import {
 import { Breadcrumbs } from './Breadcrumbs';
 import { ThemedForm } from './ThemedForm';
 import { LinterDescription } from './LinterDescription';
+import { DocFieldTemplate } from './DocFieldTemplate';
 import { DualListWidget, TagArrayFieldTemplate } from './widgets';
 
 export const MainTabs: React.FC<MainTabsProps> = ({
@@ -220,7 +222,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           noHtml5Validate
           showErrorList={false}
           widgets={{ dualList: DualListWidget }}
-          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate }}
+          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate, FieldTemplate: DocFieldTemplate }}
           idPrefix="summary"
         >
           <></>

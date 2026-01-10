@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useMemo } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
@@ -10,7 +11,9 @@ import {
   isDeprecatedPropertyTitle
 } from '../menuUtils';
 import { TabBar } from './TabBar';
-import { DualListWidget, TagArrayFieldTemplate } from './widgets';
+import { DocFieldTemplate } from './DocFieldTemplate';
+import { BareObjectFieldTemplate } from './BareObjectFieldTemplate';
+import { CheckboxWidget, DualListWidget, TagArrayFieldTemplate } from './widgets';
 
 export const ThemedForm: React.FC<ThemedFormProps> = ({
   baseSchema,
@@ -61,8 +64,15 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
   const isIntroTabActive = introTab && effectiveActive === introTab.id;
   const activeKeys = !isIntroTabActive && effectiveActive ? grouped[effectiveActive] || [] : [];
   const activeLabel = combinedTabs.find((t) => t.id === effectiveActive)?.label || title;
-  const widgets = useMemo(() => ({ dualList: DualListWidget }), []);
-  const templates = useMemo(() => ({ ArrayFieldTemplate: TagArrayFieldTemplate }), []);
+  const widgets = useMemo(() => ({ dualList: DualListWidget, CheckboxWidget }), []);
+  const templates = useMemo(
+    () => ({
+      ArrayFieldTemplate: TagArrayFieldTemplate,
+      FieldTemplate: DocFieldTemplate,
+      ObjectFieldTemplate: BareObjectFieldTemplate
+    }),
+    []
+  );
 
   if (!filteredKeys.length && !introTab) {
     return <p className="muted">No fields available</p>;

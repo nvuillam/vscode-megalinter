@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useState } from 'react';
 import type { ArrayFieldTemplateProps, RJSFSchema } from '@rjsf/utils';
 import type { MegaLinterConfigValue } from '../../types';
 
 export const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) => {
-  const { items, canAdd, onAddClick, title, schema, formData, disabled, readonly } = props;
+  const { items, canAdd, onAddClick, schema, formData, disabled, readonly } = props;
   
   const schemaObj = schema as RJSFSchema & { items?: { type?: string | string[]; enum?: string[] } };
   const itemType = schemaObj?.items?.type;
@@ -28,8 +29,6 @@ export const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) 
     if (!isEditing) {
       return (
         <div className="string-list string-list--view">
-          {title && <p className="tag-array__title">{title}</p>}
-          {schema?.description && <p className="field-description">{schema.description}</p>}
           {values.length ? (
             <ul className="dual-list__chips">
               {values.map((val, idx) => (
@@ -57,8 +56,6 @@ export const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) 
 
     return (
       <div className="string-list string-list--edit">
-        {title && <p className="tag-array__title">{title}</p>}
-        {schema?.description && <p className="field-description">{schema.description}</p>}
         <div className="string-list__rows">
           {items.map((item) => (
             <div key={item.key} className="string-list__row">
@@ -102,8 +99,6 @@ export const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) 
 
   return (
     <div className="tag-array">
-      {title && <p className="tag-array__title">{title}</p>}
-      {schema?.description && <p className="field-description">{schema.description}</p>}
       <div className="tag-array__items">
         {items.map((item) => (
           <div key={item.key} className={`tag-pill ${isStringArray ? 'tag-pill--string' : ''}`}>

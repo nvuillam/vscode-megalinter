@@ -993,6 +993,47 @@ body {
   color: var(--vscode-foreground);
 }
 
+.form-container .field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.form-container .field-label-row label {
+  margin-bottom: 0;
+}
+
+.form-container .field-docs-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.form-container .field-docs-button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.form-container .field-docs-button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.form-container .field-docs-button__icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
 .form-container input[type="text"],
 .form-container input[type="number"],
 .form-container input[type="email"],

@@ -9,7 +9,8 @@ type FlavorPanelInboundMessage =
   | { type: 'pickFlavorFolder' }
   | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
   | { type: 'loadFlavorDefinition'; folderPath: string }
-  | { type: 'openFile'; filePath: string };
+  | { type: 'openFile'; filePath: string }
+  | { type: 'openExternal'; url: string };
 
 type FlavorPanelOutboundMessage =
   | {
@@ -115,6 +116,13 @@ export class CustomFlavorPanel {
               break;
             case 'openFile':
               await this._openFile(message.filePath);
+              break;
+            case 'openExternal':
+              if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
+                await vscode.env.openExternal(vscode.Uri.parse(message.url));
+              } else {
+                vscode.window.showErrorMessage('Invalid external URL');
+              }
               break;
           }
         } catch (err) {

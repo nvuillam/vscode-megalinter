@@ -28,6 +28,7 @@ export type ExtensionMessage =
   | { type: 'installMegaLinter' }
   | { type: 'upgradeMegaLinter' }
   | { type: 'openCustomFlavorBuilder' }
+  | { type: 'openExternal'; url: string }
   | { type: 'getFlavorContext' }
   | { type: 'pickFlavorFolder' }
   | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }

@@ -133,6 +133,13 @@ export class ConfigurationPanel {
           case 'openCustomFlavorBuilder':
             CustomFlavorPanel.createOrShow(this._extensionUri);
             break;
+          case 'openExternal':
+            if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
+              await vscode.env.openExternal(vscode.Uri.parse(message.url));
+            } else {
+              vscode.window.showErrorMessage('Invalid external URL');
+            }
+            break;
           case 'error':
             vscode.window.showErrorMessage(message.message);
             break;
