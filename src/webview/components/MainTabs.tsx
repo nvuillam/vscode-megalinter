@@ -368,17 +368,23 @@ export const MainTabs: React.FC<MainTabsProps> = ({
 
     const breadcrumbItems: BreadcrumbItem[] = [
       { id: 'home', label: 'MegaLinter Home', onClick: goHome },
-      {
-        id: descriptorId,
-        label: resolveCategoryLabel(descriptorId),
-        options: descriptorBreadcrumbOptions
-      },
+      activeScope === 'descriptor'
+        ? {
+            id: descriptorId,
+            label: resolveCategoryLabel(descriptorId),
+            options: descriptorBreadcrumbOptions
+          }
+        : {
+            id: descriptorId,
+            label: resolveCategoryLabel(descriptorId),
+            onClick: () => {
+              setSelectedDescriptor(descriptorId);
+              setSelectedScope('descriptor');
+            }
+          },
       {
         id: activeScope,
-        label:
-          activeScope === 'descriptor'
-            ? 'Variables'
-            : resolveCategoryLabel(activeScope),
+        label: activeScope === 'descriptor' ? 'Variables' : resolveCategoryLabel(activeScope),
         options: scopeBreadcrumbOptions
       }
     ];
