@@ -498,6 +498,7 @@ export const App: React.FC = () => {
               totalKeys={totalSchemaKeys}
               descriptorCount={descriptorCount}
               linterCount={linterCount}
+              postMessage={postMessage}
               onOpenGeneral={openGeneral}
               onOpenSummary={openSummary}
               onOpenFirstDescriptor={() => openDescriptor(firstDescriptorId, 'descriptor')}

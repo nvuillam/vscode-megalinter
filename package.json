@@ -15,7 +15,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "workspaceContains:megalinter-custom-flavor.yml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -24,6 +25,11 @@
         "command": "megalinter.openConfiguration",
         "title": "MegaLinter: Open Configuration",
         "icon": "$(gear)"
+      },
+      {
+        "command": "megalinter.openCustomFlavorBuilder",
+        "title": "MegaLinter: Custom Flavor Builder",
+        "icon": "$(package)"
       },
       {
         "command": "megalinter.revealSection",

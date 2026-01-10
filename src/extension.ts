@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigurationPanel } from './configurationPanel';
+import { CustomFlavorPanel } from './customFlavorPanel';
 
 export type NavigationTarget =
   | { type: 'general' }
@@ -20,6 +21,35 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(statusBarItem);
 
+  const customFlavorStatusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    99
+  );
+  customFlavorStatusBarItem.text = '$(package) MegaLinter Custom Flavor';
+  customFlavorStatusBarItem.command = 'megalinter.openCustomFlavorBuilder';
+  customFlavorStatusBarItem.tooltip = 'Open MegaLinter Custom Flavor Builder';
+
+  const updateCustomFlavorStatusVisibility = () => {
+    if (hasCustomFlavorFileInWorkspaceRoot()) {
+      customFlavorStatusBarItem.show();
+    } else {
+      customFlavorStatusBarItem.hide();
+    }
+  };
+
+  updateCustomFlavorStatusVisibility();
+
+  const watcher = vscode.workspace.createFileSystemWatcher(
+    '**/megalinter-custom-flavor.yml}'
+  );
+  watcher.onDidCreate(updateCustomFlavorStatusVisibility);
+  watcher.onDidDelete(updateCustomFlavorStatusVisibility);
+  watcher.onDidChange(updateCustomFlavorStatusVisibility);
+
+  context.subscriptions.push(watcher);
+
+  context.subscriptions.push(customFlavorStatusBarItem);
+
   // Register the command to open the configuration
   let disposable = vscode.commands.registerCommand(
     'megalinter.openConfiguration',
@@ -34,6 +64,13 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
+    }
+  );
+
+  const openCustomFlavorBuilder = vscode.commands.registerCommand(
+    'megalinter.openCustomFlavorBuilder',
+    async () => {
+      CustomFlavorPanel.createOrShow(context.extensionUri);
     }
   );
 
@@ -54,10 +91,25 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  context.subscriptions.push(disposable, revealSection);
+  context.subscriptions.push(disposable, revealSection, openCustomFlavorBuilder);
 }
 
 export function deactivate() {}
+
+function hasCustomFlavorFileInWorkspaceRoot(): boolean {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    return false;
+  }
+
+  const candidateNames = [
+    'megalinter-custom-flavor.yml',
+  ];
+
+  return workspaceFolders.some((folder) => {
+    return candidateNames.some((name) => fs.existsSync(path.join(folder.uri.fsPath, name)));
+  });
+}
 
 async function resolveConfigPath(uri?: vscode.Uri): Promise<string | undefined> {
   let configPath: string | undefined;

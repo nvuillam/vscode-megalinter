@@ -1,7 +1,6 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useState } from 'react';
-import type { HomePanelProps, VSCodeAPI, SearchItem } from '../types';
-
-declare const vscode: VSCodeAPI;
+import type { HomePanelProps, SearchItem } from '../types';
 
 export const HomePanel: React.FC<HomePanelProps> = ({
   configPath,
@@ -11,6 +10,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   totalKeys,
   descriptorCount,
   linterCount,
+  postMessage,
   onOpenGeneral,
   onOpenSummary,
   onOpenFirstDescriptor,
@@ -33,7 +33,9 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const filteredItems = React.useMemo(() => {
-    if (!searchTerm || !searchItems) return [];
+    if (!searchTerm || !searchItems) {
+      return [];
+    }
     const lower = searchTerm.toLowerCase();
     return searchItems.filter(item => item.label.toLowerCase().includes(lower)).slice(0, 10);
   }, [searchTerm, searchItems]);
@@ -66,7 +68,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
         <button
           type="button"
           className="pill-button pill-button--solid"
-          onClick={() => vscode.postMessage({ type: 'installMegaLinter' })}
+          onClick={() => postMessage({ type: 'installMegaLinter' })}
         >
           Install MegaLinter
         </button>
@@ -77,7 +79,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
       <button
         type="button"
         className="pill-button pill-button--solid"
-        onClick={() => vscode.postMessage({ type: 'upgradeMegaLinter' })}
+        onClick={() => postMessage({ type: 'upgradeMegaLinter' })}
       >
         Upgrade MegaLinter
       </button>
@@ -135,6 +137,13 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               disabled={!hasConfiguration}
             >
               Review configured values
+            </button>
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={() => postMessage({ type: 'openCustomFlavorBuilder' })}
+            >
+              Custom Flavor Builder
             </button>
             <a
               className="pill-button pill-button--ghost"

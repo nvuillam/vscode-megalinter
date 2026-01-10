@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as YAML from 'yaml';
 import type { NavigationTarget } from './extension';
+import { CustomFlavorPanel } from './customFlavorPanel';
 
 type LinterDescriptorMetadata = {
   descriptorId?: string;
@@ -121,6 +123,9 @@ export class ConfigurationPanel {
             break;
           case 'upgradeMegaLinter':
             await this._runCommand('npx --yes mega-linter-runner@latest --upgrade');
+            break;
+          case 'openCustomFlavorBuilder':
+            CustomFlavorPanel.createOrShow(this._extensionUri);
             break;
           case 'error':
             vscode.window.showErrorMessage(message.message);
@@ -545,6 +550,7 @@ export class ConfigurationPanel {
 </head>
 <body>
   <div id="root"></div>
+  <script nonce="${nonce}">window.__MEGALINTER_VIEW__ = 'config';</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

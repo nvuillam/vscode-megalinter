@@ -27,12 +27,36 @@ export type ExtensionMessage =
   | { type: 'saveConfig'; config: MegaLinterConfig }
   | { type: 'installMegaLinter' }
   | { type: 'upgradeMegaLinter' }
+  | { type: 'openCustomFlavorBuilder' }
+  | { type: 'getFlavorContext' }
+  | { type: 'pickFlavorFolder' }
+  | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
+  | { type: 'loadFlavorDefinition'; folderPath: string }
+  | { type: 'openFile'; filePath: string }
   | { type: 'info'; message: string }
   | { type: 'error'; message: string };
 
 export type WebViewMessage =
   | { type: 'configData'; config: MegaLinterConfig; configPath: string; configExists: boolean; linterMetadata: LinterMetadataMap }
   | { type: 'navigate'; target: NavigationTarget };
+
+export type FlavorContextMessage = {
+  type: 'flavorContext';
+  workspaceFolders: Array<{ name: string; path: string }>;
+};
+
+export type FlavorFolderSelectedMessage = {
+  type: 'flavorFolderSelected';
+  folderPath: string;
+};
+
+export type FlavorDefinitionMessage = {
+  type: 'flavorDefinition';
+  folderPath: string;
+  exists: boolean;
+  filePath: string;
+  content?: string;
+};
 
 // ============================================================================
 // Navigation Types
@@ -60,6 +84,10 @@ export interface ViewState {
 
 export interface PersistedState extends ViewState {
   cachedSchema?: CachedSchema | null;
+  flavorBuilder?: {
+    folderPath?: string;
+    selectedLinters?: string[];
+  };
 }
 
 // ============================================================================
@@ -178,6 +206,7 @@ export interface HomePanelProps {
   totalKeys: number;
   descriptorCount: number;
   linterCount: number;
+  postMessage: (message: ExtensionMessage) => void;
   onOpenGeneral: () => void;
   onOpenSummary: () => void;
   onOpenFirstDescriptor: () => void;
