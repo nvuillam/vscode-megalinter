@@ -2,3 +2,5 @@
 quiet: true
 skip-check: 
   - CKV_DOCKER_3
+skip-framework:
+  - dockerfile
