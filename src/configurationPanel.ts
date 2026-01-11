@@ -77,7 +77,7 @@ type CachedDescriptorMetadata = {
   data: Record<string, LinterDescriptorMetadata>;
 };
 
-const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache.v4';
+const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache.v5';
 const DESCRIPTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class ConfigurationPanel {
@@ -455,8 +455,18 @@ export class ConfigurationPanel {
     const cacheHasConfigFileNames = cached?.data
       ? Object.values(cached.data).some((meta) => typeof meta?.configFileName === 'string' && meta.configFileName.trim())
       : false;
+    const cacheHasText = cached?.data
+      ? Object.values(cached.data).some((meta) => typeof meta?.text === 'string' && meta.text.trim())
+      : false;
 
-    if (cacheIsFresh && cacheHasLinks && cacheHasConfigFileNames && cached?.data && Object.keys(cached.data).length > 0) {
+    if (
+      cacheIsFresh &&
+      cacheHasLinks &&
+      cacheHasConfigFileNames &&
+      cacheHasText &&
+      cached?.data &&
+      Object.keys(cached.data).length > 0
+    ) {
       this._linterMetadataCache = cached.data;
       return cached.data;
     }
