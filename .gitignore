@@ -8,3 +8,5 @@ out
 !.vscode/tasks.json
 
 megalinter-reports/
+
+.env

@@ -1,9 +1,62 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_OWNER = 'oxsecurity';
 const DEFAULT_REPO = 'megalinter';
 const DEFAULT_REF = 'main';
+
+function stripQuotes(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+async function loadDotEnv(dotEnvPath, { verbose } = { verbose: false }) {
+  try {
+    const content = await readFile(dotEnvPath, 'utf8');
+    const lines = content.split(/\r?\n/);
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) {
+        continue;
+      }
+
+      const withoutExport = line.startsWith('export ') ? line.slice('export '.length).trim() : line;
+      const eqIndex = withoutExport.indexOf('=');
+      if (eqIndex <= 0) {
+        continue;
+      }
+
+      const key = withoutExport.slice(0, eqIndex).trim();
+      const value = stripQuotes(withoutExport.slice(eqIndex + 1));
+
+      if (!key) {
+        continue;
+      }
+
+      // Do not override real env vars (CLI/CI should win over .env)
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+        if (verbose) {
+          // eslint-disable-next-line no-console
+          console.log(`Loaded ${key} from .env`);
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore if .env doesn't exist
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
+      return;
+    }
+    throw err;
+  }
+}
 
 function parseArgs(argv) {
   const args = {
@@ -73,7 +126,7 @@ Options:
   --verbose         More logging
 
 Auth:
-  Set GITHUB_TOKEN in env to avoid rate limits (optional).
+  Set GITHUB_TOKEN in env or in a local .env file to avoid rate limits (optional).
 `);
 }
 
@@ -247,6 +300,7 @@ async function main() {
   }
 
   const repoRoot = process.cwd();
+  await loadDotEnv(path.join(repoRoot, '.env'), { verbose: args.verbose });
   const localDescriptorsDir = path.join(repoRoot, 'src', 'descriptors');
 
   const mappings = [

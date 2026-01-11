@@ -17,7 +17,7 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { ThemedForm } from './ThemedForm';
 import { LinterDescription } from './LinterDescription';
 import { DocFieldTemplate } from './DocFieldTemplate';
-import { DualListWidget, TagArrayFieldTemplate } from './widgets';
+import { CheckboxWidget, DualListWidget, TagArrayFieldTemplate } from './widgets';
 
 export const MainTabs: React.FC<MainTabsProps> = ({
   schema,
@@ -308,7 +308,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           liveValidate
           noHtml5Validate
           showErrorList={false}
-          widgets={{ dualList: DualListWidget }}
+          widgets={{ dualList: DualListWidget, CheckboxWidget }}
           templates={{ ArrayFieldTemplate: TagArrayFieldTemplate, FieldTemplate: DocFieldTemplate }}
           idPrefix="summary"
         >

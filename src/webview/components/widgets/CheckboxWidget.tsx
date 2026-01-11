@@ -14,43 +14,80 @@ export const CheckboxWidget: React.FC<WidgetProps> = ({
   options
 }) => {
   const ariaDescribedBy = typeof options?.['aria-describedby'] === 'string' ? options['aria-describedby'] : undefined;
-
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChange(event.target.checked);
-    },
-    [onChange]
-  );
+  const checked = Boolean(value);
+  const isDisabled = disabled || readonly;
 
   const handleBlur = useCallback(
-    (event: React.FocusEvent<HTMLInputElement>) => {
-      onBlur?.(id, event.target.checked);
+    () => {
+      onBlur?.(id, checked);
     },
-    [id, onBlur]
+    [checked, id, onBlur]
   );
 
   const handleFocus = useCallback(
-    (event: React.FocusEvent<HTMLInputElement>) => {
-      onFocus?.(id, event.target.checked);
+    () => {
+      onFocus?.(id, checked);
     },
-    [id, onFocus]
+    [checked, id, onFocus]
   );
 
-  const isDisabled = disabled || readonly;
+  const setValue = useCallback(
+    (nextValue: boolean) => {
+      if (!isDisabled) {
+        onChange(nextValue);
+      }
+    },
+    [isDisabled, onChange]
+  );
+
+  const handleActive = useCallback(() => setValue(true), [setValue]);
+  const handleInactive = useCallback(() => setValue(false), [setValue]);
+
+  const handleKeyDown = useCallback(
+    (nextValue: boolean) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        setValue(nextValue);
+      }
+    },
+    [setValue]
+  );
 
   return (
-    <div className="checkbox-widget" style={{ display: 'flex', alignItems: 'center' }}>
-      <input
-        id={id}
-        type="checkbox"
-        checked={Boolean(value)}
-        disabled={isDisabled}
-        autoFocus={autofocus}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onFocus={handleFocus}
+    <div className="checkbox-widget">
+      <div
+        className={`boolean-toggle ${checked ? 'boolean-toggle--on' : 'boolean-toggle--off'} ${
+          isDisabled ? 'boolean-toggle--disabled' : ''
+        }`}
+        role="group"
         aria-describedby={ariaDescribedBy}
-      />
+      >
+        <span className="boolean-toggle__thumb" aria-hidden="true" />
+        <button
+          id={id}
+          type="button"
+          className={`boolean-toggle__option ${checked ? 'boolean-toggle__option--active' : ''}`}
+          aria-pressed={checked}
+          disabled={isDisabled}
+          autoFocus={autofocus}
+          onClick={handleActive}
+          onKeyDown={handleKeyDown(true)}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          className={`boolean-toggle__option ${!checked ? 'boolean-toggle__option--active' : ''}`}
+          aria-pressed={!checked}
+          disabled={isDisabled}
+          onClick={handleInactive}
+          onKeyDown={handleKeyDown(false)}
+        >
+          Inactive
+        </button>
+      </div>
     </div>
   );
 };
