@@ -32,6 +32,7 @@ type ResolveLinterConfigRequest = {
 type CreateLinterConfigRequest = {
   type: 'createLinterConfigFileFromDefault';
   linterKey: string;
+  mode?: 'default' | 'blank';
   destination?: {
     linterRulesPath?: string;
     configFile?: string;
@@ -192,7 +193,7 @@ export class ConfigurationPanel {
             await this._resolveAndSendLinterConfigFile(message.linterKey, message.overrides);
             break;
           case 'createLinterConfigFileFromDefault':
-            await this._createLinterConfigFileFromDefault(message.linterKey, message.destination);
+            await this._createLinterConfigFileFromDefault(message.linterKey, message.destination, message.mode);
             break;
           case 'openExternal':
             if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
@@ -698,9 +699,21 @@ export class ConfigurationPanel {
     return { exists: false };
   }
 
+  private _getBlankConfigContent(configFileRelPosix: string): string {
+    const lower = configFileRelPosix.toLowerCase();
+    if (lower.endsWith('.json')) {
+      return '{\n}\n';
+    }
+    if (lower.endsWith('.yml') || lower.endsWith('.yaml')) {
+      return '{}\n';
+    }
+    return '';
+  }
+
   private async _createLinterConfigFileFromDefault(
     linterKey: string,
-    destination?: { linterRulesPath?: string; configFile?: string }
+    destination?: { linterRulesPath?: string; configFile?: string },
+    mode: 'default' | 'blank' = 'default'
   ) {
     const safeKey = typeof linterKey === 'string' ? linterKey.trim().toUpperCase() : '';
     if (!safeKey) {
@@ -752,26 +765,46 @@ export class ConfigurationPanel {
       return;
     }
 
-    const defaultTemplate = await this._loadDefaultTemplate(configFileRelPosix);
-    if (!defaultTemplate?.exists || !defaultTemplate.content) {
-      vscode.window.showErrorMessage('No default template available for this config file');
-      return;
-    }
+    const title = mode === 'blank'
+      ? `Creating ${configFileRelPosix}…`
+      : `Creating ${configFileRelPosix} from default…`;
 
-    if (fs.existsSync(targetPath)) {
-      vscode.window.showInformationMessage(`Config file already exists: ${targetPath}`);
-      await this._openFile(targetPath);
-      await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
-      return;
-    }
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title,
+        cancellable: false
+      },
+      async (progress) => {
+        if (fs.existsSync(targetPath)) {
+          progress.report({ message: 'Opening existing file…' });
+          await this._openFile(targetPath);
+          await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
+          return;
+        }
 
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, defaultTemplate.content, 'utf8');
-    vscode.window.showInformationMessage(`Created config file: ${targetPath}`);
+        let contentToWrite = '';
+        if (mode === 'blank') {
+          contentToWrite = this._getBlankConfigContent(configFileRelPosix);
+        } else {
+          progress.report({ message: 'Loading default template…' });
+          const defaultTemplate = await this._loadDefaultTemplate(configFileRelPosix);
+          if (!defaultTemplate?.exists || !defaultTemplate.content) {
+            vscode.window.showErrorMessage('No default template available for this config file');
+            return;
+          }
+          contentToWrite = defaultTemplate.content;
+        }
 
-    await this._openFile(targetPath);
+        progress.report({ message: 'Writing file…' });
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.writeFileSync(targetPath, contentToWrite, 'utf8');
 
-    await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
+        vscode.window.showInformationMessage(`Created config file: ${targetPath}`);
+        await this._openFile(targetPath);
+        await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
+      }
+    );
   }
 
   private async _saveConfig(config: any) {

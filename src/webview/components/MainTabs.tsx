@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import type { MainTabsProps, Tab, BreadcrumbItem, BreadcrumbOption } from '../types';
@@ -23,6 +23,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
   schema,
   groups,
   formData,
+  originalConfig,
   uiSchema,
   onSubsetChange,
   postMessage,
@@ -47,6 +48,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
 }) => {
   const [brokenLinterIcons, setBrokenLinterIcons] = useState<Record<string, boolean>>({});
   const [resolvingLinterConfig, setResolvingLinterConfig] = useState<Record<string, boolean>>({});
+  const lastResolveSignature = useRef<Record<string, string>>({});
 
   const activeLinterKey = useMemo(() => {
     if (activeMainTab !== 'descriptors') {
@@ -62,16 +64,37 @@ export const MainTabs: React.FC<MainTabsProps> = ({
     if (!activeLinterKey) {
       return null;
     }
-    const rulesPath = typeof formData?.LINTER_RULES_PATH === 'string' ? String(formData.LINTER_RULES_PATH) : undefined;
+
+    // Use persisted config to detect explicit overrides and avoid transient defaults added by RJSF
+    // when switching between themed tabs (e.g. Linter Command).
+    const rulesPath = Object.prototype.hasOwnProperty.call(originalConfig || {}, 'LINTER_RULES_PATH')
+      ? (typeof originalConfig?.LINTER_RULES_PATH === 'string' ? String(originalConfig.LINTER_RULES_PATH) : undefined)
+      : undefined;
+
     const configKey = `${activeLinterKey}_CONFIG_FILE`;
-    const configFile = typeof formData?.[configKey] === 'string' ? String(formData[configKey]) : undefined;
+    const configFile = Object.prototype.hasOwnProperty.call(originalConfig || {}, configKey)
+      ? (typeof originalConfig?.[configKey] === 'string' ? String(originalConfig[configKey]) : undefined)
+      : undefined;
+
     return { rulesPath, configFile };
-  }, [activeLinterKey, formData]);
+  }, [activeLinterKey, originalConfig]);
 
   useEffect(() => {
     if (!activeLinterKey) {
       return;
     }
+
+    const signature = JSON.stringify({
+      linterKey: activeLinterKey,
+      rulesPath: activeLinterOverrides?.rulesPath ?? null,
+      configFile: activeLinterOverrides?.configFile ?? null
+    });
+
+    if (lastResolveSignature.current[activeLinterKey] === signature) {
+      return;
+    }
+    lastResolveSignature.current[activeLinterKey] = signature;
+
     setResolvingLinterConfig((prev) => ({ ...prev, [activeLinterKey]: true }));
     postMessage({
       type: 'resolveLinterConfigFile',
@@ -569,8 +592,28 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           icon: 'file',
           content: (
             <div className="linter-description">
-              <h3 className="linter-description__name">Default configuration</h3>
-              <p className="muted">No default template found for {configFileName}.</p>
+              <div className="config-file__header">
+                <div>
+                  <h3 className="linter-description__name">Default configuration</h3>
+                  <p className="muted">No default template found for {configFileName}.</p>
+                </div>
+                <button
+                  className="pill-button pill-button--solid"
+                  onClick={() =>
+                    postMessage({
+                      type: 'createLinterConfigFileFromDefault',
+                      linterKey,
+                      mode: 'blank',
+                      destination: {
+                        linterRulesPath: activeLinterOverrides?.rulesPath,
+                        configFile: configFileName
+                      }
+                    })
+                  }
+                >
+                  Create
+                </button>
+              </div>
             </div>
           )
         });

@@ -7,7 +7,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
   sections,
   selectedId,
   activeDescriptorId,
-  onSelect
+  onSelect,
+  disabled
 }) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     home: true,
@@ -39,6 +40,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
   }, [selectedId, sections]);
 
   const toggleSection = (id: string) => {
+    if (disabled) {
+      return;
+    }
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
@@ -60,12 +64,18 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
             hasValues: sectionHasValues
           };
           const isActive = selectedId === section.id;
+          const isDisabled = !!disabled && section.id !== 'home';
           return (
             <div key={section.id} className="nav__section">
               <button
                 type="button"
                 className={`nav__title nav__title--link ${isActive ? 'nav__title--active' : ''}`}
-                onClick={() => onSelect(targetItem)}
+                onClick={() => {
+                  if (!isDisabled) {
+                    onSelect(targetItem);
+                  }
+                }}
+                disabled={isDisabled}
               >
                 <span className="nav__title-label">
                   <span className={`nav__icon codicon codicon-${sectionIcon}`} aria-hidden="true" />
@@ -84,6 +94,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
               className="nav__title nav__title--toggle"
               onClick={() => toggleSection(section.id)}
               aria-expanded={isExpanded}
+              disabled={!!disabled}
             >
               <span className="nav__title-label">
                 <span className={`nav__icon codicon codicon-${sectionIcon}`} aria-hidden="true" />
@@ -103,7 +114,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                       <button
                         type="button"
                         className={`nav__item ${isActive ? 'nav__item--active' : ''}`}
-                        onClick={() => onSelect(item)}
+                        onClick={() => {
+                          if (!disabled) {
+                            onSelect(item);
+                          }
+                        }}
+                        disabled={!!disabled}
                       >
                         <span className="nav__label">
                           <span className={`nav__icon codicon codicon-${itemIcon}`} aria-hidden="true" />
@@ -121,7 +137,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
                                 <button
                                   type="button"
                                   className={`nav__item nav__item--child ${childActive ? 'nav__item--active' : ''}`}
-                                  onClick={() => onSelect(child)}
+                                  onClick={() => {
+                                    if (!disabled) {
+                                      onSelect(child);
+                                    }
+                                  }}
+                                  disabled={!!disabled}
                                 >
                                   <span className="nav__label">
                                     <span className={`nav__icon codicon codicon-${childIcon}`} aria-hidden="true" />

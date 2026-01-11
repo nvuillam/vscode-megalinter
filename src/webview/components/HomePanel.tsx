@@ -6,6 +6,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   configPath,
   configExists,
   configLoaded,
+  referenceDataLoading,
   configuredCount,
   totalKeys,
   descriptorCount,
@@ -59,6 +60,15 @@ export const HomePanel: React.FC<HomePanelProps> = ({
         <div className="home__cta-spinner" role="status" aria-live="polite">
           <span className="home__spinner" aria-hidden="true" />
           <span>Loading setup…</span>
+        </div>
+      );
+    }
+
+    if (referenceDataLoading) {
+      return (
+        <div className="home__cta-spinner" role="status" aria-live="polite">
+          <span className="home__spinner" aria-hidden="true" />
+          <span>Loading reference data…</span>
         </div>
       );
     }
@@ -138,7 +148,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               type="button"
               className="pill-button pill-button--primary"
               onClick={onOpenGeneral}
-              disabled={!configExists}
+              disabled={!configExists || referenceDataLoading}
             >
               Start with general settings
             </button>
@@ -146,7 +156,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               type="button"
               className="pill-button pill-button--ghost"
               onClick={onOpenSummary}
-              disabled={!hasConfiguration}
+              disabled={!hasConfiguration || referenceDataLoading}
             >
               Review configured values
             </button>
@@ -177,6 +187,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
                 onChange={handleSearchChange}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                disabled={referenceDataLoading}
               />
               {showSuggestions && searchTerm && filteredItems.length > 0 && (
                 <ul className="home__search-suggestions">

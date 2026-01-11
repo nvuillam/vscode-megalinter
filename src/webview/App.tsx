@@ -79,6 +79,11 @@ export const App: React.FC = () => {
     openDescriptor
   } = useNavigationState(persistedState);
 
+  const referenceDataLoading = useMemo(() => {
+    // Consider ref data ready only once schema/groups + config (which includes descriptor metadata) are loaded.
+    return !schema || !groups || !configLoaded;
+  }, [schema, groups, configLoaded]);
+
   const [activeGeneralTheme, setActiveGeneralTheme] = useState<string | null>(
     persistedState?.activeGeneralTheme || null
   );
@@ -493,16 +498,6 @@ export const App: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="loading">
-          <p>Loading MegaLinter schema...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="container">
@@ -514,36 +509,45 @@ export const App: React.FC = () => {
     );
   }
 
-  if (!schema || !groups) {
-    return (
-      <div className="container">
-        <div className="error">
-          <p>No schema available</p>
-        </div>
-      </div>
-    );
-  }
+  // While reference data is loading, force the UI to stay on Home.
+  useEffect(() => {
+    if (!referenceDataLoading) {
+      return;
+    }
+    setActiveMainTab('home');
+    setSelectedCategory(null);
+    setSelectedDescriptor(null);
+    setSelectedScope(null);
+  }, [referenceDataLoading, setActiveMainTab, setSelectedCategory, setSelectedDescriptor, setSelectedScope]);
 
-  const selectedNavId =
-    activeMainTab === 'home'
+  const selectedNavId = referenceDataLoading
+    ? 'home'
+    : activeMainTab === 'home'
       ? 'home'
       : activeMainTab === 'general'
-      ? 'general'
-      : activeMainTab === 'summary'
-      ? 'summary'
-      : activeMainTab === 'category'
-      ? selectedCategory || ''
-      : selectedScope || selectedDescriptor || '';
+        ? 'general'
+        : activeMainTab === 'summary'
+          ? 'summary'
+          : activeMainTab === 'category'
+            ? selectedCategory || ''
+            : selectedScope || selectedDescriptor || '';
+
+  const effectiveSections = navigationModel?.sections || [
+    { id: 'home', label: 'Home', items: [] }
+  ];
+
+  const showHome = referenceDataLoading || activeMainTab === 'home';
 
   return (
     <div className="container">
       <div className="layout">
         <div className="form-container">
-          {activeMainTab === 'home' ? (
+          {showHome ? (
             <HomePanel
               configPath={configPath}
               configExists={configExists}
               configLoaded={configLoaded}
+              referenceDataLoading={referenceDataLoading}
               configuredCount={configuredKeyCount}
               totalKeys={totalSchemaKeys}
               descriptorCount={descriptorCount}
@@ -567,9 +571,10 @@ export const App: React.FC = () => {
             />
           ) : (
             <MainTabs
-              schema={schema}
-              groups={groups}
+              schema={schema as RJSFSchema}
+              groups={groups as SchemaGroups}
               formData={formData}
+              originalConfig={originalConfig}
               uiSchema={uiSchema}
               onSubsetChange={handleSubsetChange}
               postMessage={postMessage}
@@ -595,10 +600,16 @@ export const App: React.FC = () => {
           )}
         </div>
         <NavigationMenu
-          sections={navigationModel?.sections || []}
+          sections={effectiveSections}
           selectedId={selectedNavId}
           activeDescriptorId={selectedDescriptor}
-          onSelect={handleNavigationSelect}
+          onSelect={(item) => {
+            if (referenceDataLoading && item.type !== 'home') {
+              return;
+            }
+            handleNavigationSelect(item);
+          }}
+          disabled={referenceDataLoading}
         />
       </div>
     </div>

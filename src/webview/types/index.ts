@@ -30,7 +30,7 @@ export type ExtensionMessage =
   | { type: 'openCustomFlavorBuilder' }
   | { type: 'openExternal'; url: string }
   | { type: 'resolveLinterConfigFile'; linterKey: string; overrides?: { linterRulesPath?: string; configFile?: string } }
-  | { type: 'createLinterConfigFileFromDefault'; linterKey: string; destination?: { linterRulesPath?: string; configFile?: string } }
+  | { type: 'createLinterConfigFileFromDefault'; linterKey: string; mode?: 'default' | 'blank'; destination?: { linterRulesPath?: string; configFile?: string } }
   | { type: 'getFlavorContext' }
   | { type: 'pickFlavorFolder' }
   | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
@@ -238,6 +238,7 @@ export interface HomePanelProps {
   configPath: string;
   configExists: boolean;
   configLoaded: boolean;
+  referenceDataLoading: boolean;
   configuredCount: number;
   totalKeys: number;
   descriptorCount: number;
@@ -265,6 +266,7 @@ export interface NavigationMenuProps {
   selectedId: string;
   activeDescriptorId: string | null;
   onSelect: (item: MenuItem | MenuChild) => void;
+  disabled?: boolean;
 }
 
 export interface BreadcrumbsProps {
@@ -305,6 +307,7 @@ export interface MainTabsProps {
   schema: RJSFSchema;
   groups: SchemaGroups;
   formData: MegaLinterConfig;
+  originalConfig: MegaLinterConfig;
   uiSchema: UiSchema;
   onSubsetChange: (keys: string[], subsetData: MegaLinterConfig) => void;
   postMessage: (message: ExtensionMessage) => void;
