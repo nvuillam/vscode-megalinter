@@ -38,6 +38,14 @@ const extractVariableName = (id: string): string | undefined => {
     return undefined;
   }
 
+  // If the id points to an array item or nested field, it will usually include an index segment
+  // like "FOO_0" or "FOO_0_BAR". Summary view in particular uses ids like:
+  // - summary_ENABLE_LINTERS_0
+  // In those cases we must NOT treat it as a top-level MegaLinter variable.
+  if (/(?:^|_)\d+(?:_|$)/.test(candidate)) {
+    return undefined;
+  }
+
   // Only treat top-level MegaLinter variables as eligible.
   // Nested fields include indexes/child keys (e.g. root_PRE_COMMANDS_0_command).
   if (!/^[A-Z0-9_]+$/.test(candidate)) {
