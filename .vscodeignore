@@ -14,3 +14,5 @@ node_modules/**
 TESTING.md
 CONTRIBUTING.md
 .mega-linter.yml.example
+.env
+docs/**
