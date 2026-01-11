@@ -1,19 +1,19 @@
-const path = require('path');
+const path = require("path");
 
 const extensionConfig = {
-  target: 'node',
-  mode: 'none',
-  entry: './src/extension.ts',
+  target: "node",
+  mode: "none",
+  entry: "./src/extension.ts",
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'extension.js',
-    libraryTarget: 'commonjs2'
+    path: path.resolve(__dirname, "dist"),
+    filename: "extension.js",
+    libraryTarget: "commonjs2",
   },
   externals: {
-    vscode: 'commonjs vscode'
+    vscode: "commonjs vscode",
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: [".ts", ".js"],
   },
   module: {
     rules: [
@@ -22,25 +22,25 @@ const extensionConfig = {
         exclude: /node_modules/,
         use: [
           {
-            loader: 'ts-loader'
-          }
-        ]
-      }
-    ]
+            loader: "ts-loader",
+          },
+        ],
+      },
+    ],
   },
-  devtool: 'nosources-source-map'
+  devtool: "nosources-source-map",
 };
 
 const webviewConfig = {
-  target: 'web',
-  mode: 'none',
-  entry: './src/webview/index.tsx',
+  target: "web",
+  mode: "none",
+  entry: "./src/webview/index.tsx",
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'webview.js'
+    path: path.resolve(__dirname, "dist"),
+    filename: "webview.js",
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.jsx']
+    extensions: [".tsx", ".ts", ".js", ".jsx"],
   },
   module: {
     rules: [
@@ -49,31 +49,31 @@ const webviewConfig = {
         exclude: /node_modules/,
         use: [
           {
-            loader: 'ts-loader'
-          }
-        ]
+            loader: "ts-loader",
+          },
+        ],
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.(ttf|woff2?|eot)$/i,
-        type: 'asset/resource',
+        type: "asset/resource",
         generator: {
-          filename: 'assets/[name][ext]'
-        }
+          filename: "assets/[name][ext]",
+        },
       },
       {
         test: /\.(png|jpe?g|gif|svg)$/i,
-        type: 'asset/resource',
+        type: "asset/resource",
         generator: {
-          filename: 'assets/[name][ext]'
-        }
-      }
-    ]
+          filename: "assets/[name][ext]",
+        },
+      },
+    ],
   },
-  devtool: 'nosources-source-map'
+  devtool: "nosources-source-map",
 };
 
 module.exports = [extensionConfig, webviewConfig];

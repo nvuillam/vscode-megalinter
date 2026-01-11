@@ -1,13 +1,13 @@
-import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import type { SchemaGroups } from '../../shared/schemaUtils';
-import type { LinterDescriptorMetadata } from '../../shared/linterMetadata';
+import type { RJSFSchema, UiSchema } from "@rjsf/utils";
+import type { SchemaGroups } from "../../shared/schemaUtils";
+import type { LinterDescriptorMetadata } from "../../shared/linterMetadata";
 import type {
   CommonWebviewToExtensionMessage,
   FlavorWebviewToExtensionMessage,
   FlavorContextMessage,
   FlavorDefinitionMessage,
-  FlavorFolderSelectedMessage
-} from '../../shared/webviewMessages';
+  FlavorFolderSelectedMessage,
+} from "../../shared/webviewMessages";
 
 // ============================================================================
 // VS Code API Types
@@ -31,37 +31,69 @@ declare global {
 
 export type ExtensionMessage =
   | CommonWebviewToExtensionMessage
-  | { type: 'getConfig' }
-  | { type: 'saveConfig'; config: MegaLinterConfig }
-  | { type: 'installMegaLinter' }
-  | { type: 'upgradeMegaLinter' }
-  | { type: 'openCustomFlavorBuilder' }
-  | { type: 'resolveLinterConfigFile'; linterKey: string; overrides?: { linterRulesPath?: string; configFile?: string } }
-  | { type: 'createLinterConfigFileFromDefault'; linterKey: string; mode?: 'default' | 'blank'; destination?: { linterRulesPath?: string; configFile?: string } }
+  | { type: "getConfig" }
+  | { type: "saveConfig"; config: MegaLinterConfig }
+  | { type: "installMegaLinter" }
+  | { type: "upgradeMegaLinter" }
+  | { type: "openCustomFlavorBuilder" }
+  | {
+      type: "resolveLinterConfigFile";
+      linterKey: string;
+      overrides?: { linterRulesPath?: string; configFile?: string };
+    }
+  | {
+      type: "createLinterConfigFileFromDefault";
+      linterKey: string;
+      mode?: "default" | "blank";
+      destination?: { linterRulesPath?: string; configFile?: string };
+    }
   | FlavorWebviewToExtensionMessage
-  | { type: 'info'; message: string }
-  | { type: 'error'; message: string };
+  | { type: "info"; message: string }
+  | { type: "error"; message: string };
 
 export type WebViewMessage =
-  | { type: 'configData'; config: MegaLinterConfig; configPath: string; configExists: boolean; linterMetadata: LinterMetadataMap }
-  | { type: 'linterConfigFileInfo'; linterKey: string; resolved: boolean; configFileName?: string; rulesPath?: string; local?: LinterConfigFileDetails; defaultTemplate?: LinterDefaultConfigDetails }
-  | { type: 'navigate'; target: NavigationTarget };
+  | {
+      type: "configData";
+      config: MegaLinterConfig;
+      configPath: string;
+      configExists: boolean;
+      linterMetadata: LinterMetadataMap;
+    }
+  | {
+      type: "linterConfigFileInfo";
+      linterKey: string;
+      resolved: boolean;
+      configFileName?: string;
+      rulesPath?: string;
+      local?: LinterConfigFileDetails;
+      defaultTemplate?: LinterDefaultConfigDetails;
+    }
+  | { type: "navigate"; target: NavigationTarget };
 
-export type { FlavorContextMessage, FlavorFolderSelectedMessage, FlavorDefinitionMessage };
+export type {
+  FlavorContextMessage,
+  FlavorFolderSelectedMessage,
+  FlavorDefinitionMessage,
+};
 
 // ============================================================================
 // Navigation Types
 // ============================================================================
 
 export type NavigationTarget =
-  | { type: 'home' }
-  | { type: 'general' }
-  | { type: 'summary' }
-  | { type: 'category'; categoryId: string }
-  | { type: 'descriptor'; descriptorId: string }
-  | { type: 'linter'; descriptorId: string; linterId: string };
+  | { type: "home" }
+  | { type: "general" }
+  | { type: "summary" }
+  | { type: "category"; categoryId: string }
+  | { type: "descriptor"; descriptorId: string }
+  | { type: "linter"; descriptorId: string; linterId: string };
 
-export type MainTabId = 'home' | 'summary' | 'general' | 'category' | 'descriptors';
+export type MainTabId =
+  | "home"
+  | "summary"
+  | "general"
+  | "category"
+  | "descriptors";
 
 export interface ViewState {
   activeMainTab: MainTabId;
@@ -94,14 +126,22 @@ export interface CachedSchema {
  * MegaLinter configuration object - keys are configuration variable names,
  * values can be strings, numbers, booleans, or arrays
  */
-export type MegaLinterConfigValue = string | number | boolean | string[] | undefined;
+export type MegaLinterConfigValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | undefined;
 export type MegaLinterConfig = Record<string, MegaLinterConfigValue>;
 
 // ============================================================================
 // Linter Metadata Types
 // ============================================================================
 
-export type { LinterLink, LinterDescriptorMetadata } from '../../shared/linterMetadata';
+export type {
+  LinterLink,
+  LinterDescriptorMetadata,
+} from "../../shared/linterMetadata";
 
 export type LinterMetadataMap = Record<string, LinterDescriptorMetadata>;
 
@@ -118,7 +158,7 @@ export interface LinterConfigFileDetails {
 
 export interface LinterDefaultConfigDetails {
   exists: boolean;
-  source?: 'remote' | 'local';
+  source?: "remote" | "local";
   content?: string;
   truncated?: boolean;
 }
@@ -139,7 +179,7 @@ export interface LinterConfigFileInfo {
 export interface MenuChild {
   id: string;
   label: string;
-  type: 'linter';
+  type: "linter";
   parentId: string;
   hasValues: boolean;
 }
@@ -147,12 +187,17 @@ export interface MenuChild {
 export interface MenuItem {
   id: string;
   label: string;
-  type: 'home' | 'summary' | 'general' | 'category' | 'descriptor';
+  type: "home" | "summary" | "general" | "category" | "descriptor";
   hasValues: boolean;
   children?: MenuChild[];
 }
 
-export type MenuSectionId = 'home' | 'summary' | 'general' | 'generic' | 'descriptors';
+export type MenuSectionId =
+  | "home"
+  | "summary"
+  | "general"
+  | "generic"
+  | "descriptors";
 
 export interface MenuSection {
   id: MenuSectionId;
@@ -193,7 +238,7 @@ export interface BreadcrumbItem {
 export interface SearchItem {
   id: string;
   label: string;
-  type: 'descriptor' | 'linter' | 'reporter';
+  type: "descriptor" | "linter" | "reporter";
   descriptorId?: string;
   linterId?: string;
   categoryId?: string;
@@ -258,7 +303,7 @@ export interface ThemedFormProps {
   onSubsetChange: (keys: string[], subset: MegaLinterConfig) => void;
   activeThemeTab: string | null;
   setActiveThemeTab: (id: string | null) => void;
-  sectionMeta: SchemaGroups['sectionMeta'];
+  sectionMeta: SchemaGroups["sectionMeta"];
   prefixToStrip?: string;
   highlightedKeys: Set<string>;
   introTabs?: IntroTab[];
@@ -294,7 +339,9 @@ export interface MainTabsProps {
   activeDescriptorThemes: Record<string, string>;
   setActiveDescriptorThemes: (value: Record<string, string>) => void;
   activeLinterThemes: Record<string, Record<string, string>>;
-  setActiveLinterThemes: (value: Record<string, Record<string, string>>) => void;
+  setActiveLinterThemes: (
+    value: Record<string, Record<string, string>>,
+  ) => void;
   highlightedKeys: Set<string>;
   linterMetadata: LinterMetadataMap;
   linterConfigFiles: Record<string, LinterConfigFileInfo>;

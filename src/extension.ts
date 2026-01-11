@@ -1,33 +1,36 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
-import { ConfigurationPanel } from './configurationPanel';
-import { CustomFlavorPanel } from './customFlavorPanel';
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+import { ConfigurationPanel } from "./configurationPanel";
+import { CustomFlavorPanel } from "./customFlavorPanel";
 
 export type NavigationTarget =
-  | { type: 'general' }
-  | { type: 'category'; categoryId: string }
-  | { type: 'descriptor'; descriptorId: string }
-  | { type: 'linter'; descriptorId: string; linterId: string };
+  | { type: "general" }
+  | { type: "category"; categoryId: string }
+  | { type: "descriptor"; descriptorId: string }
+  | { type: "linter"; descriptorId: string; linterId: string };
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('MegaLinter Configuration extension is now active');
+  console.log("MegaLinter Configuration extension is now active");
 
-  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBarItem.text = '$(tools) MegaLinter';
-  statusBarItem.command = 'megalinter.openConfiguration';
-  statusBarItem.tooltip = 'Open MegaLinter configuration';
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100,
+  );
+  statusBarItem.text = "$(tools) MegaLinter";
+  statusBarItem.command = "megalinter.openConfiguration";
+  statusBarItem.tooltip = "Open MegaLinter configuration";
   statusBarItem.show();
 
   context.subscriptions.push(statusBarItem);
 
   const customFlavorStatusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
-    99
+    99,
   );
-  customFlavorStatusBarItem.text = '$(package) MegaLinter Custom Flavor';
-  customFlavorStatusBarItem.command = 'megalinter.openCustomFlavorBuilder';
-  customFlavorStatusBarItem.tooltip = 'Open MegaLinter Custom Flavor Builder';
+  customFlavorStatusBarItem.text = "$(package) MegaLinter Custom Flavor";
+  customFlavorStatusBarItem.command = "megalinter.openCustomFlavorBuilder";
+  customFlavorStatusBarItem.tooltip = "Open MegaLinter Custom Flavor Builder";
 
   const updateCustomFlavorStatusVisibility = () => {
     if (hasCustomFlavorFileInWorkspaceRoot()) {
@@ -40,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
   updateCustomFlavorStatusVisibility();
 
   const watcher = vscode.workspace.createFileSystemWatcher(
-    '**/{mega-linter-flavor.yml,mega-linter-flavor.yaml,megalinter-custom-flavor.yml,megalinter-custom-flavor.yaml}'
+    "**/{mega-linter-flavor.yml,mega-linter-flavor.yaml,megalinter-custom-flavor.yml,megalinter-custom-flavor.yaml}",
   );
   watcher.onDidCreate(updateCustomFlavorStatusVisibility);
   watcher.onDidDelete(updateCustomFlavorStatusVisibility);
@@ -52,46 +55,58 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register the command to open the configuration
   let disposable = vscode.commands.registerCommand(
-    'megalinter.openConfiguration',
+    "megalinter.openConfiguration",
     async (uri?: vscode.Uri) => {
       const configPath = await resolveConfigPath(uri);
 
       if (!configPath) {
         vscode.window.showErrorMessage(
-          'Please open a workspace folder to configure MegaLinter'
+          "Please open a workspace folder to configure MegaLinter",
         );
         return;
       }
 
-      ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
-    }
+      ConfigurationPanel.createOrShow(
+        context.extensionUri,
+        context,
+        configPath,
+      );
+    },
   );
 
   const openCustomFlavorBuilder = vscode.commands.registerCommand(
-    'megalinter.openCustomFlavorBuilder',
+    "megalinter.openCustomFlavorBuilder",
     async (uri?: vscode.Uri) => {
       CustomFlavorPanel.createOrShow(context.extensionUri, uri);
-    }
+    },
   );
 
   const revealSection = vscode.commands.registerCommand(
-    'megalinter.revealSection',
+    "megalinter.revealSection",
     async (target: NavigationTarget, uri?: vscode.Uri) => {
       const configPath = await resolveConfigPath(uri);
 
       if (!configPath) {
         vscode.window.showErrorMessage(
-          'Please open a workspace folder to configure MegaLinter'
+          "Please open a workspace folder to configure MegaLinter",
         );
         return;
       }
 
-      const panel = ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
+      const panel = ConfigurationPanel.createOrShow(
+        context.extensionUri,
+        context,
+        configPath,
+      );
       panel.revealSection(target);
-    }
+    },
   );
 
-  context.subscriptions.push(disposable, revealSection, openCustomFlavorBuilder);
+  context.subscriptions.push(
+    disposable,
+    revealSection,
+    openCustomFlavorBuilder,
+  );
 }
 
 export function deactivate() {}
@@ -103,18 +118,22 @@ function hasCustomFlavorFileInWorkspaceRoot(): boolean {
   }
 
   const candidateNames = [
-    'megalinter-custom-flavor.yml',
-    'megalinter-custom-flavor.yaml',
-    'mega-linter-flavor.yml',
-    'mega-linter-flavor.yaml'
+    "megalinter-custom-flavor.yml",
+    "megalinter-custom-flavor.yaml",
+    "mega-linter-flavor.yml",
+    "mega-linter-flavor.yaml",
   ];
 
   return workspaceFolders.some((folder) => {
-    return candidateNames.some((name) => fs.existsSync(path.join(folder.uri.fsPath, name)));
+    return candidateNames.some((name) =>
+      fs.existsSync(path.join(folder.uri.fsPath, name)),
+    );
   });
 }
 
-async function resolveConfigPath(uri?: vscode.Uri): Promise<string | undefined> {
+async function resolveConfigPath(
+  uri?: vscode.Uri,
+): Promise<string | undefined> {
   let configPath: string | undefined;
 
   if (uri) {
@@ -123,8 +142,8 @@ async function resolveConfigPath(uri?: vscode.Uri): Promise<string | undefined> 
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
       const possiblePaths = [
-        path.join(workspaceFolders[0].uri.fsPath, '.mega-linter.yml'),
-        path.join(workspaceFolders[0].uri.fsPath, '.megalinter.yml')
+        path.join(workspaceFolders[0].uri.fsPath, ".mega-linter.yml"),
+        path.join(workspaceFolders[0].uri.fsPath, ".megalinter.yml"),
       ];
 
       for (const p of possiblePaths) {
@@ -135,7 +154,10 @@ async function resolveConfigPath(uri?: vscode.Uri): Promise<string | undefined> 
       }
 
       if (!configPath) {
-        configPath = path.join(workspaceFolders[0].uri.fsPath, '.mega-linter.yml');
+        configPath = path.join(
+          workspaceFolders[0].uri.fsPath,
+          ".mega-linter.yml",
+        );
       }
     }
   }

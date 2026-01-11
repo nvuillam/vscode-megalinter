@@ -1,27 +1,30 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import { getGitOriginRepositoryName, isGitRepository } from './gitUtils';
-import type { FlavorPanelInboundMessage, FlavorPanelOutboundMessage } from './shared/webviewMessages';
+import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
+import { getGitOriginRepositoryName, isGitRepository } from "./gitUtils";
+import type {
+  FlavorPanelInboundMessage,
+  FlavorPanelOutboundMessage,
+} from "./shared/webviewMessages";
 import {
   buildWebviewHtml,
   createMegalinterWebviewPanel,
   disposeAll,
-  openExternalHttpUrl
-} from './panelUtils';
+  openExternalHttpUrl,
+} from "./panelUtils";
 
 const FLAVOR_FILE_CANDIDATES = [
-  'megalinter-custom-flavor.yml',
-  'megalinter-custom-flavor.yaml',
-  'mega-linter-flavor.yml',
-  'mega-linter-flavor.yaml'
+  "megalinter-custom-flavor.yml",
+  "megalinter-custom-flavor.yaml",
+  "mega-linter-flavor.yml",
+  "mega-linter-flavor.yaml",
 ] as const;
 
 const DEFAULT_FLAVOR_FILE = FLAVOR_FILE_CANDIDATES[0];
 
 const NOT_A_GIT_REPO_MESSAGE =
-  'Selected folder is not a Git repository.\n\n' +
-  'Create a blank repository on GitHub (for example: megalinter-custom-flavor-<your-name>) and clone it into another folder, then select that cloned folder here.';
+  "Selected folder is not a Git repository.\n\n" +
+  "Create a blank repository on GitHub (for example: megalinter-custom-flavor-<your-name>) and clone it into another folder, then select that cloned folder here.";
 
 const NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE =
   "This generator must be run in a repository whose name includes 'megalinter-custom-flavor'.\n\n" +
@@ -36,7 +39,10 @@ export class CustomFlavorPanel {
   private _webviewReady = false;
   private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(extensionUri: vscode.Uri, initialUri?: vscode.Uri): CustomFlavorPanel {
+  public static createOrShow(
+    extensionUri: vscode.Uri,
+    initialUri?: vscode.Uri,
+  ): CustomFlavorPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -50,17 +56,25 @@ export class CustomFlavorPanel {
     }
 
     const panel = createMegalinterWebviewPanel({
-      viewType: 'megalinterCustomFlavor',
-      title: 'MegaLinter Custom Flavor Builder',
+      viewType: "megalinterCustomFlavor",
+      title: "MegaLinter Custom Flavor Builder",
       extensionUri,
-      column
+      column,
     });
 
-    CustomFlavorPanel.currentPanel = new CustomFlavorPanel(panel, extensionUri, initialUri);
+    CustomFlavorPanel.currentPanel = new CustomFlavorPanel(
+      panel,
+      extensionUri,
+      initialUri,
+    );
     return CustomFlavorPanel.currentPanel;
   }
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, initialUri?: vscode.Uri) {
+  private constructor(
+    panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    initialUri?: vscode.Uri,
+  ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._setPreferredFolderFromUri(initialUri);
@@ -73,38 +87,41 @@ export class CustomFlavorPanel {
       async (message: FlavorPanelInboundMessage) => {
         try {
           switch (message.type) {
-            case 'ready':
+            case "ready":
               this._webviewReady = true;
               await this._sendFlavorContext();
               this._tryAutoSelectPreferredFolder();
               break;
-            case 'getFlavorContext':
+            case "getFlavorContext":
               await this._sendFlavorContext();
               this._tryAutoSelectPreferredFolder();
               break;
-            case 'pickFlavorFolder':
+            case "pickFlavorFolder":
               await this._pickFlavorFolder();
               break;
-            case 'runCustomFlavorSetup':
-              await this._runCustomFlavorSetup(message.folderPath, message.linters);
+            case "runCustomFlavorSetup":
+              await this._runCustomFlavorSetup(
+                message.folderPath,
+                message.linters,
+              );
               break;
-            case 'loadFlavorDefinition':
+            case "loadFlavorDefinition":
               await this._sendFlavorDefinition(message.folderPath);
               break;
-            case 'openFile':
+            case "openFile":
               await this._openFile(message.filePath);
               break;
-            case 'openExternal':
+            case "openExternal":
               await openExternalHttpUrl(message.url);
               break;
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          this._postMessage({ type: 'error', message: msg });
+          this._postMessage({ type: "error", message: msg });
         }
       },
       null,
-      this._disposables
+      this._disposables,
     );
   }
 
@@ -125,8 +142,8 @@ export class CustomFlavorPanel {
     return buildWebviewHtml({
       webview,
       extensionUri: this._extensionUri,
-      title: 'MegaLinter Custom Flavor Builder',
-      view: 'flavor'
+      title: "MegaLinter Custom Flavor Builder",
+      view: "flavor",
     });
   }
 
@@ -138,7 +155,8 @@ export class CustomFlavorPanel {
     const folders = vscode.workspace.workspaceFolders || [];
 
     const workspaceRootPaths = folders.map((f) => f.uri.fsPath);
-    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(workspaceRootPaths);
+    const workspaceFlavorRoot =
+      findWorkspaceRootWithFlavorFile(workspaceRootPaths);
     const isWorkspaceFlavorRepo = workspaceFlavorRoot !== null;
 
     const defaultFolderPath = this._preferredFolderPath
@@ -146,10 +164,13 @@ export class CustomFlavorPanel {
       : workspaceFlavorRoot;
 
     this._postMessage({
-      type: 'flavorContext',
-      workspaceFolders: folders.map((f) => ({ name: f.name, path: f.uri.fsPath })),
+      type: "flavorContext",
+      workspaceFolders: folders.map((f) => ({
+        name: f.name,
+        path: f.uri.fsPath,
+      })),
       defaultFolderPath: defaultFolderPath || undefined,
-      isWorkspaceFlavorRepo
+      isWorkspaceFlavorRepo,
     });
   }
 
@@ -183,17 +204,25 @@ export class CustomFlavorPanel {
 
     // Prefer explicit folder (e.g. invoked from right-click).
     if (this._preferredFolderPath) {
-      this._postMessage({ type: 'flavorFolderSelected', folderPath: this._preferredFolderPath });
+      this._postMessage({
+        type: "flavorFolderSelected",
+        folderPath: this._preferredFolderPath,
+      });
       void this._sendFlavorDefinition(this._preferredFolderPath);
       return;
     }
 
     // Otherwise, if the current workspace is already a flavor repo, select it.
     const folders = vscode.workspace.workspaceFolders || [];
-    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(folders.map((f) => f.uri.fsPath));
+    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(
+      folders.map((f) => f.uri.fsPath),
+    );
     if (workspaceFlavorRoot) {
       this._preferredFolderPath = workspaceFlavorRoot;
-      this._postMessage({ type: 'flavorFolderSelected', folderPath: workspaceFlavorRoot });
+      this._postMessage({
+        type: "flavorFolderSelected",
+        folderPath: workspaceFlavorRoot,
+      });
       void this._sendFlavorDefinition(workspaceFlavorRoot);
     }
   }
@@ -203,7 +232,7 @@ export class CustomFlavorPanel {
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
-      openLabel: 'Select Custom Flavor Repository Folder'
+      openLabel: "Select Custom Flavor Repository Folder",
     });
 
     if (!selection || !selection.length) {
@@ -219,15 +248,21 @@ export class CustomFlavorPanel {
     // If the current workspace is not already a custom flavor repo, reload VS Code
     // with the selected folder as the workspace root.
     const workspaceFolders = vscode.workspace.workspaceFolders || [];
-    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(workspaceFolders.map((f) => f.uri.fsPath));
+    const workspaceFlavorRoot = findWorkspaceRootWithFlavorFile(
+      workspaceFolders.map((f) => f.uri.fsPath),
+    );
     if (!workspaceFlavorRoot) {
-      await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(folderPath), false);
+      await vscode.commands.executeCommand(
+        "vscode.openFolder",
+        vscode.Uri.file(folderPath),
+        false,
+      );
       return;
     }
 
     // Otherwise, just use it within the current window.
     this._preferredFolderPath = folderPath;
-    this._postMessage({ type: 'flavorFolderSelected', folderPath });
+    this._postMessage({ type: "flavorFolderSelected", folderPath });
     await this._sendFlavorDefinition(folderPath);
   }
 
@@ -237,20 +272,20 @@ export class CustomFlavorPanel {
     }
 
     const cleaned = linters
-      .map((l) => (typeof l === 'string' ? l.trim().toUpperCase() : ''))
+      .map((l) => (typeof l === "string" ? l.trim().toUpperCase() : ""))
       .filter((l) => l.length > 0);
 
     const invalid = cleaned.filter((l) => !/^[A-Z0-9_]+$/.test(l));
     if (invalid.length) {
-      throw new Error(`Invalid linter IDs: ${invalid.join(', ')}`);
+      throw new Error(`Invalid linter IDs: ${invalid.join(", ")}`);
     }
 
     return Array.from(new Set(cleaned));
   }
 
   private async _runCustomFlavorSetup(folderPath: string, linters?: string[]) {
-    if (!folderPath || typeof folderPath !== 'string') {
-      throw new Error('Missing folderPath');
+    if (!folderPath || typeof folderPath !== "string") {
+      throw new Error("Missing folderPath");
     }
 
     if (!fs.existsSync(folderPath)) {
@@ -264,20 +299,24 @@ export class CustomFlavorPanel {
     const normalizedFolder = path.resolve(folderPath);
     const safeLinters = this._validateLinters(linters);
 
-    const baseCommand = 'npx --yes mega-linter-runner@beta --custom-flavor-setup';
+    const baseCommand =
+      "npx --yes mega-linter-runner@beta --custom-flavor-setup";
     const command = safeLinters.length
-      ? `${baseCommand} --custom-flavor-linters "${safeLinters.join(',')}"`
+      ? `${baseCommand} --custom-flavor-linters "${safeLinters.join(",")}"`
       : baseCommand;
 
     const terminal = vscode.window.createTerminal({
-      name: 'MegaLinter Custom Flavor',
-      cwd: normalizedFolder
+      name: "MegaLinter Custom Flavor",
+      cwd: normalizedFolder,
     });
     terminal.show(true);
     terminal.sendText(command, true);
 
     vscode.window.showInformationMessage(`Running: ${command}`);
-    this._postMessage({ type: 'info', message: `Started generator in ${normalizedFolder}` });
+    this._postMessage({
+      type: "info",
+      message: `Started generator in ${normalizedFolder}`,
+    });
   }
 
   private async _sendFlavorDefinition(folderPath: string) {
@@ -286,22 +325,30 @@ export class CustomFlavorPanel {
     const exists = resolvedPath !== null;
 
     if (!exists) {
-      this._postMessage({ type: 'flavorDefinition', folderPath, exists: false, filePath });
+      this._postMessage({
+        type: "flavorDefinition",
+        folderPath,
+        exists: false,
+        filePath,
+      });
       return;
     }
 
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, "utf8");
       this._postMessage({
-        type: 'flavorDefinition',
+        type: "flavorDefinition",
         folderPath,
         exists: true,
         filePath,
-        content
+        content,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._postMessage({ type: 'error', message: `Failed to read ${path.basename(filePath)}: ${msg}` });
+      this._postMessage({
+        type: "error",
+        message: `Failed to read ${path.basename(filePath)}: ${msg}`,
+      });
     }
   }
 
@@ -316,13 +363,16 @@ export class CustomFlavorPanel {
   private _ensureValidFlavorRepository(folderPath: string): boolean {
     if (!isGitRepository(folderPath)) {
       vscode.window.showWarningMessage(NOT_A_GIT_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_GIT_REPO_MESSAGE });
+      this._postMessage({ type: "error", message: NOT_A_GIT_REPO_MESSAGE });
       return false;
     }
 
     if (!isCustomFlavorRepositoryNameValid(folderPath)) {
       vscode.window.showWarningMessage(NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE });
+      this._postMessage({
+        type: "error",
+        message: NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE,
+      });
       return false;
     }
 
@@ -340,7 +390,9 @@ function resolveFlavorFilePath(folderPath: string): string | null {
   return null;
 }
 
-function findWorkspaceRootWithFlavorFile(workspaceFolderPaths: string[]): string | null {
+function findWorkspaceRootWithFlavorFile(
+  workspaceFolderPaths: string[],
+): string | null {
   for (const folderPath of workspaceFolderPaths) {
     if (resolveFlavorFilePath(folderPath)) {
       return folderPath;
@@ -350,7 +402,7 @@ function findWorkspaceRootWithFlavorFile(workspaceFolderPaths: string[]): string
 }
 
 function isCustomFlavorRepositoryNameValid(folderPath: string): boolean {
-  const requiredToken = 'megalinter-custom-flavor';
+  const requiredToken = "megalinter-custom-flavor";
 
   const folderName = path.basename(folderPath).toLowerCase();
   if (folderName.includes(requiredToken)) {

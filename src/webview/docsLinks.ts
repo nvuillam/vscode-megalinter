@@ -1,27 +1,27 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-export const DOCS_BASE = 'https://megalinter.io/latest' as const;
+export const DOCS_BASE = "https://megalinter.io/latest" as const;
 
 export interface MegaLinterSchemaMeta {
-  ['x-section']?: unknown;
-  ['x-category']?: unknown;
+  ["x-section"]?: unknown;
+  ["x-category"]?: unknown;
 }
 
 const RESERVED_CATEGORY_IDS = new Set(
   [
-    'GENERAL',
-    'MISC',
-    'ACTIVATION',
-    'SCOPE',
-    'ERRORS',
-    'LINTER_COMMAND',
-    'PREPOSTCOMMANDS',
-    'FIXES',
-    'PERFORMANCE',
-    'OUTPUT',
-    'SECURITY',
-    'PLUGINS',
-    'REPORTERS'
-  ].map((v) => v.toUpperCase())
+    "GENERAL",
+    "MISC",
+    "ACTIVATION",
+    "SCOPE",
+    "ERRORS",
+    "LINTER_COMMAND",
+    "PREPOSTCOMMANDS",
+    "FIXES",
+    "PERFORMANCE",
+    "OUTPUT",
+    "SECURITY",
+    "PLUGINS",
+    "REPORTERS",
+  ].map((v) => v.toUpperCase()),
 );
 
 const DOCS_URLS_BY_VARIABLE: Record<string, string> = {
@@ -61,7 +61,7 @@ const DOCS_URLS_BY_VARIABLE: Record<string, string> = {
   SECURED_ENV_VARIABLES_DEFAULT: `${DOCS_BASE}/config-variables-security/`,
 
   // Reports
-  REPORT_OUTPUT_FOLDER: `${DOCS_BASE}/reporters/`
+  REPORT_OUTPUT_FOLDER: `${DOCS_BASE}/reporters/`,
 };
 
 const normalizeKey = (value: string): string => value.trim().toUpperCase();
@@ -75,27 +75,30 @@ const looksLikeDescriptorOrLinterKey = (value: string): boolean => {
   return !RESERVED_CATEGORY_IDS.has(value);
 };
 
-const resolveUrlFromSection = (sectionId: string, variableName: string): string | undefined => {
+const resolveUrlFromSection = (
+  sectionId: string,
+  variableName: string,
+): string | undefined => {
   const section = normalizeKey(sectionId);
   const normalizedVar = normalizeKey(variableName);
 
   switch (section) {
-    case 'ACTIVATION':
+    case "ACTIVATION":
       return `${DOCS_BASE}/config-activation/`;
-    case 'SCOPE':
+    case "SCOPE":
       return `${DOCS_BASE}/config-filtering/`;
-    case 'FIXES':
+    case "FIXES":
       return `${DOCS_BASE}/config-apply-fixes/`;
-    case 'PREPOSTCOMMANDS':
-      if (normalizedVar.startsWith('POST_')) {
+    case "PREPOSTCOMMANDS":
+      if (normalizedVar.startsWith("POST_")) {
         return `${DOCS_BASE}/config-postcommands/`;
       }
       return `${DOCS_BASE}/config-precommands/`;
-    case 'SECURITY':
+    case "SECURITY":
       return `${DOCS_BASE}/config-variables-security/`;
-    case 'PLUGINS':
+    case "PLUGINS":
       return `${DOCS_BASE}/plugins/`;
-    case 'REPORTERS':
+    case "REPORTERS":
       return `${DOCS_BASE}/reporters/`;
     default:
       return undefined;
@@ -105,34 +108,37 @@ const resolveUrlFromSection = (sectionId: string, variableName: string): string 
 const resolveUrlFromVariableHeuristics = (variableName: string): string => {
   const name = normalizeKey(variableName);
 
-  if (name.startsWith('LLM_')) {
+  if (name.startsWith("LLM_")) {
     return `${DOCS_BASE}/llm-advisor/`;
   }
-  if (name.includes('REPORTER') || name.startsWith('REPORT_')) {
+  if (name.includes("REPORTER") || name.startsWith("REPORT_")) {
     return `${DOCS_BASE}/reporters/`;
   }
-  if (name.includes('PLUGIN')) {
+  if (name.includes("PLUGIN")) {
     return `${DOCS_BASE}/plugins/`;
   }
-  if (name.includes('FILTER_REGEX')) {
+  if (name.includes("FILTER_REGEX")) {
     return `${DOCS_BASE}/config-filtering/`;
   }
-  if (name.includes('APPLY_FIX')) {
+  if (name.includes("APPLY_FIX")) {
     return `${DOCS_BASE}/config-apply-fixes/`;
   }
-  if (name.includes('PRE_COMMAND')) {
+  if (name.includes("PRE_COMMAND")) {
     return `${DOCS_BASE}/config-precommands/`;
   }
-  if (name.includes('POST_COMMAND')) {
+  if (name.includes("POST_COMMAND")) {
     return `${DOCS_BASE}/config-postcommands/`;
   }
-  if (name.includes('CLI_LINT_MODE')) {
+  if (name.includes("CLI_LINT_MODE")) {
     return `${DOCS_BASE}/config-cli-lint-mode/`;
   }
   return `${DOCS_BASE}/config-variables/`;
 };
 
-export const getDocsUrlForVariable = (variableName: string, schemaMeta?: MegaLinterSchemaMeta): string | undefined => {
+export const getDocsUrlForVariable = (
+  variableName: string,
+  schemaMeta?: MegaLinterSchemaMeta,
+): string | undefined => {
   if (!variableName) {
     return undefined;
   }
@@ -146,13 +152,19 @@ export const getDocsUrlForVariable = (variableName: string, schemaMeta?: MegaLin
   }
 
   // Next: use x-category to link to a descriptor/linter page when it looks like one.
-  const category = typeof schemaMeta?.['x-category'] === 'string' ? normalizeKey(schemaMeta['x-category'] as string) : undefined;
+  const category =
+    typeof schemaMeta?.["x-category"] === "string"
+      ? normalizeKey(schemaMeta["x-category"] as string)
+      : undefined;
   if (category && looksLikeDescriptorOrLinterKey(category)) {
     return `${DOCS_BASE}/descriptors/${category.toLowerCase()}/`;
   }
 
   // Next: use x-section for best matching config pages.
-  const section = typeof schemaMeta?.['x-section'] === 'string' ? (schemaMeta['x-section'] as string) : undefined;
+  const section =
+    typeof schemaMeta?.["x-section"] === "string"
+      ? (schemaMeta["x-section"] as string)
+      : undefined;
   if (section) {
     const bySection = resolveUrlFromSection(section, normalized);
     if (bySection) {

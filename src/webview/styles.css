@@ -4,7 +4,7 @@ body {
   font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
   color: var(--vscode-foreground);
-  background: linear-gradient(135deg, rgba(120, 160, 255, 0.08), rgba(120, 255, 214, 0.05))
+  background: linear-gradient(135deg, rgb(120 160 255 / 8%), rgb(120 255 214 / 5%))
     var(--vscode-editor-background);
 }
 
@@ -28,7 +28,7 @@ body {
   align-items: flex-start;
   padding: 18px 24px;
   border-bottom: 1px solid var(--vscode-panel-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(0 0 0 / 4%)),
     var(--vscode-editor-background);
 }
 
@@ -46,7 +46,7 @@ body {
   border-radius: 14px;
   overflow: hidden;
   background: var(--vscode-editor-background);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 28%);
 }
 
 .home__banner:hover {
@@ -67,10 +67,10 @@ body {
   padding: 18px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 14px;
-  background: radial-gradient(120% 160% at 12% 20%, rgba(120, 255, 214, 0.18), transparent),
-    radial-gradient(120% 160% at 80% 15%, rgba(255, 194, 102, 0.14), transparent),
+  background: radial-gradient(120% 160% at 12% 20%, rgb(120 255 214 / 18%), transparent),
+    radial-gradient(120% 160% at 80% 15%, rgb(255 194 102 / 14%), transparent),
     var(--vscode-editor-background);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 28%);
 }
 
 .home__logo-tile {
@@ -84,7 +84,7 @@ body {
   padding: 14px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 12px;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.08));
+  background: linear-gradient(150deg, rgb(255 255 255 / 5%), rgb(0 0 0 / 8%));
 }
 
 .home__logo-tile:hover {
@@ -99,7 +99,7 @@ body {
   border-radius: 0;
   background: transparent;
   border: none;
-  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 6px 20px rgb(0 0 0 / 25%));
 }
 
 .home__logo-caption {
@@ -191,7 +191,7 @@ body {
   background: var(--vscode-focusBorder);
   color: var(--vscode-editor-selectionForeground);
   border-color: var(--vscode-focusBorder);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 28%);
 }
 
 .pill-button--solid {
@@ -213,7 +213,7 @@ body {
 
 .pill-button:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 18px rgb(0 0 0 / 18%);
 }
 
 .pill-chip {
@@ -248,13 +248,13 @@ body {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 12px;
   padding: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.06)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(0 0 0 / 6%)),
     var(--vscode-editor-background);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
 }
 
 .home__card-label {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -262,7 +262,7 @@ body {
 }
 
 .home__card-value {
-  margin: 0 0 6px 0;
+  margin: 0 0 6px;
   font-size: 22px;
   font-weight: 720;
   display: flex;
@@ -300,7 +300,7 @@ body {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 12px;
   padding: 14px;
-  background: linear-gradient(180deg, rgba(120, 255, 214, 0.08), rgba(120, 160, 255, 0.06)),
+  background: linear-gradient(180deg, rgb(120 255 214 / 8%), rgb(120 160 255 / 6%)),
     var(--vscode-editor-background);
   display: flex;
   align-items: center;
@@ -328,7 +328,7 @@ body {
 }
 
 .eyebrow {
-  margin: 0 0 4px 0;
+  margin: 0 0 4px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 11px;
@@ -355,7 +355,7 @@ body {
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--vscode-panel-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.04)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 3%), rgb(0 0 0 / 4%)),
     var(--vscode-editor-background);
   font-size: 12px;
 }
@@ -402,7 +402,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
 }
@@ -504,7 +504,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
   background: var(--vscode-editor-background);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
   z-index: 10;
 }
 
@@ -534,7 +534,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   padding: 12px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.05)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 3%), rgb(0 0 0 / 5%)),
     var(--vscode-editor-background);
   max-height: calc(100vh - 32px);
   overflow-y: auto;
@@ -549,7 +549,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 .nav__title {
   font-weight: 650;
   font-size: 13px;
-  margin: 0 0 6px 0;
+  margin: 0 0 6px;
   color: var(--vscode-foreground);
 }
 
@@ -659,7 +659,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 
 .nav__item--active {
   border-color: var(--vscode-focusBorder);
-  background: linear-gradient(180deg, rgba(120, 255, 214, 0.12), rgba(120, 160, 255, 0.08));
+  background: linear-gradient(180deg, rgb(120 255 214 / 12%), rgb(120 160 255 / 8%));
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
@@ -708,14 +708,14 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 }
 
 .header h1 {
-  margin: 0 0 10px 0;
+  margin: 0 0 10px;
   font-size: 24px;
   font-weight: 600;
   color: var(--vscode-foreground);
 }
 
 .config-path {
-  margin: 10px 0 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
 }
@@ -760,7 +760,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 
 .tab {
   border: 1px solid transparent;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.05)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 4%), rgb(0 0 0 / 5%)),
     var(--vscode-editor-background);
   color: var(--vscode-foreground);
   padding: 8px 12px;
@@ -774,7 +774,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   background: var(--vscode-focusBorder);
   color: var(--vscode-editor-selectionForeground);
   border-color: var(--vscode-focusBorder);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 18%);
 }
 
 .tab:focus-visible {
@@ -875,7 +875,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   padding: 14px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(0 0 0 / 4%)),
     var(--vscode-editor-background);
 }
 
@@ -934,18 +934,18 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 .linter-description__text h4,
 .linter-description__text h5,
 .linter-description__text h6 {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   line-height: 1.2;
 }
 
 .linter-description__text p {
-  margin: 0 0 10px 0;
+  margin: 0 0 10px;
 }
 
 .linter-description__text ul,
 .linter-description__text ol {
   padding-left: 18px;
-  margin: 0 0 10px 0;
+  margin: 0 0 10px;
 }
 
 .linter-description__text li {
@@ -997,13 +997,13 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 .linter-description__link-list {
   list-style: none;
   padding: 0;
-  margin: 6px 0 0 0;
+  margin: 6px 0 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-@media (max-width: 960px) {
+@media (width <= 960px) {
   .linter-description__body {
     grid-template-columns: 1fr;
   }
@@ -1017,7 +1017,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   padding: 12px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(0 0 0 / 4%)),
     var(--vscode-editor-background);
 }
 
@@ -1121,7 +1121,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 .form-container .field-docs-button__icon {
   width: 14px;
   height: 14px;
-  fill: currentColor;
+  fill: currentcolor;
 }
 
 .form-container input[type="text"],
@@ -1170,7 +1170,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   border-radius: 999px;
   border: 1px solid var(--vscode-input-border);
   background: var(--vscode-editor-inactiveSelectionBackground, var(--vscode-editor-background));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
 }
 
 .boolean-toggle--disabled {
@@ -1184,16 +1184,17 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   left: 2px;
   width: calc(50% - 2px);
   border-radius: 999px;
+
   /* Green-ish active color: prefer semantic VS Code theme tokens */
   background: var(--vscode-testing-iconPassed, var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-button-background)));
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 6px 14px rgb(0 0 0 / 22%);
   transition: transform 140ms ease;
 }
 
 .boolean-toggle--off .boolean-toggle__thumb {
   /* Red-ish inactive color */
   background: var(--vscode-testing-iconFailed, var(--vscode-errorForeground, var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-button-secondaryBackground))));
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 18%);
 }
 
 .boolean-toggle--off .boolean-toggle__thumb {
@@ -1244,22 +1245,22 @@ body.vscode-high-contrast .boolean-toggle__option--active {
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--vscode-panel-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.16)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 8%), rgb(0 0 0 / 16%)),
     var(--vscode-editor-inactiveSelectionBackground, var(--vscode-editor-background));
   border-color: var(--vscode-input-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
 }
 
 .form-container .form-group.form-field--non-default {
   border-color: var(--vscode-focusBorder);
-  background: linear-gradient(180deg, rgba(120, 255, 214, 0.12), rgba(120, 160, 255, 0.08));
+  background: linear-gradient(180deg, rgb(120 255 214 / 12%), rgb(120 160 255 / 8%));
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 .form-container .form-group.field-object {
   background: transparent;
   border: none;
-  padding: 0 0 12px 0;
+  padding: 0 0 12px;
   box-shadow: none;
 }
 
@@ -1355,7 +1356,7 @@ body.vscode-high-contrast .boolean-toggle__option--active {
 }
 
 .form-container .errors ul {
-  margin: 8px 0 0 0;
+  margin: 8px 0 0;
   padding-left: 20px;
 }
 
@@ -1498,7 +1499,7 @@ body.vscode-high-contrast .boolean-toggle__option--active {
 .dual-list__chips {
   list-style: none;
   padding: 0;
-  margin: 4px 0 0 0;
+  margin: 4px 0 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1588,7 +1589,7 @@ body.vscode-high-contrast .boolean-toggle__option--active {
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
   z-index: 100;
   max-height: 300px;
   overflow-y: auto;
@@ -1628,14 +1629,14 @@ body.vscode-high-contrast .boolean-toggle__option--active {
 /* Linters List Tab */
 .linters-list-panel {
   padding: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(0 0 0 / 4%)),
     var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 10px;
 }
 
 .linters-list-title {
-  margin: 0 0 16px 0;
+  margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
 }
@@ -1666,7 +1667,7 @@ body.vscode-high-contrast .boolean-toggle__option--active {
   background: var(--vscode-list-hoverBackground);
   border-color: var(--vscode-focusBorder);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
 }
 
 .linter-card__name {
@@ -1718,7 +1719,7 @@ img.linter-card__icon {
 .linter-card__icon--fallback {
   border-radius: 8px;
   border: 1px solid var(--vscode-panel-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.06)),
+  background: linear-gradient(180deg, rgb(255 255 255 / 6%), rgb(0 0 0 / 6%)),
     var(--vscode-editor-inactiveSelectionBackground);
   color: var(--vscode-foreground);
   opacity: 0.85;

@@ -10,7 +10,7 @@ export const sanitizeConfigForSave = <T>(input: T): T => {
         .filter((item) => item !== null && item !== undefined);
     }
 
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       const result: Record<string, any> = {};
       Object.keys(value).forEach((key) => {
         result[key] = sanitize(value[key]);

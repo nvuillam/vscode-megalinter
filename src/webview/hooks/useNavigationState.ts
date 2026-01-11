@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react';
-import type { MainTabId, MenuItem, MenuChild, NavigationTarget } from '../types';
+import { useState, useEffect } from "react";
+import type {
+  MainTabId,
+  MenuItem,
+  MenuChild,
+  NavigationTarget,
+} from "../types";
 
 export const useNavigationState = (initialState?: {
   activeMainTab?: MainTabId;
@@ -7,56 +12,64 @@ export const useNavigationState = (initialState?: {
   selectedDescriptor?: string | null;
   selectedScope?: string | null;
 }) => {
-  const [activeMainTab, setActiveMainTab] = useState<MainTabId>(initialState?.activeMainTab || 'home');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialState?.selectedCategory || null);
-  const [selectedDescriptor, setSelectedDescriptor] = useState<string | null>(initialState?.selectedDescriptor || null);
-  const [selectedScope, setSelectedScope] = useState<string | null>(initialState?.selectedScope || null);
+  const [activeMainTab, setActiveMainTab] = useState<MainTabId>(
+    initialState?.activeMainTab || "home",
+  );
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    initialState?.selectedCategory || null,
+  );
+  const [selectedDescriptor, setSelectedDescriptor] = useState<string | null>(
+    initialState?.selectedDescriptor || null,
+  );
+  const [selectedScope, setSelectedScope] = useState<string | null>(
+    initialState?.selectedScope || null,
+  );
 
   const handleNavigationSelect = (item: MenuItem | MenuChild) => {
-    if (item.type === 'home') {
-      setActiveMainTab('home');
+    if (item.type === "home") {
+      setActiveMainTab("home");
       setSelectedCategory(null);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (item.type === 'summary') {
-      setActiveMainTab('summary');
+    if (item.type === "summary") {
+      setActiveMainTab("summary");
       setSelectedCategory(null);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (item.type === 'general') {
-      setActiveMainTab('general');
+    if (item.type === "general") {
+      setActiveMainTab("general");
       setSelectedCategory(null);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (item.type === 'category') {
-      setActiveMainTab('category');
+    if (item.type === "category") {
+      setActiveMainTab("category");
       setSelectedCategory(item.id);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (item.type === 'linter') {
-      setActiveMainTab('descriptors');
+    if (item.type === "linter") {
+      setActiveMainTab("descriptors");
       setSelectedCategory(null);
       setSelectedDescriptor((item as MenuChild).parentId);
       setSelectedScope(item.id);
       return;
     }
 
-    setActiveMainTab('descriptors');
+    setActiveMainTab("descriptors");
     setSelectedCategory(null);
     setSelectedDescriptor(item.id);
-    setSelectedScope('descriptor');
+    setSelectedScope("descriptor");
   };
 
   const applyNavigation = (target: NavigationTarget) => {
@@ -64,46 +77,46 @@ export const useNavigationState = (initialState?: {
       return;
     }
 
-    if (target.type === 'home') {
-      setActiveMainTab('home');
+    if (target.type === "home") {
+      setActiveMainTab("home");
       setSelectedCategory(null);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (target.type === 'general') {
-      setActiveMainTab('general');
+    if (target.type === "general") {
+      setActiveMainTab("general");
       setSelectedCategory(null);
       return;
     }
 
-    if (target.type === 'summary') {
-      setActiveMainTab('summary');
+    if (target.type === "summary") {
+      setActiveMainTab("summary");
       setSelectedCategory(null);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (target.type === 'category') {
-      setActiveMainTab('category');
+    if (target.type === "category") {
+      setActiveMainTab("category");
       setSelectedCategory(target.categoryId);
       setSelectedDescriptor(null);
       setSelectedScope(null);
       return;
     }
 
-    if (target.type === 'descriptor') {
-      setActiveMainTab('descriptors');
+    if (target.type === "descriptor") {
+      setActiveMainTab("descriptors");
       setSelectedCategory(null);
       setSelectedDescriptor(target.descriptorId);
-      setSelectedScope('descriptor');
+      setSelectedScope("descriptor");
       return;
     }
 
-    if (target.type === 'linter') {
-      setActiveMainTab('descriptors');
+    if (target.type === "linter") {
+      setActiveMainTab("descriptors");
       setSelectedCategory(null);
       setSelectedDescriptor(target.descriptorId);
       setSelectedScope(target.linterId);
@@ -111,14 +124,14 @@ export const useNavigationState = (initialState?: {
   };
 
   const openSummary = () => {
-    setActiveMainTab('summary');
+    setActiveMainTab("summary");
     setSelectedCategory(null);
     setSelectedDescriptor(null);
     setSelectedScope(null);
   };
 
   const openGeneral = () => {
-    setActiveMainTab('general');
+    setActiveMainTab("general");
     setSelectedCategory(null);
     setSelectedDescriptor(null);
     setSelectedScope(null);
@@ -128,20 +141,23 @@ export const useNavigationState = (initialState?: {
     if (!categoryId) {
       return;
     }
-    setActiveMainTab('category');
+    setActiveMainTab("category");
     setSelectedCategory(categoryId);
     setSelectedDescriptor(null);
     setSelectedScope(null);
   };
 
-  const openDescriptor = (descriptorId: string | null, scopeId?: string | null) => {
+  const openDescriptor = (
+    descriptorId: string | null,
+    scopeId?: string | null,
+  ) => {
     if (!descriptorId) {
       return;
     }
-    setActiveMainTab('descriptors');
+    setActiveMainTab("descriptors");
     setSelectedCategory(null);
     setSelectedDescriptor(descriptorId);
-    setSelectedScope(scopeId || 'descriptor');
+    setSelectedScope(scopeId || "descriptor");
   };
 
   return {
@@ -158,6 +174,6 @@ export const useNavigationState = (initialState?: {
     openSummary,
     openGeneral,
     openCategory,
-    openDescriptor
+    openDescriptor,
   };
 };

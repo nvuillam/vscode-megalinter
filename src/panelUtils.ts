@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
-import { resolveMegalinterPanelIcon } from './panelIcon';
+import * as vscode from "vscode";
+import { resolveMegalinterPanelIcon } from "./panelIcon";
 
 export const disposeAll = (disposables: vscode.Disposable[]) => {
   while (disposables.length) {
@@ -11,12 +11,12 @@ export const disposeAll = (disposables: vscode.Disposable[]) => {
 };
 
 export const openExternalHttpUrl = async (url: unknown): Promise<boolean> => {
-  if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+  if (typeof url === "string" && /^https?:\/\//i.test(url)) {
     await vscode.env.openExternal(vscode.Uri.parse(url));
     return true;
   }
 
-  vscode.window.showErrorMessage('Invalid external URL');
+  vscode.window.showErrorMessage("Invalid external URL");
   return false;
 };
 
@@ -33,8 +33,8 @@ export const createMegalinterWebviewPanel = (args: {
     {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [vscode.Uri.joinPath(args.extensionUri, 'dist')]
-    }
+      localResourceRoots: [vscode.Uri.joinPath(args.extensionUri, "dist")],
+    },
   );
 
   const iconPath = resolveMegalinterPanelIcon(args.extensionUri);
@@ -46,8 +46,9 @@ export const createMegalinterWebviewPanel = (args: {
 };
 
 export const getNonce = (): string => {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
@@ -58,10 +59,10 @@ export const buildWebviewHtml = (args: {
   webview: vscode.Webview;
   extensionUri: vscode.Uri;
   title: string;
-  view: 'config' | 'flavor';
+  view: "config" | "flavor";
 }): string => {
   const scriptUri = args.webview.asWebviewUri(
-    vscode.Uri.joinPath(args.extensionUri, 'dist', 'webview.js')
+    vscode.Uri.joinPath(args.extensionUri, "dist", "webview.js"),
   );
 
   const nonce = getNonce();

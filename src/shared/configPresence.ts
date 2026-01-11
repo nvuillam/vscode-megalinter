@@ -1,4 +1,4 @@
-import { SchemaGroups } from './schemaUtils';
+import { SchemaGroups } from "./schemaUtils";
 
 type KeyContainer = Set<string> | Record<string, any>;
 
@@ -30,10 +30,16 @@ export const buildPresenceMaps = (groups: SchemaGroups, data: KeyContainer) => {
       perLinter[linterId] = hasAnyKeySet(linterKeys, data);
     });
 
-    const descriptorValue = hasAnyKeySet(keys, data) || Object.values(perLinter).some(Boolean);
+    const descriptorValue =
+      hasAnyKeySet(keys, data) || Object.values(perLinter).some(Boolean);
     linterHasValues[descriptorId] = perLinter;
     descriptorHasValues[descriptorId] = descriptorValue;
   });
 
-  return { generalHasValues, genericHasValues, descriptorHasValues, linterHasValues };
+  return {
+    generalHasValues,
+    genericHasValues,
+    descriptorHasValues,
+    linterHasValues,
+  };
 };

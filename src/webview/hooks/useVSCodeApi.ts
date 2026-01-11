@@ -1,10 +1,12 @@
-import { useCallback, useState } from 'react';
-import type { VSCodeAPI, PersistedState, ExtensionMessage } from '../types';
+import { useCallback, useState } from "react";
+import type { VSCodeAPI, PersistedState, ExtensionMessage } from "../types";
 
 const vscode = window.acquireVsCodeApi();
 
 export const useVSCodeApi = () => {
-  const [state, setState] = useState<PersistedState | undefined>(vscode.getState());
+  const [state, setState] = useState<PersistedState | undefined>(
+    vscode.getState(),
+  );
 
   const updateState = useCallback((newState: Partial<PersistedState>) => {
     setState((prev) => {
@@ -21,6 +23,6 @@ export const useVSCodeApi = () => {
   return {
     state,
     updateState,
-    postMessage
+    postMessage,
   };
 };

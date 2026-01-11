@@ -1,12 +1,12 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 const readTextFileIfExists = (filePath: string): string | null => {
   try {
     if (!fs.existsSync(filePath)) {
       return null;
     }
-    return fs.readFileSync(filePath, 'utf8');
+    return fs.readFileSync(filePath, "utf8");
   } catch {
     return null;
   }
@@ -14,7 +14,7 @@ const readTextFileIfExists = (filePath: string): string | null => {
 
 export const getGitDir = (folderPath: string): string | null => {
   try {
-    const dotGitPath = path.join(folderPath, '.git');
+    const dotGitPath = path.join(folderPath, ".git");
     if (!fs.existsSync(dotGitPath)) {
       return null;
     }
@@ -32,8 +32,12 @@ export const getGitDir = (folderPath: string): string | null => {
       }
 
       const gitDirRaw = match[1].trim();
-      const gitDirPath = path.isAbsolute(gitDirRaw) ? gitDirRaw : path.resolve(folderPath, gitDirRaw);
-      const dirStat = fs.existsSync(gitDirPath) ? fs.lstatSync(gitDirPath) : null;
+      const gitDirPath = path.isAbsolute(gitDirRaw)
+        ? gitDirRaw
+        : path.resolve(folderPath, gitDirRaw);
+      const dirStat = fs.existsSync(gitDirPath)
+        ? fs.lstatSync(gitDirPath)
+        : null;
       return dirStat?.isDirectory() ? gitDirPath : null;
     }
 
@@ -47,14 +51,16 @@ export const isGitRepository = (folderPath: string): boolean => {
   return getGitDir(folderPath) !== null;
 };
 
-export const getGitOriginRepositoryName = (folderPath: string): string | null => {
+export const getGitOriginRepositoryName = (
+  folderPath: string,
+): string | null => {
   try {
     const gitDir = getGitDir(folderPath);
     if (!gitDir) {
       return null;
     }
 
-    const configPath = path.join(gitDir, 'config');
+    const configPath = path.join(gitDir, "config");
     const configText = readTextFileIfExists(configPath);
     if (!configText) {
       return null;
@@ -85,10 +91,10 @@ export const getGitOriginRepositoryName = (folderPath: string): string | null =>
       }
 
       const url = urlMatch[1].trim();
-      const withoutGit = url.replace(/\.git$/i, '');
-      const slashParts = withoutGit.split('/');
-      const lastSegment = slashParts[slashParts.length - 1] || '';
-      const colonParts = lastSegment.split(':');
+      const withoutGit = url.replace(/\.git$/i, "");
+      const slashParts = withoutGit.split("/");
+      const lastSegment = slashParts[slashParts.length - 1] || "";
+      const colonParts = lastSegment.split(":");
       const repo = colonParts[colonParts.length - 1];
       return repo || null;
     }

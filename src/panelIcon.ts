@@ -1,7 +1,9 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
+import * as vscode from "vscode";
+import * as fs from "fs";
 
-export type PanelIconPath = vscode.Uri | { light: vscode.Uri; dark: vscode.Uri };
+export type PanelIconPath =
+  | vscode.Uri
+  | { light: vscode.Uri; dark: vscode.Uri };
 
 function exists(extensionUri: vscode.Uri, relativePath: string): boolean {
   return fs.existsSync(vscode.Uri.joinPath(extensionUri, relativePath).fsPath);
@@ -17,27 +19,29 @@ function exists(extensionUri: vscode.Uri, relativePath: string): boolean {
  *
  * Falls back to `media/megalinter.svg`.
  */
-export function resolveMegalinterPanelIcon(extensionUri: vscode.Uri): PanelIconPath | undefined {
-  const oxLight = 'media/ox-security-light.svg';
-  const oxDark = 'media/ox-security-dark.svg';
+export function resolveMegalinterPanelIcon(
+  extensionUri: vscode.Uri,
+): PanelIconPath | undefined {
+  const oxLight = "media/ox-security-light.svg";
+  const oxDark = "media/ox-security-dark.svg";
   if (exists(extensionUri, oxLight) && exists(extensionUri, oxDark)) {
     return {
       light: vscode.Uri.joinPath(extensionUri, oxLight),
-      dark: vscode.Uri.joinPath(extensionUri, oxDark)
+      dark: vscode.Uri.joinPath(extensionUri, oxDark),
     };
   }
 
-  const oxSvg = 'media/ox-security.svg';
+  const oxSvg = "media/ox-security.svg";
   if (exists(extensionUri, oxSvg)) {
     return vscode.Uri.joinPath(extensionUri, oxSvg);
   }
 
-  const oxPng = 'media/ox-security.png';
+  const oxPng = "media/ox-security.png";
   if (exists(extensionUri, oxPng)) {
     return vscode.Uri.joinPath(extensionUri, oxPng);
   }
 
-  const fallback = 'media/megalinter.svg';
+  const fallback = "media/megalinter.svg";
   if (exists(extensionUri, fallback)) {
     return vscode.Uri.joinPath(extensionUri, fallback);
   }
