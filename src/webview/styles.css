@@ -1352,6 +1352,23 @@ body {
   font-size: 12px;
 }
 
+/* Call-to-action buttons (Save/Done) */
+.dual-list__save--cta {
+  border-color: var(--vscode-button-background);
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font-weight: 650;
+}
+
+.dual-list__save--cta:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+.dual-list__save--cta:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
 .dual-list__save:disabled,
 .dual-list__controls--view button:disabled {
   opacity: 0.5;

@@ -197,7 +197,12 @@ export const DualListWidget: React.FC<WidgetProps> = ({
         </select>
       </div>
       <div className="dual-list__footer">
-        <button type="button" className="dual-list__save" onClick={handleSave} disabled={disabled || readonly}>
+        <button
+          type="button"
+          className="dual-list__save dual-list__save--cta"
+          onClick={handleSave}
+          disabled={disabled || readonly}
+        >
           Save
         </button>
       </div>

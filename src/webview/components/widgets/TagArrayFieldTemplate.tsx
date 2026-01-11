@@ -86,7 +86,7 @@ export const TagArrayFieldTemplate: React.FC<ArrayFieldTemplateProps> = (props) 
         <div className="string-list__footer">
           <button
             type="button"
-            className="dual-list__save"
+            className="dual-list__save dual-list__save--cta"
             onClick={() => setIsEditing(false)}
             disabled={disabled || readonly}
           >

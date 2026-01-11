@@ -54,6 +54,31 @@ const extractVariableName = (id: string): string | undefined => {
   return candidate;
 };
 
+const extractFieldPathFromId = (id: string): string | undefined => {
+  if (!id) {
+    return undefined;
+  }
+
+  const normalized = id.replace(/__+/g, '_');
+
+  const rootMarker = '_root_';
+  const rootIdx = normalized.lastIndexOf(rootMarker);
+  if (rootIdx >= 0) {
+    return normalized.slice(rootIdx + rootMarker.length);
+  }
+  if (normalized.startsWith('root_')) {
+    return normalized.slice('root_'.length);
+  }
+
+  // Fallback for custom idPrefix (e.g. "summary"): take everything after the first separator.
+  const sepIdx = normalized.indexOf('_');
+  if (sepIdx >= 0) {
+    return normalized.slice(sepIdx + 1);
+  }
+
+  return undefined;
+};
+
 const isTopLevelFieldId = (id: string): boolean => !!extractVariableName(id);
 
 const isRootObjectFieldId = (id: string): boolean => {
@@ -90,9 +115,20 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
   }, [docsUrl, postMessage]);
 
   const isRoot = isRootObjectFieldId(props.id);
-  const showLabelRow = !!props.label && !isRoot && isTopLevelFieldId(props.id);
+
+  const fieldPath = useMemo(() => extractFieldPathFromId(props.id), [props.id]);
+  // Array-of-strings (and other primitive arrays) items are typically addressed as "FOO_0".
+  // For those, we hide title/description because it doesn't help editing a simple list.
+  const isPrimitiveArrayItem = useMemo(() => !!fieldPath && /(?:^|_)\d+$/.test(fieldPath), [fieldPath]);
+
+  // Rules:
+  // - Top-level variable: always show title/description
+  // - Embedded in array of objects: show title/description
+  // - Embedded in array of strings (primitive array item): hide title/description
+  // RJSF's `displayLabel` can be false for some complex schemas, so we do NOT use it here.
+  const showLabelRow = !!props.label && !isRoot && !isPrimitiveArrayItem;
   const showDocsButton = showDocs && !isRoot;
-  const showDescription = !isRoot && isTopLevelFieldId(props.id);
+  const showDescription = !isRoot && !isPrimitiveArrayItem && !!props.description;
   const docsButtonTitle = useMemo(() => {
     if (variableName) {
       return `View documentation for ${variableName}`;
