@@ -1,0 +1,189 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+import React, { useCallback, useMemo } from 'react';
+import type { FieldTemplateProps } from '@rjsf/utils';
+import { getDocsUrlForVariable } from '../docsLinks';
+import { getCodiconForVariable } from '../iconResolver';
+import { useVSCodeApi } from '../hooks';
+
+const extractVariableName = (id: string): string | undefined => {
+  if (!id) {
+    return undefined;
+  }
+
+  // RJSF field ids vary depending on idPrefix/idSeparator.
+  // IMPORTANT: `idPrefix` replaces the default "root" id, so Summary uses ids like:
+  // - summary_ENABLE_LINTERS
+  // while other forms typically use:
+  // - root_ENABLE_LINTERS
+  // and sometimes include double-underscores:
+  // - summary__root__ENABLE_LINTERS
+  const normalized = id.replace(/__+/g, '_');
+
+  let candidate: string | undefined;
+  const rootMarker = '_root_';
+  const rootIdx = normalized.lastIndexOf(rootMarker);
+  if (rootIdx >= 0) {
+    candidate = normalized.slice(rootIdx + rootMarker.length);
+  } else if (normalized.startsWith('root_')) {
+    candidate = normalized.slice('root_'.length);
+  } else {
+    // Fallback for custom idPrefix (e.g. "summary"): take everything after the first separator.
+    const sepIdx = normalized.indexOf('_');
+    if (sepIdx >= 0) {
+      candidate = normalized.slice(sepIdx + 1);
+    }
+  }
+
+  if (!candidate) {
+    return undefined;
+  }
+
+  // If the id points to an array item or nested field, it will usually include an index segment
+  // like "FOO_0" or "FOO_0_BAR". Summary view in particular uses ids like:
+  // - summary_ENABLE_LINTERS_0
+  // In those cases we must NOT treat it as a top-level MegaLinter variable.
+  if (/(?:^|_)\d+(?:_|$)/.test(candidate)) {
+    return undefined;
+  }
+
+  // Only treat top-level MegaLinter variables as eligible.
+  // Nested fields include indexes/child keys (e.g. root_PRE_COMMANDS_0_command).
+  if (!/^[A-Z0-9_]+$/.test(candidate)) {
+    return undefined;
+  }
+  return candidate;
+};
+
+const extractFieldPathFromId = (id: string): string | undefined => {
+  if (!id) {
+    return undefined;
+  }
+
+  const normalized = id.replace(/__+/g, '_');
+
+  const rootMarker = '_root_';
+  const rootIdx = normalized.lastIndexOf(rootMarker);
+  if (rootIdx >= 0) {
+    return normalized.slice(rootIdx + rootMarker.length);
+  }
+  if (normalized.startsWith('root_')) {
+    return normalized.slice('root_'.length);
+  }
+
+  // Fallback for custom idPrefix (e.g. "summary"): take everything after the first separator.
+  const sepIdx = normalized.indexOf('_');
+  if (sepIdx >= 0) {
+    return normalized.slice(sepIdx + 1);
+  }
+
+  return undefined;
+};
+
+const isTopLevelFieldId = (id: string): boolean => !!extractVariableName(id);
+
+const isRootObjectFieldId = (id: string): boolean => {
+  if (!id) {
+    return false;
+  }
+  // RJSF root object field ids are typically "root".
+  // When using idPrefix, it becomes something like "summary__root".
+  if (id === 'root') {
+    return true;
+  }
+  return id.endsWith('__root') || id.endsWith('_root');
+};
+
+export function DocFieldTemplate(props: FieldTemplateProps) {
+  const { postMessage } = useVSCodeApi();
+
+  const variableName = useMemo(() => extractVariableName(props.id), [props.id]);
+  const docsUrl = useMemo(
+    () => (variableName ? getDocsUrlForVariable(variableName, props.schema as Record<string, unknown>) : undefined),
+    [variableName, props.schema]
+  );
+  const showDocs = !!docsUrl && isTopLevelFieldId(props.id);
+  const iconName = useMemo(
+    () => (variableName ? getCodiconForVariable(variableName, props.schema as Record<string, unknown>) : 'symbol-property'),
+    [variableName, props.schema]
+  );
+
+  const handleOpenDocs = useCallback(() => {
+    if (!docsUrl) {
+      return;
+    }
+    postMessage({ type: 'openExternal', url: docsUrl });
+  }, [docsUrl, postMessage]);
+
+  const isRoot = isRootObjectFieldId(props.id);
+
+  const fieldPath = useMemo(() => extractFieldPathFromId(props.id), [props.id]);
+  // Array-of-strings (and other primitive arrays) items are typically addressed as "FOO_0".
+  // For those, we hide title/description because it doesn't help editing a simple list.
+  const isPrimitiveArrayItem = useMemo(() => !!fieldPath && /(?:^|_)\d+$/.test(fieldPath), [fieldPath]);
+
+  // Rules:
+  // - Top-level variable: always show title/description
+  // - Embedded in array of objects: show title/description
+  // - Embedded in array of strings (primitive array item): hide title/description
+  // RJSF's `displayLabel` can be false for some complex schemas, so we do NOT use it here.
+  const showLabelRow = !!props.label && !isRoot && !isPrimitiveArrayItem;
+  const showDocsButton = showDocs && !isRoot;
+  const showDescription = !isRoot && !isPrimitiveArrayItem && !!props.description;
+  const docsButtonTitle = useMemo(() => {
+    if (variableName) {
+      return `View documentation for ${variableName}`;
+    }
+    return 'View documentation';
+  }, [variableName]);
+
+  return (
+    <div className={props.classNames}>
+      {showLabelRow && (
+        <div className="field-label-row">
+          <label htmlFor={props.id} title={variableName}>
+            <span className={`codicon codicon-${iconName} field-label__icon`} aria-hidden="true" />
+            {props.label}
+            {props.required ? '*' : null}
+          </label>
+          {showDocsButton && (
+            <button type="button" className="field-docs-button" onClick={handleOpenDocs} title={docsButtonTitle}>
+              <svg
+                className="field-docs-button__icon"
+                viewBox="0 0 16 16"
+                role="img"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14H14a.75.75 0 0 0 0-1.5H2.75a.25.25 0 0 1-.25-.25V3.75c0-.138.112-.25.25-.25H14a.75.75 0 0 0 0-1.5H2.75Z" />
+                <path d="M5 5.25c0-.414.336-.75.75-.75H13a.75.75 0 0 1 0 1.5H5.75A.75.75 0 0 1 5 5.25Zm0 3c0-.414.336-.75.75-.75H13a.75.75 0 0 1 0 1.5H5.75A.75.75 0 0 1 5 8.25Zm.75 2.25a.75.75 0 0 0 0 1.5H11a.75.75 0 0 0 0-1.5H5.75Z" />
+              </svg>
+              View documentation
+            </button>
+          )}
+        </div>
+      )}
+      {!showLabelRow && showDocsButton && (
+        <div className="field-label-row">
+          <div />
+          <button type="button" className="field-docs-button" onClick={handleOpenDocs} title={docsButtonTitle}>
+            <svg
+              className="field-docs-button__icon"
+              viewBox="0 0 16 16"
+              role="img"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14H14a.75.75 0 0 0 0-1.5H2.75a.25.25 0 0 1-.25-.25V3.75c0-.138.112-.25.25-.25H14a.75.75 0 0 0 0-1.5H2.75Z" />
+              <path d="M5 5.25c0-.414.336-.75.75-.75H13a.75.75 0 0 1 0 1.5H5.75A.75.75 0 0 1 5 5.25Zm0 3c0-.414.336-.75.75-.75H13a.75.75 0 0 1 0 1.5H5.75A.75.75 0 0 1 5 8.25Zm.75 2.25a.75.75 0 0 0 0 1.5H11a.75.75 0 0 0 0-1.5H5.75Z" />
+            </svg>
+            View documentation
+          </button>
+        </div>
+      )}
+      {showDescription ? props.description : null}
+      {props.children}
+      {props.errors}
+      {props.help}
+    </div>
+  );
+}

@@ -1,0 +1,122 @@
+{
+  "name": "vscode-megalinter",
+  "displayName": "MegaLinter Configuration",
+  "description": "Configure MegaLinter using a visual interface",
+  "version": "0.0.1",
+  "publisher": "nvuillam",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nvuillam/vscode-megalinter"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:megalinter-custom-flavor.yml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "megalinter.openConfiguration",
+        "title": "MegaLinter: Open Configuration",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "megalinter.openCustomFlavorBuilder",
+        "title": "MegaLinter: Custom Flavor Builder",
+        "icon": "$(package)"
+      },
+      {
+        "command": "megalinter.revealSection",
+        "title": "MegaLinter: Reveal Section",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@1",
+          "when": "resourceFilename == '.mega-linter.yml'"
+        },
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@2",
+          "when": "resourceFilename == '.megalinter.yml'"
+        },
+        {
+          "command": "megalinter.openCustomFlavorBuilder",
+          "group": "navigation@10",
+          "when": "resourceFilename == 'megalinter-custom-flavor.yml' || resourceFilename == 'megalinter-custom-flavor.yaml' || resourceFilename == 'mega-linter-flavor.yml' || resourceFilename == 'mega-linter-flavor.yaml'"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@1",
+          "when": "resourceFilename == '.mega-linter.yml'"
+        },
+        {
+          "command": "megalinter.openConfiguration",
+          "group": "navigation@2",
+          "when": "resourceFilename == '.megalinter.yml'"
+        },
+        {
+          "command": "megalinter.openCustomFlavorBuilder",
+          "group": "navigation@10",
+          "when": "resourceFilename == 'megalinter-custom-flavor.yml' || resourceFilename == 'megalinter-custom-flavor.yaml' || resourceFilename == 'mega-linter-flavor.yml' || resourceFilename == 'mega-linter-flavor.yaml'"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "megalinter.openCustomFlavorBuilder",
+          "group": "navigation@10",
+          "when": "resourceFilename == 'megalinter-custom-flavor.yml' || resourceFilename == 'megalinter-custom-flavor.yaml' || resourceFilename == 'mega-linter-flavor.yml' || resourceFilename == 'mega-linter-flavor.yaml'"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
+    "compile": "webpack --mode development",
+    "sync-megalinter": "node ./scripts/sync-megalinter.mjs",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/vsce": "^3.7.1",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.0.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.4.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "@rjsf/core": "^5.13.0",
+    "@rjsf/utils": "^5.13.0",
+    "@rjsf/validator-ajv8": "^5.13.0",
+    "@types/yaml": "^1.9.6",
+    "@vscode/codicons": "^0.0.36",
+    "js-yaml": "^4.1.0",
+    "marked": "^11.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "yaml": "^2.8.2"
+  }
+}

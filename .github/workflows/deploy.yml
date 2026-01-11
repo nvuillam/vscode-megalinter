@@ -1,0 +1,49 @@
+---
+#
+# Documentation:
+# https://help.github.com/en/articles/workflow-syntax-for-github-actions
+#
+
+##################################################
+# Start the job when a GitHub release is created #
+##################################################
+name: "Build & Deploy - RELEASE"
+on:
+  release:
+    # Want to run the automation when a release is created
+    types: ["created"]
+
+permissions: read-all
+
+jobs:
+  deploy:
+    name: Deploy on VsCode MarketPlace
+    runs-on: ubuntu-latest
+    permissions: read-all
+    environment:
+      name: release
+    steps:
+      - uses: actions/checkout@v5
+      - run: yarn
+      - uses: lannonbr/vsce-action@master
+        with:
+          args: "publish -p $VSCE_TOKEN --allow-package-secrets github"
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+
+  deploy_ovsx:
+    name: Deploy on Open VSX
+    runs-on: ubuntu-latest
+    permissions: read-all
+    environment:
+      name: release
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: yarn
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v1
+        with:
+          pat: ${{ secrets.OPENVSX_TOKEN }}
