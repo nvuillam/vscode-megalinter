@@ -6,18 +6,44 @@ import { getCodiconForVariable } from '../iconResolver';
 import { useVSCodeApi } from '../hooks';
 
 const extractVariableName = (id: string): string | undefined => {
-  const rootMarker = 'root_';
-  const idx = id.indexOf(rootMarker);
-  if (idx < 0) {
+  if (!id) {
     return undefined;
   }
-  const withoutRoot = id.slice(idx + rootMarker.length);
-  // Top-level MegaLinter variables are uppercase with underscores.
-  // Nested array/object fields include indexes/child keys (e.g. root_PRE_COMMANDS_0_command).
-  if (!/^[A-Z0-9_]+$/.test(withoutRoot)) {
+
+  // RJSF field ids vary depending on idPrefix/idSeparator.
+  // IMPORTANT: `idPrefix` replaces the default "root" id, so Summary uses ids like:
+  // - summary_ENABLE_LINTERS
+  // while other forms typically use:
+  // - root_ENABLE_LINTERS
+  // and sometimes include double-underscores:
+  // - summary__root__ENABLE_LINTERS
+  const normalized = id.replace(/__+/g, '_');
+
+  let candidate: string | undefined;
+  const rootMarker = '_root_';
+  const rootIdx = normalized.lastIndexOf(rootMarker);
+  if (rootIdx >= 0) {
+    candidate = normalized.slice(rootIdx + rootMarker.length);
+  } else if (normalized.startsWith('root_')) {
+    candidate = normalized.slice('root_'.length);
+  } else {
+    // Fallback for custom idPrefix (e.g. "summary"): take everything after the first separator.
+    const sepIdx = normalized.indexOf('_');
+    if (sepIdx >= 0) {
+      candidate = normalized.slice(sepIdx + 1);
+    }
+  }
+
+  if (!candidate) {
     return undefined;
   }
-  return withoutRoot || undefined;
+
+  // Only treat top-level MegaLinter variables as eligible.
+  // Nested fields include indexes/child keys (e.g. root_PRE_COMMANDS_0_command).
+  if (!/^[A-Z0-9_]+$/.test(candidate)) {
+    return undefined;
+  }
+  return candidate;
 };
 
 const isTopLevelFieldId = (id: string): boolean => !!extractVariableName(id);
