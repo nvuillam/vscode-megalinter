@@ -165,6 +165,10 @@ type NavigationTarget =
 
 ## Common Tasks
 
+### Build scripts
+
+- **Scripts**: `build` (production webpack), `compile` (development webpack), `watch` (development watch). Use `npm run compile` for a single development build; use the `watch` script or the workspace `npm: watch` background task for iterative development.
+
 ### Adding a New Command
 1. Add to `package.json` → `contributes.commands`
 2. Register in `extension.ts` with `vscode.commands.registerCommand`

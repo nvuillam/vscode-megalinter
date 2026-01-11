@@ -80,6 +80,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
           className="pill-button pill-button--solid"
           onClick={() => postMessage({ type: 'installMegaLinter' })}
         >
+          <span className="codicon codicon-cloud-download pill-button__icon" aria-hidden="true" />
           Install MegaLinter
         </button>
       );
@@ -91,6 +92,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
         className="pill-button pill-button--solid"
         onClick={() => postMessage({ type: 'upgradeMegaLinter' })}
       >
+        <span className="codicon codicon-sync pill-button__icon" aria-hidden="true" />
         Upgrade MegaLinter
       </button>
     );
@@ -150,6 +152,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               onClick={onOpenGeneral}
               disabled={!configExists || referenceDataLoading}
             >
+              <span className="codicon codicon-settings-gear pill-button__icon" aria-hidden="true" />
               Start with general settings
             </button>
             <button
@@ -158,6 +161,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               onClick={onOpenSummary}
               disabled={!hasConfiguration || referenceDataLoading}
             >
+              <span className="codicon codicon-checklist pill-button__icon" aria-hidden="true" />
               Review configured values
             </button>
             <button
@@ -165,6 +169,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               className="pill-button pill-button--ghost"
               onClick={() => postMessage({ type: 'openCustomFlavorBuilder' })}
             >
+              <span className="codicon codicon-package pill-button__icon" aria-hidden="true" />
               Custom Flavor Builder
             </button>
             <a
@@ -173,6 +178,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               target="_blank"
               rel="noreferrer"
             >
+              <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
               Open MegaLinter docs
             </a>
           </div>

@@ -78,6 +78,10 @@ Enhancement suggestions are welcome! Please:
    npm run build
    ```
 
+   Notes:
+   - `npm run compile` builds a development bundle into `dist/` (fast, recommended while iterating).
+   - `npm run build` builds the production bundle into `dist/`.
+
 4. **Open in VS Code**
    ```bash
    code .
@@ -101,6 +105,10 @@ Enhancement suggestions are welcome! Please:
    - Test your changes in the new window
    - Use `Ctrl+R` / `Cmd+R` to reload the extension
 
+   Tips:
+   - The repo includes a debug launch configuration “Run Extension” (see `.vscode/launch.json`) that runs `npm: compile` before starting.
+   - To debug the React UI: `Developer: Open Webview Developer Tools`.
+
 4. **Check for linting errors**:
    ```bash
    npm run lint
@@ -117,13 +125,22 @@ Enhancement suggestions are welcome! Please:
 vscode-megalinter/
 ├── src/
 │   ├── extension.ts           # Extension entry point
-│   ├── configurationPanel.ts  # WebView management
-│   ├── types.d.ts            # TypeScript declarations
-│   └── webview/
-│       ├── index.tsx         # React entry point
-│       ├── App.tsx           # Main React component
-│       └── styles.css        # WebView styles
-├── dist/                     # Build output (gitignored)
+│   ├── configurationPanel.ts  # Configuration editor WebView panel
+│   ├── customFlavorPanel.ts   # Custom Flavor Builder WebView panel
+│   ├── configTreeProvider.ts  # Tree view/provider helpers
+│   ├── panelIcon.ts           # Panel icon resolution
+│   ├── types.d.ts             # TypeScript declarations
+│   ├── descriptors/           # Bundled MegaLinter descriptor YAML + schemas
+│   ├── shared/                # Code shared between extension + webview
+│   └── webview/               # React WebView bundle (config UI + flavor UI)
+│       ├── index.tsx          # WebView entry: selects App vs FlavorApp
+│       ├── App.tsx            # Main configuration UI
+│       ├── FlavorApp.tsx      # Custom flavor builder UI
+│       ├── components/        # Reusable React components
+│       ├── hooks/             # Custom hooks
+│       ├── types/             # Central TS types
+│       └── styles.css         # WebView styles
+├── dist/                      # Webpack build output (extension.js + webview.js)
 ├── node_modules/            # Dependencies (gitignored)
 ├── package.json             # Extension manifest
 ├── tsconfig.json           # TypeScript config
@@ -138,14 +155,21 @@ vscode-megalinter/
 - Use TypeScript for all new code
 - Enable strict type checking
 - Provide types for function parameters and return values
-- Avoid `any` types when possible
+- Avoid `any` types when possible; prefer typed message payloads for WebView ↔ extension communication
+- Use `import type { ... } from '...'` for type-only imports
 
 ### React
 
 - Use functional components with hooks
 - Keep components focused and single-purpose
 - Use meaningful component and prop names
-- Add comments for complex logic
+- Prefer extracting logic into hooks under `src/webview/hooks/`
+
+### WebView Security
+
+- Keep the Content Security Policy strict (nonce-based scripts).
+- Prefer `webview.asWebviewUri` + `vscode.Uri.joinPath` for any resource paths.
+- Avoid introducing new remote calls unless necessary; if you do, add timeouts and handle offline behavior.
 
 ### Styling
 
@@ -181,11 +205,14 @@ docs: update README with new configuration options
 2. Test the following scenarios:
    - Opening configuration from command palette
    - Opening configuration from context menu
+   - Opening the Custom Flavor Builder
    - Creating a new configuration file
    - Loading an existing configuration file
    - Editing and saving configuration
    - Form validation
    - Error handling
+
+For a full checklist, see `TESTING.md`.
 
 ### Testing Checklist
 
@@ -212,8 +239,10 @@ To create a `.vsix` package:
 
 2. Package the extension:
    ```bash
-   vsce package
+   npm run package
    ```
+
+   Note: `npm run package` expects `vsce` to be installed (globally is simplest).
 
 3. The `.vsix` file will be created in the project root
 
