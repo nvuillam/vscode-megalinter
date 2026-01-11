@@ -5,21 +5,14 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import type { NavigationTarget } from './extension';
 import { CustomFlavorPanel } from './customFlavorPanel';
-import { resolveMegalinterPanelIcon } from './panelIcon';
-
-type LinterDescriptorMetadata = {
-  descriptorId?: string;
-  name?: string;
-  linterName?: string;
-  configFileName?: string;
-  url?: string;
-  repo?: string;
-  rulesConfigurationUrl?: string;
-  imageUrl?: string;
-  bannerImageUrl?: string;
-  text?: string;
-  urls?: Array<{ label: string; href: string }>;
-};
+import type { LinterDescriptorMetadata } from './shared/linterMetadata';
+import { sanitizeConfigForSave } from './shared/sanitizeConfigForSave';
+import {
+  buildWebviewHtml,
+  createMegalinterWebviewPanel,
+  disposeAll,
+  openExternalHttpUrl
+} from './panelUtils';
 
 type ResolveLinterConfigRequest = {
   type: 'resolveLinterConfigFile';
@@ -111,23 +104,12 @@ export class ConfigurationPanel {
     }
 
     // Otherwise, create a new panel
-    const panel = vscode.window.createWebviewPanel(
-      'megalinterConfig',
-      'MegaLinter Configuration',
-      column || vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(extensionUri, 'dist')
-        ]
-      }
-    );
-
-    const iconPath = resolveMegalinterPanelIcon(extensionUri);
-    if (iconPath) {
-      panel.iconPath = iconPath;
-    }
+    const panel = createMegalinterWebviewPanel({
+      viewType: 'megalinterConfig',
+      title: 'MegaLinter Configuration',
+      extensionUri,
+      column
+    });
 
     ConfigurationPanel.currentPanel = new ConfigurationPanel(
       panel,
@@ -197,11 +179,7 @@ export class ConfigurationPanel {
             await this._createLinterConfigFileFromDefault(message.linterKey, message.destination, message.mode);
             break;
           case 'openExternal':
-            if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
-              await vscode.env.openExternal(vscode.Uri.parse(message.url));
-            } else {
-              vscode.window.showErrorMessage('Invalid external URL');
-            }
+            await openExternalHttpUrl(message.url);
             break;
           case 'error':
             vscode.window.showErrorMessage(message.message);
@@ -822,29 +800,7 @@ export class ConfigurationPanel {
 
   private async _saveConfig(config: any) {
     try {
-      const sanitize = (value: any): any => {
-        if (value === null || value === undefined) {
-          return value;
-        }
-
-        if (Array.isArray(value)) {
-          return value
-            .map((item) => sanitize(item))
-            .filter((item) => item !== null && item !== undefined);
-        }
-
-        if (typeof value === 'object') {
-          const result: Record<string, any> = {};
-          Object.keys(value).forEach((key) => {
-            result[key] = sanitize(value[key]);
-          });
-          return result;
-        }
-
-        return value;
-      };
-
-      const sanitizedConfig = sanitize(config || {});
+      const sanitizedConfig = sanitizeConfigForSave(config || {});
       const existingText = fs.existsSync(this._configPath)
         ? fs.readFileSync(this._configPath, 'utf8')
         : '';
@@ -916,12 +872,7 @@ export class ConfigurationPanel {
       this._statusMessage.dispose();
     }
 
-    while (this._disposables.length) {
-      const x = this._disposables.pop();
-      if (x) {
-        x.dispose();
-      }
-    }
+    disposeAll(this._disposables);
   }
 
   private _update() {
@@ -940,49 +891,11 @@ export class ConfigurationPanel {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // Get the local path to the webview script
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.js')
-    );
-
-    // Use a nonce to only allow specific scripts to be run
-    const nonce = getNonce();
-
-    // Note: 'unsafe-inline' for styles is required because we use style-loader
-    // which dynamically injects styles. This is a standard pattern for React apps
-    // in VS Code WebViews. The script-src uses nonce for security.
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}' 'unsafe-eval';">
-  <title>MegaLinter Configuration</title>
-  <style>
-    body {
-      padding: 0;
-      margin: 0;
-      font-family: var(--vscode-font-family);
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
-    }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}">window.__MEGALINTER_VIEW__ = 'config';</script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml({
+      webview,
+      extensionUri: this._extensionUri,
+      title: 'MegaLinter Configuration',
+      view: 'config'
+    });
   }
-}
-
-function getNonce() {
-  let text = '';
-  const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }

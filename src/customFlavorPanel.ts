@@ -1,7 +1,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveMegalinterPanelIcon } from './panelIcon';
+import { getGitOriginRepositoryName, isGitRepository } from './gitUtils';
+import {
+  buildWebviewHtml,
+  createMegalinterWebviewPanel,
+  disposeAll,
+  openExternalHttpUrl
+} from './panelUtils';
 
 type FlavorPanelInboundMessage =
   | { type: 'ready' }
@@ -63,21 +69,12 @@ export class CustomFlavorPanel {
       return CustomFlavorPanel.currentPanel;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      'megalinterCustomFlavor',
-      'MegaLinter Custom Flavor Builder',
-      column || vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')]
-      }
-    );
-
-    const iconPath = resolveMegalinterPanelIcon(extensionUri);
-    if (iconPath) {
-      panel.iconPath = iconPath;
-    }
+    const panel = createMegalinterWebviewPanel({
+      viewType: 'megalinterCustomFlavor',
+      title: 'MegaLinter Custom Flavor Builder',
+      extensionUri,
+      column
+    });
 
     CustomFlavorPanel.currentPanel = new CustomFlavorPanel(panel, extensionUri, initialUri);
     return CustomFlavorPanel.currentPanel;
@@ -118,11 +115,7 @@ export class CustomFlavorPanel {
               await this._openFile(message.filePath);
               break;
             case 'openExternal':
-              if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
-                await vscode.env.openExternal(vscode.Uri.parse(message.url));
-              } else {
-                vscode.window.showErrorMessage('Invalid external URL');
-              }
+              await openExternalHttpUrl(message.url);
               break;
           }
         } catch (err) {
@@ -139,12 +132,7 @@ export class CustomFlavorPanel {
     CustomFlavorPanel.currentPanel = undefined;
     this._panel.dispose();
 
-    while (this._disposables.length) {
-      const d = this._disposables.pop();
-      if (d) {
-        d.dispose();
-      }
-    }
+    disposeAll(this._disposables);
   }
 
   private _update() {
@@ -154,32 +142,12 @@ export class CustomFlavorPanel {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.js'));
-    const nonce = getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}' 'unsafe-eval';">
-  <title>MegaLinter Custom Flavor Builder</title>
-  <style>
-    body {
-      padding: 0;
-      margin: 0;
-      font-family: var(--vscode-font-family);
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
-    }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}">window.__MEGALINTER_VIEW__ = 'flavor';</script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml({
+      webview,
+      extensionUri: this._extensionUri,
+      title: 'MegaLinter Custom Flavor Builder',
+      view: 'flavor'
+    });
   }
 
   private _postMessage(message: FlavorPanelOutboundMessage) {
@@ -382,10 +350,6 @@ export class CustomFlavorPanel {
   }
 }
 
-function isGitRepository(folderPath: string): boolean {
-  return getGitDir(folderPath) !== null;
-}
-
 function resolveFlavorFilePath(folderPath: string): string | null {
   for (const name of FLAVOR_FILE_CANDIDATES) {
     const candidate = path.join(folderPath, name);
@@ -405,40 +369,6 @@ function findWorkspaceRootWithFlavorFile(workspaceFolderPaths: string[]): string
   return null;
 }
 
-function getGitDir(folderPath: string): string | null {
-  try {
-    const dotGitPath = path.join(folderPath, '.git');
-    if (!fs.existsSync(dotGitPath)) {
-      return null;
-    }
-
-    const stat = fs.lstatSync(dotGitPath);
-    if (stat.isDirectory()) {
-      return dotGitPath;
-    }
-
-    if (stat.isFile()) {
-      const content = fs.readFileSync(dotGitPath, 'utf8');
-      const match = content.match(/^gitdir:\s*(.+)\s*$/m);
-      if (!match || !match[1]) {
-        return null;
-      }
-
-      const gitDirRaw = match[1].trim();
-      const gitDirPath = path.isAbsolute(gitDirRaw) ? gitDirRaw : path.resolve(folderPath, gitDirRaw);
-      if (!fs.existsSync(gitDirPath)) {
-        return null;
-      }
-      const dirStat = fs.lstatSync(gitDirPath);
-      return dirStat.isDirectory() ? gitDirPath : null;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function isCustomFlavorRepositoryNameValid(folderPath: string): boolean {
   const requiredToken = 'megalinter-custom-flavor';
 
@@ -453,65 +383,4 @@ function isCustomFlavorRepositoryNameValid(folderPath: string): boolean {
   }
 
   return false;
-}
-
-function getGitOriginRepositoryName(folderPath: string): string | null {
-  try {
-    const gitDir = getGitDir(folderPath);
-    if (!gitDir) {
-      return null;
-    }
-
-    const configPath = path.join(gitDir, 'config');
-    if (!fs.existsSync(configPath)) {
-      return null;
-    }
-
-    const configText = fs.readFileSync(configPath, 'utf8');
-    const lines = configText.split(/\r?\n/);
-
-    let inOrigin = false;
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        continue;
-      }
-
-      const sectionMatch = trimmed.match(/^\[(.+?)\]$/);
-      if (sectionMatch) {
-        inOrigin = sectionMatch[1] === 'remote "origin"';
-        continue;
-      }
-
-      if (!inOrigin) {
-        continue;
-      }
-
-      const urlMatch = trimmed.match(/^url\s*=\s*(.+)$/);
-      if (!urlMatch || !urlMatch[1]) {
-        continue;
-      }
-
-      const url = urlMatch[1].trim();
-      const withoutGit = url.replace(/\.git$/i, '');
-      const slashParts = withoutGit.split('/');
-      const lastSegment = slashParts[slashParts.length - 1] || '';
-      const colonParts = lastSegment.split(':');
-      const repo = colonParts[colonParts.length - 1];
-      return repo || null;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function getNonce() {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }

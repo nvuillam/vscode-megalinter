@@ -14,6 +14,7 @@ import {
   prettifyId
 } from '../menuUtils';
 import { Breadcrumbs } from './Breadcrumbs';
+import { ConfigPreviewPanel } from './ConfigPreviewPanel';
 import { ThemedForm } from './ThemedForm';
 import { LinterDescription } from './LinterDescription';
 import { DocFieldTemplate } from './DocFieldTemplate';
@@ -527,37 +528,24 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           label: 'Config file',
           icon: 'file-code',
           content: (
-            <div className="linter-description">
-              <div className="config-file__header">
-                <div>
-                  <h3 className="linter-description__name">Config file</h3>
-                  {configFileName && <p className="muted">{configFileName}</p>}
-                  <p className="muted">{configInfo.local.filePath}</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {rulesConfigUrl && (
-                    <button
-                      className="pill-button pill-button--ghost"
-                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
-                    >
-                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
-                      Configuration documentation
-                    </button>
-                  )}
-                  <button
-                    className="pill-button pill-button--solid"
-                    onClick={() => postMessage({ type: 'openFile', filePath: configInfo.local!.filePath! })}
-                  >
-                    <span className="codicon codicon-edit pill-button__icon" aria-hidden="true" />
-                    Edit
-                  </button>
-                </div>
-              </div>
-              <pre className="config-file__content">{configInfo.local.content || ''}</pre>
-              {configInfo.local.truncated && (
-                <p className="muted">Preview truncated (file is large).</p>
-              )}
-            </div>
+            <ConfigPreviewPanel
+              title="Config file"
+              fileName={configFileName}
+              metaLines={[configInfo.local.filePath]}
+              documentationUrl={rulesConfigUrl}
+              onOpenDocumentation={(url) => postMessage({ type: 'openExternal', url })}
+              actions={[
+                {
+                  label: 'Edit',
+                  icon: 'edit',
+                  variant: 'solid',
+                  onClick: () => postMessage({ type: 'openFile', filePath: configInfo.local!.filePath! })
+                }
+              ]}
+              content={configInfo.local.content || ''}
+              truncated={configInfo.local.truncated}
+              truncatedMessage="Preview truncated (file is large)."
+            />
           )
         });
       } else if (!isAnalyzing && configInfo?.defaultTemplate?.exists && configInfo.defaultTemplate.content) {
@@ -566,48 +554,36 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           label: 'Default config',
           icon: 'file',
           content: (
-            <div className="linter-description">
-              <div className="config-file__header">
-                <div>
-                  <h3 className="linter-description__name">Default configuration</h3>
-                  {configFileName && <p className="muted">{configFileName}</p>}
-                  {configInfo.defaultTemplate.source && (
-                    <p className="muted">Source: {configInfo.defaultTemplate.source}</p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {rulesConfigUrl && (
-                    <button
-                      className="pill-button pill-button--ghost"
-                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
-                    >
-                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
-                      Configuration documentation
-                    </button>
-                  )}
-                  <button
-                    className="pill-button pill-button--solid"
-                    onClick={() =>
-                      postMessage({
-                        type: 'createLinterConfigFileFromDefault',
-                        linterKey,
-                        destination: {
-                          linterRulesPath: activeLinterOverrides?.rulesPath,
-                          configFile: configFileName
-                        }
-                      })
-                    }
-                  >
-                    <span className="codicon codicon-file-add pill-button__icon" aria-hidden="true" />
-                    Override
-                  </button>
-                </div>
-              </div>
-              <pre className="config-file__content">{configInfo.defaultTemplate.content}</pre>
-              {configInfo.defaultTemplate.truncated && (
-                <p className="muted">Preview truncated (template is large).</p>
-              )}
-            </div>
+            <ConfigPreviewPanel
+              title="Default configuration"
+              fileName={configFileName}
+              metaLines={
+                configInfo.defaultTemplate.source
+                  ? [`Source: ${configInfo.defaultTemplate.source}`]
+                  : []
+              }
+              documentationUrl={rulesConfigUrl}
+              onOpenDocumentation={(url) => postMessage({ type: 'openExternal', url })}
+              actions={[
+                {
+                  label: 'Override',
+                  icon: 'file-add',
+                  variant: 'solid',
+                  onClick: () =>
+                    postMessage({
+                      type: 'createLinterConfigFileFromDefault',
+                      linterKey,
+                      destination: {
+                        linterRulesPath: activeLinterOverrides?.rulesPath,
+                        configFile: configFileName
+                      }
+                    })
+                }
+              ]}
+              content={configInfo.defaultTemplate.content}
+              truncated={configInfo.defaultTemplate.truncated}
+              truncatedMessage="Preview truncated (template is large)."
+            />
           )
         });
       } else if (!isAnalyzing && configFileName) {
@@ -616,41 +592,30 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           label: 'Default config',
           icon: 'file',
           content: (
-            <div className="linter-description">
-              <div className="config-file__header">
-                <div>
-                  <h3 className="linter-description__name">Default configuration</h3>
-                  <p className="muted">No default template found for {configFileName}.</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {rulesConfigUrl && (
-                    <button
-                      className="pill-button pill-button--ghost"
-                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
-                    >
-                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
-                      Configuration documentation
-                    </button>
-                  )}
-                  <button
-                    className="pill-button pill-button--solid"
-                    onClick={() =>
-                      postMessage({
-                        type: 'createLinterConfigFileFromDefault',
-                        linterKey,
-                        mode: 'blank',
-                        destination: {
-                          linterRulesPath: activeLinterOverrides?.rulesPath,
-                          configFile: configFileName
-                        }
-                      })
-                    }
-                  >
-                    Create
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ConfigPreviewPanel
+              title="Default configuration"
+              documentationUrl={rulesConfigUrl}
+              onOpenDocumentation={(url) => postMessage({ type: 'openExternal', url })}
+              actions={[
+                {
+                  label: 'Create',
+                  icon: 'file-add',
+                  variant: 'solid',
+                  onClick: () =>
+                    postMessage({
+                      type: 'createLinterConfigFileFromDefault',
+                      linterKey,
+                      mode: 'blank',
+                      destination: {
+                        linterRulesPath: activeLinterOverrides?.rulesPath,
+                        configFile: configFileName
+                      }
+                    })
+                }
+              ]}
+            >
+              <p className="muted">No default template found for {configFileName}.</p>
+            </ConfigPreviewPanel>
           )
         });
       }

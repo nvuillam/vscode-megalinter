@@ -1,5 +1,6 @@
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import type { SchemaGroups } from '../../shared/schemaUtils';
+import type { LinterDescriptorMetadata } from '../../shared/linterMetadata';
 
 // ============================================================================
 // VS Code API Types
@@ -116,24 +117,7 @@ export type MegaLinterConfig = Record<string, MegaLinterConfigValue>;
 // Linter Metadata Types
 // ============================================================================
 
-export interface LinterLink {
-  label: string;
-  href: string;
-}
-
-export interface LinterDescriptorMetadata {
-  descriptorId?: string;
-  name?: string;
-  linterName?: string;
-  configFileName?: string;
-  url?: string;
-  repo?: string;
-  rulesConfigurationUrl?: string;
-  imageUrl?: string;
-  bannerImageUrl?: string;
-  text?: string;
-  urls?: LinterLink[];
-}
+export type { LinterLink, LinterDescriptorMetadata } from '../../shared/linterMetadata';
 
 export type LinterMetadataMap = Record<string, LinterDescriptorMetadata>;
 

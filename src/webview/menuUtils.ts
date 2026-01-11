@@ -401,32 +401,7 @@ export const pruneDefaults = (data: any, original: any, schema: RJSFSchema) => {
   return result;
 };
 
-export const sanitizeConfigForSave = <T>(input: T): T => {
-  const sanitize = (value: any): any => {
-    if (value === null || value === undefined) {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      const sanitizedItems = value
-        .map((item) => sanitize(item))
-        .filter((item) => item !== null && item !== undefined);
-      return sanitizedItems;
-    }
-
-    if (typeof value === 'object') {
-      const result: Record<string, any> = {};
-      Object.keys(value).forEach((key) => {
-        result[key] = sanitize(value[key]);
-      });
-      return result;
-    }
-
-    return value;
-  };
-
-  return sanitize(input) as T;
-};
+export { sanitizeConfigForSave } from '../shared/sanitizeConfigForSave';
 
 export const stripTitlePrefix = (title: string, prefix: string): string => {
   const cleanPrefix = prefix.replace(/_+$/, '');
