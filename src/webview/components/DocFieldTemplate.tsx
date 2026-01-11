@@ -59,18 +59,24 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
   const showLabelRow = !!props.label && !isRoot && isTopLevelFieldId(props.id);
   const showDocsButton = showDocs && !isRoot;
   const showDescription = !isRoot && isTopLevelFieldId(props.id);
+  const docsButtonTitle = useMemo(() => {
+    if (variableName) {
+      return `View documentation for ${variableName}`;
+    }
+    return 'View documentation';
+  }, [variableName]);
 
   return (
     <div className={props.classNames}>
       {showLabelRow && (
         <div className="field-label-row">
-          <label htmlFor={props.id}>
+          <label htmlFor={props.id} title={variableName}>
             <span className={`codicon codicon-${iconName} field-label__icon`} aria-hidden="true" />
             {props.label}
             {props.required ? '*' : null}
           </label>
           {showDocsButton && (
-            <button type="button" className="field-docs-button" onClick={handleOpenDocs}>
+            <button type="button" className="field-docs-button" onClick={handleOpenDocs} title={docsButtonTitle}>
               <svg
                 className="field-docs-button__icon"
                 viewBox="0 0 16 16"
@@ -89,7 +95,7 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
       {!showLabelRow && showDocsButton && (
         <div className="field-label-row">
           <div />
-          <button type="button" className="field-docs-button" onClick={handleOpenDocs}>
+          <button type="button" className="field-docs-button" onClick={handleOpenDocs} title={docsButtonTitle}>
             <svg
               className="field-docs-button__icon"
               viewBox="0 0 16 16"
