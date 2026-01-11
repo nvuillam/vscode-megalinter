@@ -1,8 +1,36 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import React, { useState } from 'react';
 import type { BreadcrumbsProps, BreadcrumbItem, BreadcrumbOption } from '../types';
 
+import oxSecurityIconLight from '../../../media/ox-security-light.svg';
+import oxSecurityIconDark from '../../../media/ox-security-dark.svg';
+
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items }) => {
   const [openId, setOpenId] = useState<string | null>(null);
+
+  const renderLabel = (item: BreadcrumbItem): React.ReactNode => {
+    if (item.id !== 'home') {
+      return item.label;
+    }
+
+    return (
+      <span className="breadcrumbs__home">
+        <img
+          className="breadcrumbs__home-icon breadcrumbs__home-icon--light"
+          src={oxSecurityIconLight}
+          alt=""
+          aria-hidden="true"
+        />
+        <img
+          className="breadcrumbs__home-icon breadcrumbs__home-icon--dark"
+          src={oxSecurityIconDark}
+          alt=""
+          aria-hidden="true"
+        />
+        <span className="breadcrumbs__home-label">{item.label}</span>
+      </span>
+    );
+  };
 
   return (
     <div className="breadcrumbs" aria-label="Navigation breadcrumb">
@@ -26,7 +54,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items }) => {
                   className="breadcrumbs__link breadcrumbs__link--menu"
                   onClick={() => setOpenId(isOpen ? null : item.id)}
                 >
-                  {item.label}
+                  {renderLabel(item)}
                   <span className={`breadcrumbs__chevron ${isOpen ? 'breadcrumbs__chevron--open' : ''}`} />
                 </button>
                 {isOpen && (
@@ -43,10 +71,10 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items }) => {
               </div>
             ) : item.onClick ? (
               <button type="button" className="breadcrumbs__link" onClick={item.onClick}>
-                {item.label}
+                {renderLabel(item)}
               </button>
             ) : (
-              <span className="breadcrumbs__current">{item.label}</span>
+              <span className="breadcrumbs__current">{renderLabel(item)}</span>
             )}
             {!isLast && <span className="breadcrumbs__sep">/</span>}
           </span>

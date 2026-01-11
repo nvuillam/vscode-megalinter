@@ -414,11 +414,40 @@ body {
 }
 
 .breadcrumbs__link {
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 0;
   color: var(--vscode-textLink-foreground);
   cursor: pointer;
+}
+
+.breadcrumbs__home {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breadcrumbs__home-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+}
+
+.breadcrumbs__home-icon--dark {
+  display: none;
+}
+
+/* VS Code webviews typically add these classes to the body element */
+body.vscode-light .breadcrumbs__home-icon--light,
+body.vscode-high-contrast-light .breadcrumbs__home-icon--light {
+  display: none;
+}
+
+body.vscode-light .breadcrumbs__home-icon--dark,
+body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
+  display: inline-block;
 }
 
 .breadcrumbs__link:hover {
