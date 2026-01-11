@@ -1,16 +1,43 @@
 {
-  "ignorePaths": [
-    "**/node_modules/**",
-    "**/vscode-extension/**",
-    "**/.git/**",
-    "**/.pnpm-lock.json",
-    ".vscode",
-    "megalinter",
-    "package-lock.json",
-    "report"
-  ],
-  "language": "en",
-  "noConfigSearch": true,
-  "words": ["megalinter", "oxsecurity"],
-  "version": "0.2"
+    "ignorePaths": [
+        "**/node_modules/**",
+        "**/vscode-extension/**",
+        "**/.git/**",
+        "**/.pnpm-lock.json",
+        ".vscode",
+        "megalinter",
+        "package-lock.json",
+        "report"
+    ],
+    "language": "en",
+    "noConfigSearch": true,
+    "version": "0.2",
+    "words": [
+        "DOCKERFILELINT",
+        "GOODCHECK",
+        "KICS",
+        "KUBEVAL",
+        "OPENVSX",
+        "PREPOSTCOMMANDS",
+        "RJSF",
+        "RJSF's",
+        "SARIF",
+        "SCSSLINT",
+        "Vuillamy",
+        "gitdir",
+        "lannonbr",
+        "megalinter",
+        "norender",
+        "nosources",
+        "nvuillam",
+        "ovsx",
+        "oxsecurity",
+        "postcommands",
+        "precommands",
+        "prepost",
+        "rjsf",
+        "stefanzweifel",
+        "venv",
+        "vscodeignore"
+    ]
 }
