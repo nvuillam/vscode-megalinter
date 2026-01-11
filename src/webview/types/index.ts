@@ -29,6 +29,8 @@ export type ExtensionMessage =
   | { type: 'upgradeMegaLinter' }
   | { type: 'openCustomFlavorBuilder' }
   | { type: 'openExternal'; url: string }
+  | { type: 'resolveLinterConfigFile'; linterKey: string; overrides?: { linterRulesPath?: string; configFile?: string } }
+  | { type: 'createLinterConfigFileFromDefault'; linterKey: string; destination?: { linterRulesPath?: string; configFile?: string } }
   | { type: 'getFlavorContext' }
   | { type: 'pickFlavorFolder' }
   | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
@@ -39,6 +41,7 @@ export type ExtensionMessage =
 
 export type WebViewMessage =
   | { type: 'configData'; config: MegaLinterConfig; configPath: string; configExists: boolean; linterMetadata: LinterMetadataMap }
+  | { type: 'linterConfigFileInfo'; linterKey: string; resolved: boolean; configFileName?: string; rulesPath?: string; local?: LinterConfigFileDetails; defaultTemplate?: LinterDefaultConfigDetails }
   | { type: 'navigate'; target: NavigationTarget };
 
 export type FlavorContextMessage = {
@@ -122,6 +125,7 @@ export interface LinterDescriptorMetadata {
   descriptorId?: string;
   name?: string;
   linterName?: string;
+  configFileName?: string;
   url?: string;
   repo?: string;
   imageUrl?: string;
@@ -131,6 +135,33 @@ export interface LinterDescriptorMetadata {
 }
 
 export type LinterMetadataMap = Record<string, LinterDescriptorMetadata>;
+
+// ============================================================================
+// Linter config file preview types
+// ============================================================================
+
+export interface LinterConfigFileDetails {
+  exists: boolean;
+  filePath?: string;
+  content?: string;
+  truncated?: boolean;
+}
+
+export interface LinterDefaultConfigDetails {
+  exists: boolean;
+  source?: 'remote' | 'local';
+  content?: string;
+  truncated?: boolean;
+}
+
+export interface LinterConfigFileInfo {
+  linterKey: string;
+  resolved: boolean;
+  configFileName?: string;
+  rulesPath?: string;
+  local?: LinterConfigFileDetails;
+  defaultTemplate?: LinterDefaultConfigDetails;
+}
 
 // ============================================================================
 // Navigation Menu Types
@@ -174,6 +205,7 @@ export interface Tab {
   label: string;
   hasValues?: boolean;
   icon?: string;
+  disabled?: boolean;
 }
 
 export interface BreadcrumbOption {
@@ -258,12 +290,14 @@ export interface ThemedFormProps {
   sectionMeta: SchemaGroups['sectionMeta'];
   prefixToStrip?: string;
   highlightedKeys: Set<string>;
-  introTab?: IntroTab;
+  introTabs?: IntroTab[];
 }
 
 export interface IntroTab {
   id: string;
   label: string;
+  icon?: string;
+  disabled?: boolean;
   content: React.ReactNode;
 }
 
@@ -273,6 +307,7 @@ export interface MainTabsProps {
   formData: MegaLinterConfig;
   uiSchema: UiSchema;
   onSubsetChange: (keys: string[], subsetData: MegaLinterConfig) => void;
+  postMessage: (message: ExtensionMessage) => void;
   descriptorOrder: string[];
   activeMainTab: MainTabId;
   setActiveMainTab: (id: MainTabId) => void;
@@ -290,6 +325,7 @@ export interface MainTabsProps {
   setActiveLinterThemes: (value: Record<string, Record<string, string>>) => void;
   highlightedKeys: Set<string>;
   linterMetadata: LinterMetadataMap;
+  linterConfigFiles: Record<string, LinterConfigFileInfo>;
 }
 
 export interface TabBarProps {

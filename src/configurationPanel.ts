@@ -11,6 +11,7 @@ type LinterDescriptorMetadata = {
   descriptorId?: string;
   name?: string;
   linterName?: string;
+  configFileName?: string;
   url?: string;
   repo?: string;
   imageUrl?: string;
@@ -19,12 +20,63 @@ type LinterDescriptorMetadata = {
   urls?: Array<{ label: string; href: string }>;
 };
 
+type ResolveLinterConfigRequest = {
+  type: 'resolveLinterConfigFile';
+  linterKey: string;
+  overrides?: {
+    linterRulesPath?: string;
+    configFile?: string;
+  };
+};
+
+type CreateLinterConfigRequest = {
+  type: 'createLinterConfigFileFromDefault';
+  linterKey: string;
+  destination?: {
+    linterRulesPath?: string;
+    configFile?: string;
+  };
+};
+
+type ConfigurationPanelInboundMessage =
+  | { type: 'ready' }
+  | { type: 'getConfig' }
+  | { type: 'saveConfig'; config: any }
+  | { type: 'installMegaLinter' }
+  | { type: 'upgradeMegaLinter' }
+  | { type: 'openCustomFlavorBuilder' }
+  | { type: 'openExternal'; url: string }
+  | { type: 'openFile'; filePath: string }
+  | ResolveLinterConfigRequest
+  | CreateLinterConfigRequest
+  | { type: 'error'; message: string };
+
+type LinterConfigFileInfoMessage = {
+  type: 'linterConfigFileInfo';
+  linterKey: string;
+  resolved: boolean;
+  configFileName?: string;
+  rulesPath?: string;
+  local?: {
+    exists: boolean;
+    filePath?: string;
+    content?: string;
+    truncated?: boolean;
+  };
+  defaultTemplate?: {
+    exists: boolean;
+    source?: 'remote' | 'local';
+    content?: string;
+    truncated?: boolean;
+  };
+};
+
 type CachedDescriptorMetadata = {
   timestamp: number;
   data: Record<string, LinterDescriptorMetadata>;
 };
 
-const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache.v3';
+const DESCRIPTOR_CACHE_KEY = 'megalinter.descriptorMetadataCache.v4';
 const DESCRIPTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class ConfigurationPanel {
@@ -105,7 +157,7 @@ export class ConfigurationPanel {
 
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
-      async (message) => {
+      async (message: ConfigurationPanelInboundMessage) => {
         switch (message.type) {
           case 'ready':
             this._webviewReady = true;
@@ -132,6 +184,15 @@ export class ConfigurationPanel {
             break;
           case 'openCustomFlavorBuilder':
             CustomFlavorPanel.createOrShow(this._extensionUri);
+            break;
+          case 'openFile':
+            await this._openFile(message.filePath);
+            break;
+          case 'resolveLinterConfigFile':
+            await this._resolveAndSendLinterConfigFile(message.linterKey, message.overrides);
+            break;
+          case 'createLinterConfigFileFromDefault':
+            await this._createLinterConfigFileFromDefault(message.linterKey, message.destination);
             break;
           case 'openExternal':
             if (typeof message.url === 'string' && /^https?:\/\//i.test(message.url)) {
@@ -244,6 +305,7 @@ export class ConfigurationPanel {
           descriptorId,
           name: primaryKey,
           linterName,
+          configFileName: typeof linter?.config_file_name === 'string' ? linter.config_file_name : undefined,
           url: typeof linter?.linter_url === 'string' ? linter.linter_url : undefined,
           repo: typeof linter?.linter_repo === 'string' ? linter.linter_repo : undefined,
           imageUrl: typeof linter?.linter_image_url === 'string' ? linter.linter_image_url : undefined,
@@ -251,6 +313,15 @@ export class ConfigurationPanel {
             typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
           text: typeof linter?.linter_text === 'string' ? linter.linter_text : undefined
         };
+
+        if (typeof meta.configFileName === 'string') {
+          const trimmed = meta.configFileName.trim();
+          if (!trimmed || trimmed.startsWith('-')) {
+            meta.configFileName = undefined;
+          } else {
+            meta.configFileName = trimmed;
+          }
+        }
 
         addLink('Homepage', meta.url);
         addLink('Repository', meta.repo);
@@ -380,8 +451,11 @@ export class ConfigurationPanel {
     const cacheHasLinks = cached?.data
       ? Object.values(cached.data).some((meta) => Array.isArray(meta?.urls) && meta.urls.length > 0)
       : false;
+    const cacheHasConfigFileNames = cached?.data
+      ? Object.values(cached.data).some((meta) => typeof meta?.configFileName === 'string' && meta.configFileName.trim())
+      : false;
 
-    if (cacheIsFresh && cacheHasLinks && cached?.data && Object.keys(cached.data).length > 0) {
+    if (cacheIsFresh && cacheHasLinks && cacheHasConfigFileNames && cached?.data && Object.keys(cached.data).length > 0) {
       this._linterMetadataCache = cached.data;
       return cached.data;
     }
@@ -434,6 +508,270 @@ export class ConfigurationPanel {
       configExists,
       linterMetadata
     });
+  }
+
+  private async _openFile(filePath: string) {
+    if (!filePath) {
+      return;
+    }
+    const uri = vscode.Uri.file(filePath);
+    await vscode.window.showTextDocument(uri, { preview: false });
+  }
+
+  private _resolveWorkspaceRoot(): string {
+    const configUri = vscode.Uri.file(this._configPath);
+    const containing = vscode.workspace.getWorkspaceFolder(configUri);
+    if (containing?.uri?.fsPath) {
+      return containing.uri.fsPath;
+    }
+    return path.dirname(this._configPath);
+  }
+
+  private _normalizeRelativePath(value: string): string {
+    const trimmed = value.trim();
+    const noLeading = trimmed.replace(/^\.\//, '');
+    return noLeading.replace(/\\/g, '/');
+  }
+
+  private _readTextFileSafe(filePath: string, maxBytes = 512 * 1024): { content: string; truncated: boolean } {
+    const stat = fs.statSync(filePath);
+    const truncated = stat.size > maxBytes;
+    const content = truncated
+      ? fs.readFileSync(filePath, { encoding: 'utf8' }).slice(0, maxBytes)
+      : fs.readFileSync(filePath, { encoding: 'utf8' });
+    return { content, truncated };
+  }
+
+  private _dedupePaths(paths: string[]): string[] {
+    const seen = new Set<string>();
+    const results: string[] = [];
+    for (const p of paths) {
+      const normalized = path.resolve(p);
+      if (seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      results.push(p);
+    }
+    return results;
+  }
+
+  private async _resolveAndSendLinterConfigFile(
+    linterKey: string,
+    overrides?: { linterRulesPath?: string; configFile?: string }
+  ) {
+    const safeKey = typeof linterKey === 'string' ? linterKey.trim().toUpperCase() : '';
+    if (!safeKey) {
+      return;
+    }
+
+    const configUri = vscode.Uri.file(this._configPath);
+    const configRoot = this._resolveWorkspaceRoot();
+
+    let configFromDisk: any = {};
+    try {
+      if (fs.existsSync(this._configPath)) {
+        const content = fs.readFileSync(this._configPath, 'utf8');
+        const doc = YAML.parseDocument(content);
+        configFromDisk = (doc.toJS() as any) || {};
+      }
+    } catch {
+      configFromDisk = {};
+    }
+
+    const metadata = await this._loadDescriptorMetadata();
+    const metaConfigName = metadata[safeKey]?.configFileName;
+
+    const overrideKey = `${safeKey}_CONFIG_FILE`;
+    const overrideValue = overrides?.configFile ?? (configFromDisk?.[overrideKey] as unknown);
+    const configFileNameRaw =
+      typeof overrideValue === 'string' && overrideValue.trim() ? overrideValue.trim() : metaConfigName;
+
+    const rulesPathRaw = overrides?.linterRulesPath ?? (configFromDisk?.LINTER_RULES_PATH as unknown);
+    const rulesPath = typeof rulesPathRaw === 'string' && rulesPathRaw.trim()
+      ? rulesPathRaw.trim()
+      : '.github/linters';
+
+    if (!configFileNameRaw || typeof configFileNameRaw !== 'string') {
+      const payload: LinterConfigFileInfoMessage = {
+        type: 'linterConfigFileInfo',
+        linterKey: safeKey,
+        resolved: true,
+        configFileName: undefined,
+        rulesPath
+      };
+      this._panel.webview.postMessage(payload);
+      return;
+    }
+
+    const configFileRelPosix = this._normalizeRelativePath(configFileNameRaw);
+    const configFileRelFs = path.normalize(configFileRelPosix);
+
+    const candidates = this._dedupePaths([
+      path.join(configRoot, configFileRelFs),
+      path.join(configRoot, '.github', 'linters', configFileRelFs),
+      path.join(configRoot, path.normalize(rulesPath.replace(/\\/g, path.sep)), configFileRelFs)
+    ]);
+
+    let localFilePath: string | undefined;
+    for (const candidate of candidates) {
+      try {
+        const resolvedCandidate = path.resolve(candidate);
+        const resolvedRoot = path.resolve(configRoot);
+        if (!resolvedCandidate.startsWith(resolvedRoot + path.sep) && resolvedCandidate !== resolvedRoot) {
+          continue;
+        }
+        if (fs.existsSync(resolvedCandidate) && fs.lstatSync(resolvedCandidate).isFile()) {
+          localFilePath = resolvedCandidate;
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let localInfo: LinterConfigFileInfoMessage['local'] | undefined;
+    if (localFilePath) {
+      try {
+        const { content, truncated } = this._readTextFileSafe(localFilePath);
+        localInfo = { exists: true, filePath: localFilePath, content, truncated };
+      } catch {
+        localInfo = { exists: true, filePath: localFilePath };
+      }
+    } else {
+      localInfo = { exists: false };
+    }
+
+    const defaultTemplate = await this._loadDefaultTemplate(configFileRelPosix);
+
+    const payload: LinterConfigFileInfoMessage = {
+      type: 'linterConfigFileInfo',
+      linterKey: safeKey,
+      resolved: true,
+      configFileName: configFileRelPosix,
+      rulesPath,
+      local: localInfo,
+      defaultTemplate
+    };
+    this._panel.webview.postMessage(payload);
+  }
+
+  private async _loadDefaultTemplate(
+    configFileRelPosix: string
+  ): Promise<LinterConfigFileInfoMessage['defaultTemplate']> {
+    const normalized = configFileRelPosix.replace(/^\/+/, '');
+    const maxBytes = 512 * 1024;
+
+    // Try remote first
+    try {
+      const url = `https://raw.githubusercontent.com/oxsecurity/megalinter/main/TEMPLATES/${normalized}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (response.ok) {
+        const text = await response.text();
+        const truncated = Buffer.byteLength(text, 'utf8') > maxBytes;
+        return {
+          exists: true,
+          source: 'remote',
+          content: truncated ? text.slice(0, maxBytes) : text,
+          truncated
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    // Fallback to local templates folder
+    try {
+      const templatesRoot = path.join(this._extensionUri.fsPath, 'src', 'descriptors', 'TEMPLATES');
+      const localPath = path.join(templatesRoot, path.normalize(normalized));
+      if (fs.existsSync(localPath) && fs.lstatSync(localPath).isFile()) {
+        const { content, truncated } = this._readTextFileSafe(localPath, maxBytes);
+        return { exists: true, source: 'local', content, truncated };
+      }
+    } catch {
+      // ignore
+    }
+
+    return { exists: false };
+  }
+
+  private async _createLinterConfigFileFromDefault(
+    linterKey: string,
+    destination?: { linterRulesPath?: string; configFile?: string }
+  ) {
+    const safeKey = typeof linterKey === 'string' ? linterKey.trim().toUpperCase() : '';
+    if (!safeKey) {
+      return;
+    }
+
+    const configRoot = this._resolveWorkspaceRoot();
+
+    let rulesPathIsExplicitlySet = false;
+    try {
+      if (fs.existsSync(this._configPath)) {
+        const content = fs.readFileSync(this._configPath, 'utf8');
+        const doc = YAML.parseDocument(content);
+        rulesPathIsExplicitlySet = !!(doc && typeof (doc as any).hasIn === 'function' && (doc as any).hasIn(['LINTER_RULES_PATH']));
+      }
+    } catch {
+      rulesPathIsExplicitlySet = false;
+    }
+
+    const metadata = await this._loadDescriptorMetadata();
+    const metaConfigName = metadata[safeKey]?.configFileName;
+    const configFileNameRaw =
+      typeof destination?.configFile === 'string' && destination.configFile.trim()
+        ? destination.configFile.trim()
+        : metaConfigName;
+    if (!configFileNameRaw) {
+      vscode.window.showErrorMessage('No config file name available for this linter');
+      return;
+    }
+
+    // Default creation location: repo root.
+    // Only create under LINTER_RULES_PATH when it's explicitly set in the local .mega-linter.yml.
+    const rulesPath =
+      rulesPathIsExplicitlySet && typeof destination?.linterRulesPath === 'string' && destination.linterRulesPath.trim()
+        ? destination.linterRulesPath.trim()
+        : '';
+
+    const configFileRelPosix = this._normalizeRelativePath(configFileNameRaw);
+    const configFileRelFs = path.normalize(configFileRelPosix);
+
+    const targetPath = path.resolve(path.join(
+      configRoot,
+      rulesPath ? path.normalize(rulesPath.replace(/\\/g, path.sep)) : '',
+      configFileRelFs
+    ));
+    const resolvedRoot = path.resolve(configRoot);
+    if (!targetPath.startsWith(resolvedRoot + path.sep) && targetPath !== resolvedRoot) {
+      vscode.window.showErrorMessage('Refusing to create config file outside workspace');
+      return;
+    }
+
+    const defaultTemplate = await this._loadDefaultTemplate(configFileRelPosix);
+    if (!defaultTemplate?.exists || !defaultTemplate.content) {
+      vscode.window.showErrorMessage('No default template available for this config file');
+      return;
+    }
+
+    if (fs.existsSync(targetPath)) {
+      vscode.window.showInformationMessage(`Config file already exists: ${targetPath}`);
+      await this._openFile(targetPath);
+      await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
+      return;
+    }
+
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, defaultTemplate.content, 'utf8');
+    vscode.window.showInformationMessage(`Created config file: ${targetPath}`);
+
+    await this._openFile(targetPath);
+
+    await this._resolveAndSendLinterConfigFile(safeKey, { linterRulesPath: rulesPath, configFile: configFileRelPosix });
   }
 
   private async _saveConfig(config: any) {

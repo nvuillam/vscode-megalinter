@@ -27,7 +27,7 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
   sectionMeta,
   prefixToStrip,
   highlightedKeys,
-  introTab
+  introTabs
 }) => {
   const filteredKeys = useMemo(
     () => keys.filter((key) => !isDeprecatedPropertyTitle(baseSchema, key)),
@@ -39,10 +39,10 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
     [filteredKeys, prefixToStrip, formData, baseSchema, sectionMeta]
   );
 
-  const combinedTabs = useMemo<Tab[]>(
-    () => (introTab ? [{ id: introTab.id, label: introTab.label }, ...tabs] : tabs),
-    [introTab, tabs]
-  );
+  const combinedTabs = useMemo<Tab[]>(() => {
+    const extras = (introTabs || []).map((t) => ({ id: t.id, label: t.label, icon: t.icon, disabled: t.disabled }));
+    return extras.length ? [...extras, ...tabs] : tabs;
+  }, [introTabs, tabs]);
 
   const effectiveActive = useMemo(() => {
     if (activeThemeTab && combinedTabs.some((t) => t.id === activeThemeTab)) {
@@ -52,7 +52,10 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
   }, [activeThemeTab, combinedTabs]);
 
   useEffect(() => {
-    if (!activeThemeTab && combinedTabs[0]) {
+    if (!combinedTabs[0]) {
+      return;
+    }
+    if (!activeThemeTab || !combinedTabs.some((t) => t.id === activeThemeTab)) {
       setActiveThemeTab(combinedTabs[0].id);
     }
   }, [activeThemeTab, combinedTabs, setActiveThemeTab]);
@@ -61,7 +64,8 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
     return <p className="muted">No fields available</p>;
   }
 
-  const isIntroTabActive = introTab && effectiveActive === introTab.id;
+  const activeIntroTab = (introTabs || []).find((t) => t.id === effectiveActive);
+  const isIntroTabActive = !!activeIntroTab;
   const activeKeys = !isIntroTabActive && effectiveActive ? grouped[effectiveActive] || [] : [];
   const activeLabel = combinedTabs.find((t) => t.id === effectiveActive)?.label || title;
   const widgets = useMemo(() => ({ dualList: DualListWidget, CheckboxWidget }), []);
@@ -74,7 +78,7 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
     []
   );
 
-  if (!filteredKeys.length && !introTab) {
+  if (!filteredKeys.length && (!introTabs || !introTabs.length)) {
     return <p className="muted">No fields available</p>;
   }
 
@@ -83,8 +87,8 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
       {combinedTabs.length > 1 && (
         <TabBar tabs={combinedTabs} activeTab={effectiveActive || ''} onSelect={(id) => setActiveThemeTab(id)} />
       )}
-      {isIntroTabActive && introTab ? (
-        <div className="linter-description__panel">{introTab.content}</div>
+      {isIntroTabActive && activeIntroTab ? (
+        <div className="linter-description__panel">{activeIntroTab.content}</div>
       ) : (
         <Form
           key={`${title}-${effectiveActive || 'default'}`}

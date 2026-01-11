@@ -27,6 +27,7 @@ import {
 
 import type {
   CachedSchema,
+  LinterConfigFileInfo,
   LinterMetadataMap,
   MegaLinterConfig,
   NavigationTarget,
@@ -57,6 +58,7 @@ export const App: React.FC = () => {
   const [configPath, setConfigPath] = useState<string>('');
   const [configExists, setConfigExists] = useState<boolean>(false);
   const [linterMetadata, setLinterMetadata] = useState<LinterMetadataMap>({});
+  const [linterConfigFiles, setLinterConfigFiles] = useState<Record<string, LinterConfigFileInfo>>({});
   const [cachedSchema, setCachedSchema] = useState<CachedSchema | null>(null);
   const [initialStateReady, setInitialStateReady] = useState(false);
 
@@ -401,6 +403,18 @@ export const App: React.FC = () => {
         setConfigExists(!!message.configExists);
         setLinterMetadata(message.linterMetadata || {});
         setConfigLoaded(true);
+      } else if (message.type === 'linterConfigFileInfo') {
+        setLinterConfigFiles((prev) => ({
+          ...prev,
+          [message.linterKey]: {
+            linterKey: message.linterKey,
+            resolved: message.resolved,
+            configFileName: message.configFileName,
+            rulesPath: message.rulesPath,
+            local: message.local,
+            defaultTemplate: message.defaultTemplate
+          }
+        }));
       } else if (message.type === 'navigate' && message.target) {
         applyNavigation(message.target as NavigationTarget);
       }
@@ -558,6 +572,7 @@ export const App: React.FC = () => {
               formData={formData}
               uiSchema={uiSchema}
               onSubsetChange={handleSubsetChange}
+              postMessage={postMessage}
               descriptorOrder={navigationModel?.descriptorOrder || []}
               activeMainTab={activeMainTab}
               setActiveMainTab={setActiveMainTab}
@@ -575,6 +590,7 @@ export const App: React.FC = () => {
               setActiveLinterThemes={setActiveLinterThemes}
               highlightedKeys={highlightedKeys}
               linterMetadata={linterMetadata}
+              linterConfigFiles={linterConfigFiles}
             />
           )}
         </div>

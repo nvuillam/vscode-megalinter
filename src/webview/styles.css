@@ -936,6 +936,27 @@ body {
   background: var(--vscode-editor-inactiveSelectionBackground);
 }
 
+.config-file__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-file__content {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  overflow: auto;
+  max-height: 55vh;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  line-height: 1.5;
+  white-space: pre;
+}
+
 .linter-description__link-list {
   list-style: none;
   padding: 0;

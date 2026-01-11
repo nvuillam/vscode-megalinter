@@ -8,11 +8,16 @@ export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onSelect }) => 
       <button
         key={tab.id}
         className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-        onClick={() => onSelect(tab.id)}
+        onClick={() => {
+          if (!tab.disabled) {
+            onSelect(tab.id);
+          }
+        }}
         type="button"
+        disabled={!!tab.disabled}
       >
         <span
-          className={`codicon codicon-${tab.icon || getCodiconForSection(tab.id)} tab__icon`}
+          className={`codicon codicon-${tab.icon || getCodiconForSection(tab.id)} tab__icon ${tab.icon === 'loading' ? 'codicon-modifier-spin' : ''}`}
           aria-hidden="true"
         />
         {tab.hasValues ? `${tab.label} *` : tab.label}

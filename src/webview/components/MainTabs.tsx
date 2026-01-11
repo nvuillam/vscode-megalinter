@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import type { MainTabsProps, Tab, BreadcrumbItem, BreadcrumbOption } from '../types';
@@ -25,6 +25,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
   formData,
   uiSchema,
   onSubsetChange,
+  postMessage,
   descriptorOrder: descriptorOrderProp,
   activeMainTab,
   setActiveMainTab,
@@ -41,9 +42,61 @@ export const MainTabs: React.FC<MainTabsProps> = ({
   activeLinterThemes,
   setActiveLinterThemes,
   highlightedKeys,
-  linterMetadata
+  linterMetadata,
+  linterConfigFiles
 }) => {
   const [brokenLinterIcons, setBrokenLinterIcons] = useState<Record<string, boolean>>({});
+  const [resolvingLinterConfig, setResolvingLinterConfig] = useState<Record<string, boolean>>({});
+
+  const activeLinterKey = useMemo(() => {
+    if (activeMainTab !== 'descriptors') {
+      return null;
+    }
+    if (!selectedScope || selectedScope === 'descriptor') {
+      return null;
+    }
+    return selectedScope;
+  }, [activeMainTab, selectedScope]);
+
+  const activeLinterOverrides = useMemo(() => {
+    if (!activeLinterKey) {
+      return null;
+    }
+    const rulesPath = typeof formData?.LINTER_RULES_PATH === 'string' ? String(formData.LINTER_RULES_PATH) : undefined;
+    const configKey = `${activeLinterKey}_CONFIG_FILE`;
+    const configFile = typeof formData?.[configKey] === 'string' ? String(formData[configKey]) : undefined;
+    return { rulesPath, configFile };
+  }, [activeLinterKey, formData]);
+
+  useEffect(() => {
+    if (!activeLinterKey) {
+      return;
+    }
+    setResolvingLinterConfig((prev) => ({ ...prev, [activeLinterKey]: true }));
+    postMessage({
+      type: 'resolveLinterConfigFile',
+      linterKey: activeLinterKey,
+      overrides: {
+        linterRulesPath: activeLinterOverrides?.rulesPath,
+        configFile: activeLinterOverrides?.configFile
+      }
+    });
+  }, [activeLinterKey, activeLinterOverrides?.rulesPath, activeLinterOverrides?.configFile, postMessage]);
+
+  useEffect(() => {
+    if (!activeLinterKey) {
+      return;
+    }
+    const info = linterConfigFiles[activeLinterKey];
+    if (info?.resolved) {
+      setResolvingLinterConfig((prev) => {
+        if (!prev[activeLinterKey]) {
+          return prev;
+        }
+        return { ...prev, [activeLinterKey]: false };
+      });
+    }
+  }, [activeLinterKey, linterConfigFiles]);
 
   const markLinterIconBroken = useCallback((linterId: string) => {
     setBrokenLinterIcons((prev) => {
@@ -409,19 +462,119 @@ export const MainTabs: React.FC<MainTabsProps> = ({
 
     const linterForm = (linterKey: string, keys: string[]) => {
       const linterLabel = resolveCategoryLabel(linterKey);
-      const introTab = {
-        id: 'description',
-        label: 'Description',
-        icon: 'info',
-        content: (
-          <LinterDescription
-            metadata={linterMetadata[linterKey]}
-            linterLabel={linterLabel}
-            descriptorId={descriptorId}
-            linterId={linterKey}
-          />
-        )
-      };
+      const configInfo = linterConfigFiles[linterKey];
+      const configFileName = configInfo?.configFileName;
+      const isAnalyzing = !!resolvingLinterConfig[linterKey];
+
+      const introTabs = [
+        {
+          id: 'description',
+          label: 'Description',
+          icon: 'info',
+          content: (
+            <LinterDescription
+              metadata={linterMetadata[linterKey]}
+              linterLabel={linterLabel}
+              descriptorId={descriptorId}
+              linterId={linterKey}
+            />
+          )
+        },
+        ...(isAnalyzing
+          ? [
+              {
+                id: 'analyzing-config',
+                label: 'Analyzing config…',
+                icon: 'loading',
+                disabled: true,
+                content: (
+                  <div className="loading">
+                    <p>Analyzing effective config file…</p>
+                  </div>
+                )
+              }
+            ]
+          : [])
+      ];
+
+      if (!isAnalyzing && configInfo?.local?.exists && configInfo.local.filePath) {
+        introTabs.push({
+          id: 'config-file',
+          label: 'Config file',
+          icon: 'file-code',
+          content: (
+            <div className="linter-description">
+              <div className="config-file__header">
+                <div>
+                  <h3 className="linter-description__name">Config file</h3>
+                  {configFileName && <p className="muted">{configFileName}</p>}
+                  <p className="muted">{configInfo.local.filePath}</p>
+                </div>
+                <button
+                  className="pill-button pill-button--solid"
+                  onClick={() => postMessage({ type: 'openFile', filePath: configInfo.local!.filePath! })}
+                >
+                  Edit
+                </button>
+              </div>
+              <pre className="config-file__content">{configInfo.local.content || ''}</pre>
+              {configInfo.local.truncated && (
+                <p className="muted">Preview truncated (file is large).</p>
+              )}
+            </div>
+          )
+        });
+      } else if (!isAnalyzing && configInfo?.defaultTemplate?.exists && configInfo.defaultTemplate.content) {
+        introTabs.push({
+          id: 'default-config',
+          label: 'Default config',
+          icon: 'file',
+          content: (
+            <div className="linter-description">
+              <div className="config-file__header">
+                <div>
+                  <h3 className="linter-description__name">Default configuration</h3>
+                  {configFileName && <p className="muted">{configFileName}</p>}
+                  {configInfo.defaultTemplate.source && (
+                    <p className="muted">Source: {configInfo.defaultTemplate.source}</p>
+                  )}
+                </div>
+                <button
+                  className="pill-button pill-button--solid"
+                  onClick={() =>
+                    postMessage({
+                      type: 'createLinterConfigFileFromDefault',
+                      linterKey,
+                      destination: {
+                        linterRulesPath: activeLinterOverrides?.rulesPath,
+                        configFile: configFileName
+                      }
+                    })
+                  }
+                >
+                  Override
+                </button>
+              </div>
+              <pre className="config-file__content">{configInfo.defaultTemplate.content}</pre>
+              {configInfo.defaultTemplate.truncated && (
+                <p className="muted">Preview truncated (template is large).</p>
+              )}
+            </div>
+          )
+        });
+      } else if (!isAnalyzing && configFileName) {
+        introTabs.push({
+          id: 'default-config',
+          label: 'Default config',
+          icon: 'file',
+          content: (
+            <div className="linter-description">
+              <h3 className="linter-description__name">Default configuration</h3>
+              <p className="muted">No default template found for {configFileName}.</p>
+            </div>
+          )
+        });
+      }
 
       return (
         <ThemedForm
@@ -444,7 +597,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           prefixToStrip={`${linterKey}_`}
           sectionMeta={groups.sectionMeta}
           highlightedKeys={highlightedKeys}
-          introTab={introTab}
+          introTabs={introTabs}
         />
       );
     };
