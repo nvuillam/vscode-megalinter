@@ -86,6 +86,7 @@
     "build": "webpack --mode production",
     "watch": "webpack --mode development --watch",
     "compile": "webpack --mode development",
+    "sync-megalinter": "node ./scripts/sync-megalinter.mjs",
     "lint": "eslint src --ext ts",
     "pretest": "npm run compile",
     "package": "vsce package"

@@ -10073,6 +10073,7 @@
         "standard",
         "prettier"
       ],
+      "default": "prettier",
       "title": "Javascript default style",
       "type": "string",
       "x-category": "JAVASCRIPT",
@@ -15489,12 +15490,15 @@
       "description": "Style of markdown formatting to apply",
       "enum": [
         "markdownlint",
-        "remark-lint"
+        "remark-lint",
+        "rumdl"
       ],
       "enumNames": [
         "Markdownlint",
-        "Remark Lint"
+        "Remark Lint",
+        "Rumdl"
       ],
+      "default": "markdownlint",
       "title": "Markdown default formatting style",
       "type": "string",
       "x-category": "MARKDOWN",
@@ -19963,6 +19967,7 @@
         "black",
         "ruff"
       ],
+      "default": "black",
       "title": "Python default style",
       "type": "string",
       "x-category": "PYTHON",
@@ -32726,6 +32731,7 @@
         "standard",
         "prettier"
       ],
+      "default": "prettier",
       "title": "Typescript default style",
       "type": "string",
       "x-category": "TYPESCRIPT",
