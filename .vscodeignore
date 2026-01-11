@@ -16,3 +16,8 @@ CONTRIBUTING.md
 .mega-linter.yml.example
 .env
 docs/**
+.cspell.json
+.jscpd.json
+.mega-linter.yml
+scripts/**
+megalinter-reports/**

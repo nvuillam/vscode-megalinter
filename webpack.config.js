@@ -7,6 +7,7 @@ const extensionConfig = {
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "extension.js",
+    chunkFilename: "extension.[name].js",
     libraryTarget: "commonjs2",
   },
   externals: {
@@ -35,9 +36,6 @@ const webviewConfig = {
   target: "web",
   mode: "none",
   entry: "./src/webview/index.tsx",
-  performance: {
-    hints: false,
-  },
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "webview.js",

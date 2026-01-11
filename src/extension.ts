@@ -1,8 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { ConfigurationPanel } from "./configurationPanel";
-import { CustomFlavorPanel } from "./customFlavorPanel";
 
 export type NavigationTarget =
   | { type: "general" }
@@ -66,17 +64,15 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      ConfigurationPanel.createOrShow(
-        context.extensionUri,
-        context,
-        configPath,
-      );
+      const { ConfigurationPanel } = await import("./configurationPanel");
+      ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
     },
   );
 
   const openCustomFlavorBuilder = vscode.commands.registerCommand(
     "megalinter.openCustomFlavorBuilder",
     async (uri?: vscode.Uri) => {
+      const { CustomFlavorPanel } = await import("./customFlavorPanel");
       CustomFlavorPanel.createOrShow(context.extensionUri, uri);
     },
   );
@@ -93,6 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      const { ConfigurationPanel } = await import("./configurationPanel");
       const panel = ConfigurationPanel.createOrShow(
         context.extensionUri,
         context,
