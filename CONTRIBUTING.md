@@ -114,6 +114,8 @@ Enhancement suggestions are welcome! Please:
    npm run lint
    ```
 
+   If you see a warning about an unsupported TypeScript version from `@typescript-eslint/typescript-estree`, prefer using `npm ci` (uses `package-lock.json`) for consistent toolchain versions, or pin a compatible TypeScript version locally.
+
 5. **Build for production**:
    ```bash
    npm run build
