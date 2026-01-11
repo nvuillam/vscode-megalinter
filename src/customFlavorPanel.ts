@@ -2,33 +2,13 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getGitOriginRepositoryName, isGitRepository } from './gitUtils';
+import type { FlavorPanelInboundMessage, FlavorPanelOutboundMessage } from './shared/webviewMessages';
 import {
   buildWebviewHtml,
   createMegalinterWebviewPanel,
   disposeAll,
   openExternalHttpUrl
 } from './panelUtils';
-
-type FlavorPanelInboundMessage =
-  | { type: 'ready' }
-  | { type: 'getFlavorContext' }
-  | { type: 'pickFlavorFolder' }
-  | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
-  | { type: 'loadFlavorDefinition'; folderPath: string }
-  | { type: 'openFile'; filePath: string }
-  | { type: 'openExternal'; url: string };
-
-type FlavorPanelOutboundMessage =
-  | {
-      type: 'flavorContext';
-      workspaceFolders: Array<{ name: string; path: string }>;
-      defaultFolderPath?: string;
-      isWorkspaceFlavorRepo?: boolean;
-    }
-  | { type: 'flavorFolderSelected'; folderPath: string }
-  | { type: 'flavorDefinition'; folderPath: string; exists: boolean; filePath: string; content?: string }
-  | { type: 'info'; message: string }
-  | { type: 'error'; message: string };
 
 const FLAVOR_FILE_CANDIDATES = [
   'megalinter-custom-flavor.yml',
@@ -232,15 +212,7 @@ export class CustomFlavorPanel {
 
     const folderPath = selection[0].fsPath;
 
-    if (!isGitRepository(folderPath)) {
-      vscode.window.showWarningMessage(NOT_A_GIT_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_GIT_REPO_MESSAGE });
-      return;
-    }
-
-    if (!isCustomFlavorRepositoryNameValid(folderPath)) {
-      vscode.window.showWarningMessage(NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE });
+    if (!this._ensureValidFlavorRepository(folderPath)) {
       return;
     }
 
@@ -285,15 +257,7 @@ export class CustomFlavorPanel {
       throw new Error(`Folder does not exist: ${folderPath}`);
     }
 
-    if (!isGitRepository(folderPath)) {
-      vscode.window.showWarningMessage(NOT_A_GIT_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_GIT_REPO_MESSAGE });
-      return;
-    }
-
-    if (!isCustomFlavorRepositoryNameValid(folderPath)) {
-      vscode.window.showWarningMessage(NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE);
-      this._postMessage({ type: 'error', message: NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE });
+    if (!this._ensureValidFlavorRepository(folderPath)) {
       return;
     }
 
@@ -347,6 +311,22 @@ export class CustomFlavorPanel {
     }
     const uri = vscode.Uri.file(filePath);
     await vscode.window.showTextDocument(uri, { preview: false });
+  }
+
+  private _ensureValidFlavorRepository(folderPath: string): boolean {
+    if (!isGitRepository(folderPath)) {
+      vscode.window.showWarningMessage(NOT_A_GIT_REPO_MESSAGE);
+      this._postMessage({ type: 'error', message: NOT_A_GIT_REPO_MESSAGE });
+      return false;
+    }
+
+    if (!isCustomFlavorRepositoryNameValid(folderPath)) {
+      vscode.window.showWarningMessage(NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE);
+      this._postMessage({ type: 'error', message: NOT_A_CUSTOM_FLAVOR_REPO_MESSAGE });
+      return false;
+    }
+
+    return true;
   }
 }
 

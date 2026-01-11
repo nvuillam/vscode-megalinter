@@ -1,6 +1,13 @@
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import type { SchemaGroups } from '../../shared/schemaUtils';
 import type { LinterDescriptorMetadata } from '../../shared/linterMetadata';
+import type {
+  CommonWebviewToExtensionMessage,
+  FlavorWebviewToExtensionMessage,
+  FlavorContextMessage,
+  FlavorDefinitionMessage,
+  FlavorFolderSelectedMessage
+} from '../../shared/webviewMessages';
 
 // ============================================================================
 // VS Code API Types
@@ -23,20 +30,15 @@ declare global {
 // ============================================================================
 
 export type ExtensionMessage =
-  | { type: 'ready' }
+  | CommonWebviewToExtensionMessage
   | { type: 'getConfig' }
   | { type: 'saveConfig'; config: MegaLinterConfig }
   | { type: 'installMegaLinter' }
   | { type: 'upgradeMegaLinter' }
   | { type: 'openCustomFlavorBuilder' }
-  | { type: 'openExternal'; url: string }
   | { type: 'resolveLinterConfigFile'; linterKey: string; overrides?: { linterRulesPath?: string; configFile?: string } }
   | { type: 'createLinterConfigFileFromDefault'; linterKey: string; mode?: 'default' | 'blank'; destination?: { linterRulesPath?: string; configFile?: string } }
-  | { type: 'getFlavorContext' }
-  | { type: 'pickFlavorFolder' }
-  | { type: 'runCustomFlavorSetup'; folderPath: string; linters?: string[] }
-  | { type: 'loadFlavorDefinition'; folderPath: string }
-  | { type: 'openFile'; filePath: string }
+  | FlavorWebviewToExtensionMessage
   | { type: 'info'; message: string }
   | { type: 'error'; message: string };
 
@@ -45,25 +47,7 @@ export type WebViewMessage =
   | { type: 'linterConfigFileInfo'; linterKey: string; resolved: boolean; configFileName?: string; rulesPath?: string; local?: LinterConfigFileDetails; defaultTemplate?: LinterDefaultConfigDetails }
   | { type: 'navigate'; target: NavigationTarget };
 
-export type FlavorContextMessage = {
-  type: 'flavorContext';
-  workspaceFolders: Array<{ name: string; path: string }>;
-  defaultFolderPath?: string;
-  isWorkspaceFlavorRepo?: boolean;
-};
-
-export type FlavorFolderSelectedMessage = {
-  type: 'flavorFolderSelected';
-  folderPath: string;
-};
-
-export type FlavorDefinitionMessage = {
-  type: 'flavorDefinition';
-  folderPath: string;
-  exists: boolean;
-  filePath: string;
-  content?: string;
-};
+export type { FlavorContextMessage, FlavorFolderSelectedMessage, FlavorDefinitionMessage };
 
 // ============================================================================
 // Navigation Types
