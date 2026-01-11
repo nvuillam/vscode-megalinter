@@ -65,7 +65,11 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const { ConfigurationPanel } = await import("./configurationPanel");
-      ConfigurationPanel.createOrShow(context.extensionUri, context, configPath);
+      ConfigurationPanel.createOrShow(
+        context.extensionUri,
+        context,
+        configPath,
+      );
     },
   );
 
