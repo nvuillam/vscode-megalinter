@@ -128,6 +128,7 @@ export interface LinterDescriptorMetadata {
   configFileName?: string;
   url?: string;
   repo?: string;
+  rulesConfigurationUrl?: string;
   imageUrl?: string;
   bannerImageUrl?: string;
   text?: string;

@@ -169,6 +169,9 @@ body {
 }
 
 .pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid var(--vscode-button-secondaryBackground);
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
@@ -177,6 +180,11 @@ body {
   cursor: pointer;
   font-weight: 650;
   transition: transform 120ms ease, box-shadow 160ms ease, opacity 120ms ease;
+}
+
+.pill-button__icon {
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .pill-button--primary {

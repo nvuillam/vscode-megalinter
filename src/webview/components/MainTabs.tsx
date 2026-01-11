@@ -488,6 +488,7 @@ export const MainTabs: React.FC<MainTabsProps> = ({
       const configInfo = linterConfigFiles[linterKey];
       const configFileName = configInfo?.configFileName;
       const isAnalyzing = !!resolvingLinterConfig[linterKey];
+      const rulesConfigUrl = linterMetadata[linterKey]?.rulesConfigurationUrl;
 
       const introTabs = [
         {
@@ -533,12 +534,24 @@ export const MainTabs: React.FC<MainTabsProps> = ({
                   {configFileName && <p className="muted">{configFileName}</p>}
                   <p className="muted">{configInfo.local.filePath}</p>
                 </div>
-                <button
-                  className="pill-button pill-button--solid"
-                  onClick={() => postMessage({ type: 'openFile', filePath: configInfo.local!.filePath! })}
-                >
-                  Edit
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {rulesConfigUrl && (
+                    <button
+                      className="pill-button pill-button--ghost"
+                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
+                    >
+                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
+                      Configuration documentation
+                    </button>
+                  )}
+                  <button
+                    className="pill-button pill-button--solid"
+                    onClick={() => postMessage({ type: 'openFile', filePath: configInfo.local!.filePath! })}
+                  >
+                    <span className="codicon codicon-edit pill-button__icon" aria-hidden="true" />
+                    Edit
+                  </button>
+                </div>
               </div>
               <pre className="config-file__content">{configInfo.local.content || ''}</pre>
               {configInfo.local.truncated && (
@@ -562,21 +575,33 @@ export const MainTabs: React.FC<MainTabsProps> = ({
                     <p className="muted">Source: {configInfo.defaultTemplate.source}</p>
                   )}
                 </div>
-                <button
-                  className="pill-button pill-button--solid"
-                  onClick={() =>
-                    postMessage({
-                      type: 'createLinterConfigFileFromDefault',
-                      linterKey,
-                      destination: {
-                        linterRulesPath: activeLinterOverrides?.rulesPath,
-                        configFile: configFileName
-                      }
-                    })
-                  }
-                >
-                  Override
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {rulesConfigUrl && (
+                    <button
+                      className="pill-button pill-button--ghost"
+                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
+                    >
+                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
+                      Configuration documentation
+                    </button>
+                  )}
+                  <button
+                    className="pill-button pill-button--solid"
+                    onClick={() =>
+                      postMessage({
+                        type: 'createLinterConfigFileFromDefault',
+                        linterKey,
+                        destination: {
+                          linterRulesPath: activeLinterOverrides?.rulesPath,
+                          configFile: configFileName
+                        }
+                      })
+                    }
+                  >
+                    <span className="codicon codicon-file-add pill-button__icon" aria-hidden="true" />
+                    Override
+                  </button>
+                </div>
               </div>
               <pre className="config-file__content">{configInfo.defaultTemplate.content}</pre>
               {configInfo.defaultTemplate.truncated && (
@@ -597,22 +622,33 @@ export const MainTabs: React.FC<MainTabsProps> = ({
                   <h3 className="linter-description__name">Default configuration</h3>
                   <p className="muted">No default template found for {configFileName}.</p>
                 </div>
-                <button
-                  className="pill-button pill-button--solid"
-                  onClick={() =>
-                    postMessage({
-                      type: 'createLinterConfigFileFromDefault',
-                      linterKey,
-                      mode: 'blank',
-                      destination: {
-                        linterRulesPath: activeLinterOverrides?.rulesPath,
-                        configFile: configFileName
-                      }
-                    })
-                  }
-                >
-                  Create
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {rulesConfigUrl && (
+                    <button
+                      className="pill-button pill-button--ghost"
+                      onClick={() => postMessage({ type: 'openExternal', url: rulesConfigUrl })}
+                    >
+                      <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
+                      Configuration documentation
+                    </button>
+                  )}
+                  <button
+                    className="pill-button pill-button--solid"
+                    onClick={() =>
+                      postMessage({
+                        type: 'createLinterConfigFileFromDefault',
+                        linterKey,
+                        mode: 'blank',
+                        destination: {
+                          linterRulesPath: activeLinterOverrides?.rulesPath,
+                          configFile: configFileName
+                        }
+                      })
+                    }
+                  >
+                    Create
+                  </button>
+                </div>
               </div>
             </div>
           )

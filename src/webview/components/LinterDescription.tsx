@@ -40,6 +40,7 @@ export const LinterDescription: React.FC<LinterDescriptionProps> = ({ metadata, 
             rel="noreferrer"
             style={{ marginLeft: 'auto' }}
           >
+            <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
             MegaLinter Documentation
           </a>
         )}

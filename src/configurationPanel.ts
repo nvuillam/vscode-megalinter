@@ -14,6 +14,7 @@ type LinterDescriptorMetadata = {
   configFileName?: string;
   url?: string;
   repo?: string;
+  rulesConfigurationUrl?: string;
   imageUrl?: string;
   bannerImageUrl?: string;
   text?: string;
@@ -309,6 +310,8 @@ export class ConfigurationPanel {
           configFileName: typeof linter?.config_file_name === 'string' ? linter.config_file_name : undefined,
           url: typeof linter?.linter_url === 'string' ? linter.linter_url : undefined,
           repo: typeof linter?.linter_repo === 'string' ? linter.linter_repo : undefined,
+          rulesConfigurationUrl:
+            typeof linter?.linter_rules_configuration_url === 'string' ? linter.linter_rules_configuration_url : undefined,
           imageUrl: typeof linter?.linter_image_url === 'string' ? linter.linter_image_url : undefined,
           bannerImageUrl:
             typeof linter?.linter_banner_image_url === 'string' ? linter.linter_banner_image_url : undefined,
