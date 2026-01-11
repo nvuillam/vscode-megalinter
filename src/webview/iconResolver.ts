@@ -8,7 +8,10 @@ export const getCodiconForSection = (sectionId: string): string => {
   const map: Record<string, string> = {
     home: 'home',
     summary: 'graph',
-    general: 'settings-gear',
+    general: 'list-unordered',
+    ai: 'sparkle',
+    llm: 'sparkle',
+    llm_advisor: 'sparkle',
     generic: 'megaphone',
     descriptors: 'extensions',
     activation: 'rocket',
@@ -35,8 +38,47 @@ export const getCodiconForNavigationItem = (
 ): string => {
   const id = (itemId || '').toUpperCase();
 
-  if (itemType === 'home' || itemType === 'summary' || itemType === 'general') {
+  const getReporterCodicon = (reporterId: string): string | null => {
+    if (reporterId.includes('AZURE')) {
+      return 'azure';
+    }
+    if (reporterId.includes('GITHUB')) {
+      return 'github';
+    }
+    if (reporterId.includes('GITLAB')) {
+      return 'repo';
+    }
+    if (reporterId.includes('BITBUCKET')) {
+      return 'repo';
+    }
+    if (reporterId.includes('CONSOLE')) {
+      return 'terminal';
+    }
+    if (reporterId.includes('EMAIL') || reporterId.includes('MAIL')) {
+      return 'mail';
+    }
+    if (reporterId.includes('FILEIO') || reporterId.includes('FILE')) {
+      return 'file';
+    }
+    if (reporterId.includes('TEXT')) {
+      return 'file-text';
+    }
+    if (reporterId.includes('CONFIG')) {
+      return 'settings-gear';
+    }
+    if (reporterId.includes('SARIF')) {
+      return 'checklist';
+    }
+    return null;
+  };
+
+  if (itemType === 'home' || itemType === 'summary') {
     return getCodiconForSection(itemType);
+  }
+
+  // The "General" section header and its "Configuration" item intentionally use different icons.
+  if (itemType === 'general') {
+    return 'settings-gear';
   }
 
   if (itemType === 'descriptor') {
@@ -49,8 +91,12 @@ export const getCodiconForNavigationItem = (
 
   // Reporter categories (generic)
   if (itemType === 'category') {
+    // AI / LLM categories
+    if (id.includes('LLM') || id.includes('AI') || id.includes('GPT')) {
+      return 'sparkle';
+    }
     if (id.includes('REPORT') || id.includes('REPORTER')) {
-      return 'megaphone';
+      return getReporterCodicon(id) || 'megaphone';
     }
     if (id.includes('OUTPUT') || id.includes('LOG')) {
       return 'output';
