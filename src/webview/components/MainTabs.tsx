@@ -18,6 +18,7 @@ import { ConfigPreviewPanel } from './ConfigPreviewPanel';
 import { ThemedForm } from './ThemedForm';
 import { LinterDescription } from './LinterDescription';
 import { DocFieldTemplate } from './DocFieldTemplate';
+import { BareObjectFieldTemplate } from './BareObjectFieldTemplate';
 import { CheckboxWidget, DualListWidget, TagArrayFieldTemplate } from './widgets';
 
 export const MainTabs: React.FC<MainTabsProps> = ({
@@ -310,7 +311,11 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           noHtml5Validate
           showErrorList={false}
           widgets={{ dualList: DualListWidget, CheckboxWidget }}
-          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate, FieldTemplate: DocFieldTemplate }}
+          templates={{
+            ArrayFieldTemplate: TagArrayFieldTemplate,
+            FieldTemplate: DocFieldTemplate,
+            ObjectFieldTemplate: BareObjectFieldTemplate
+          }}
           idPrefix="summary"
         >
           <></>
