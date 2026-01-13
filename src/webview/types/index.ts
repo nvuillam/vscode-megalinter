@@ -55,6 +55,11 @@ export type WebViewMessage =
   | {
       type: "configData";
       config: MegaLinterConfig;
+      localConfig?: MegaLinterConfig;
+      inheritedConfig?: MegaLinterConfig;
+      inheritedKeySources?: Record<string, string>;
+      extendsItems?: string[];
+      extendsErrors?: string[];
       configPath: string;
       configExists: boolean;
       linterMetadata: LinterMetadataMap;
@@ -300,6 +305,8 @@ export interface ThemedFormProps {
   title: string;
   uiSchema: UiSchema;
   formData: MegaLinterConfig;
+  inheritedConfig?: MegaLinterConfig;
+  inheritedKeySources?: Record<string, string>;
   onSubsetChange: (keys: string[], subset: MegaLinterConfig) => void;
   activeThemeTab: string | null;
   setActiveThemeTab: (id: string | null) => void;
@@ -322,6 +329,8 @@ export interface MainTabsProps {
   groups: SchemaGroups;
   formData: MegaLinterConfig;
   originalConfig: MegaLinterConfig;
+  inheritedConfig?: MegaLinterConfig;
+  inheritedKeySources?: Record<string, string>;
   uiSchema: UiSchema;
   onSubsetChange: (keys: string[], subsetData: MegaLinterConfig) => void;
   postMessage: (message: ExtensionMessage) => void;

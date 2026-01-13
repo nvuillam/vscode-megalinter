@@ -129,6 +129,20 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
   const showLabelRow = !!props.label && !isRoot && !isPrimitiveArrayItem;
   const showDocsButton = showDocs && !isRoot;
   const showDescription = !isRoot && !isPrimitiveArrayItem && !!props.description;
+  const inheritedFrom = useMemo(() => {
+    const options = (props.uiSchema as any)?.['ui:options'] as
+      | Record<string, unknown>
+      | undefined;
+    const raw = options?.inheritedFrom;
+    return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined;
+  }, [props.uiSchema]);
+
+  const showInheritedMarker =
+    !!inheritedFrom && !!variableName && isTopLevelFieldId(props.id) && !isRoot;
+
+  const inheritedTitle = useMemo(() => {
+    return inheritedFrom ? `Inherited from ${inheritedFrom}` : '';
+  }, [inheritedFrom]);
   const docsButtonTitle = useMemo(() => {
     if (variableName) {
       return `View documentation for ${variableName}`;
@@ -144,6 +158,15 @@ export function DocFieldTemplate(props: FieldTemplateProps) {
             <span className={`codicon codicon-${iconName} field-label__icon`} aria-hidden="true" />
             {props.label}
             {props.required ? '*' : null}
+            {showInheritedMarker ? (
+              <span className="field-label__inherited" title={inheritedTitle}>
+                <span
+                  className="codicon codicon-repo-forked field-label__inherited-icon"
+                  aria-hidden="true"
+                />
+                Inherited
+              </span>
+            ) : null}
           </label>
           {showDocsButton && (
             <button type="button" className="field-docs-button" onClick={handleOpenDocs} title={docsButtonTitle}>

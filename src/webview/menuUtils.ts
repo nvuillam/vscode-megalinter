@@ -326,6 +326,9 @@ export const buildScopedUiSchema = (
   keys: string[],
   baseUiSchema: UiSchema,
   highlightedKeys?: Set<string>,
+  inheritedConfig?: Record<string, any>,
+  inheritedKeySources?: Record<string, string>,
+  currentData?: Record<string, any>,
 ): UiSchema => {
   const ui: UiSchema = { ...baseUiSchema };
   const properties = (baseSchema.properties as Record<string, any>) || {};
@@ -359,6 +362,31 @@ export const buildScopedUiSchema = (
       if (enumValues) {
         ui[key] = { ...(ui[key] as any), "ui:widget": "dualList" };
       }
+    }
+
+    const isInherited =
+      !!inheritedConfig &&
+      Object.prototype.hasOwnProperty.call(inheritedConfig, key) &&
+      !!currentData &&
+      Object.prototype.hasOwnProperty.call(currentData, key) &&
+      deepEqual(currentData[key], inheritedConfig[key]);
+
+    if (isInherited) {
+      const existing = (ui[key] as Record<string, any>) || {};
+      const options = (existing["ui:options"] as Record<string, any>) || {};
+      const inheritedFrom = inheritedKeySources?.[key];
+
+      ui[key] = {
+        ...existing,
+        "ui:classNames": appendClass(
+          existing["ui:classNames"],
+          "form-field--inherited",
+        ),
+        "ui:options": {
+          ...options,
+          ...(inheritedFrom ? { inheritedFrom } : {}),
+        },
+      };
     }
 
     if (highlightedKeys?.has(key)) {

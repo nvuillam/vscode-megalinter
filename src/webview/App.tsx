@@ -7,6 +7,7 @@ import { extractGroups, filterRemovedLintersFromSchema, SchemaGroups } from '../
 import {
   buildNavigationModel,
   computeNonDefaultKeys,
+  deepEqual,
   prettifyId,
   pruneDefaults,
   sanitizeConfigForSave
@@ -52,6 +53,10 @@ export const App: React.FC = () => {
   const [groups, setGroups] = useState<SchemaGroups | null>(null);
   const [formData, setFormData] = useState<MegaLinterConfig>({});
   const [originalConfig, setOriginalConfig] = useState<MegaLinterConfig>({});
+  const [inheritedConfig, setInheritedConfig] = useState<MegaLinterConfig>({});
+  const [inheritedKeySources, setInheritedKeySources] = useState<Record<string, string>>({});
+  const [extendsItems, setExtendsItems] = useState<string[]>([]);
+  const [, setExtendsErrors] = useState<string[]>([]);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -327,8 +332,103 @@ export const App: React.FC = () => {
 
     const timerId = window.setTimeout(() => {
       const sanitized = sanitizeConfigForSave(data);
-      const pruned = pruneDefaults(sanitized, originalConfig, schema);
-      postMessage({ type: 'saveConfig', config: pruned });
+
+      const hasExtends =
+        extendsItems.length > 0 ||
+        (typeof (sanitized as any)?.EXTENDS === 'string' && String((sanitized as any).EXTENDS).trim() !== '') ||
+        (Array.isArray((sanitized as any)?.EXTENDS) && (sanitized as any).EXTENDS.length > 0);
+
+      if (!hasExtends) {
+        const pruned = pruneDefaults(sanitized, originalConfig, schema);
+        postMessage({ type: 'saveConfig', config: pruned });
+        return;
+      }
+
+      // EXTENDS mode: save only local overrides (diff vs inherited config), plus the EXTENDS key.
+      const computeLocalConfigForSave = (
+        effective: MegaLinterConfig,
+        originalLocal: MegaLinterConfig,
+        inherited: MegaLinterConfig
+      ): MegaLinterConfig => {
+        const result: MegaLinterConfig = { ...(originalLocal || {}) };
+
+        const keys = new Set<string>([
+          ...Object.keys(result || {}),
+          ...Object.keys(effective || {}),
+          ...Object.keys(inherited || {})
+        ]);
+
+        keys.forEach((key) => {
+          if (!key) {
+            return;
+          }
+
+          const effectiveHas = Object.prototype.hasOwnProperty.call(effective || {}, key);
+          const effectiveValue = effectiveHas ? effective[key] : undefined;
+
+          if (key === 'EXTENDS') {
+            if (effectiveHas && effectiveValue !== undefined && effectiveValue !== null) {
+              if (typeof effectiveValue === 'string') {
+                if (effectiveValue.trim() === '') {
+                  delete result[key];
+                } else {
+                  result[key] = effectiveValue;
+                }
+              } else if (Array.isArray(effectiveValue)) {
+                if (effectiveValue.length === 0) {
+                  delete result[key];
+                } else {
+                  result[key] = effectiveValue;
+                }
+              } else {
+                result[key] = effectiveValue;
+              }
+            } else {
+              delete result[key];
+            }
+            return;
+          }
+
+          const inheritedHas = Object.prototype.hasOwnProperty.call(inherited || {}, key);
+          const inheritedValue = inheritedHas ? inherited[key] : undefined;
+          const equalsInherited = inheritedHas
+            ? deepEqual(effectiveValue, inheritedValue)
+            : effectiveValue === undefined;
+
+          if (!equalsInherited) {
+            if (!effectiveHas || effectiveValue === undefined) {
+              delete result[key];
+            } else {
+              result[key] = effectiveValue;
+            }
+            return;
+          }
+
+          const originalHas = Object.prototype.hasOwnProperty.call(originalLocal || {}, key);
+          const originalValue = originalHas ? originalLocal[key] : undefined;
+          const originalEqualsInherited = inheritedHas
+            ? deepEqual(originalValue, inheritedValue)
+            : originalValue === undefined;
+
+          // If this key used to be a meaningful override but is now the same as inherited,
+          // drop it so the local file stays minimal.
+          if (originalHas && !originalEqualsInherited) {
+            delete result[key];
+            return;
+          }
+
+          // Otherwise, preserve the key only if it was already present in the local file.
+          if (!originalHas) {
+            delete result[key];
+          }
+        });
+
+        return result;
+      };
+
+      const localToSave = computeLocalConfigForSave(sanitized, originalConfig, inheritedConfig);
+      const finalSanitized = sanitizeConfigForSave(localToSave);
+      postMessage({ type: 'saveConfig', config: finalSanitized });
     }, 400);
 
     saveTimer.current = timerId;
@@ -403,7 +503,11 @@ export const App: React.FC = () => {
       const message = event.data as WebViewMessage;
       if (message.type === 'configData') {
         setFormData(message.config);
-        setOriginalConfig(message.config || {});
+        setOriginalConfig(message.localConfig || message.config || {});
+        setInheritedConfig(message.inheritedConfig || {});
+        setInheritedKeySources(message.inheritedKeySources || {});
+        setExtendsItems(message.extendsItems || []);
+        setExtendsErrors(message.extendsErrors || []);
         setConfigPath(message.configPath);
         setConfigExists(!!message.configExists);
         setLinterMetadata(message.linterMetadata || {});
@@ -575,6 +679,8 @@ export const App: React.FC = () => {
               groups={groups as SchemaGroups}
               formData={formData}
               originalConfig={originalConfig}
+              inheritedConfig={inheritedConfig}
+              inheritedKeySources={inheritedKeySources}
               uiSchema={uiSchema}
               onSubsetChange={handleSubsetChange}
               postMessage={postMessage}
