@@ -1383,16 +1383,17 @@ body.vscode-high-contrast .boolean-toggle__option--active {
 }
 
 .form-container .form-group.form-field--inherited {
-  border-style: dashed;
-  border-color: var(--vscode-badge-background, var(--vscode-focusBorder));
+  border-style: solid;
+  border-color: var(--vscode-focusBorder);
   background: linear-gradient(
       180deg,
       rgb(120 160 255 / 16%),
       rgb(0 0 0 / 12%)
     ),
     var(--vscode-editor-inactiveSelectionBackground, var(--vscode-editor-background));
-  box-shadow: inset 4px 0 0 0
-    var(--vscode-badge-background, var(--vscode-focusBorder));
+  box-shadow:
+    inset 0 0 0 1px var(--vscode-focusBorder),
+    inset 4px 0 0 0 var(--vscode-focusBorder);
 }
 
 .form-container .field-label__inherited-icon {
