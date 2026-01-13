@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Handle EXTENDS property and highlight inherited variables in the configuration editor
+- Use `x-doc-key` when mentioned in JSON Schema to build links to documentation
+- Fix duplicate label "Config values"
+- Improve responsiveness of the configuration editor on small screens
 
 ## [0.0.1] - 2026-01-12
 
