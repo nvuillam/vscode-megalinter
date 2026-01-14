@@ -6,7 +6,9 @@ import './styles.css';
 import { useVSCodeApi } from './hooks';
 import type {
   RunWebViewMessage,
-  RunResult
+  RunResult,
+  ConfigNavigationTarget,
+  RunWebviewToExtensionMessage
 } from './types';
 
 type Engine = 'docker' | 'podman';
@@ -217,6 +219,49 @@ export const RunApp: React.FC = () => {
       return;
     }
     postMessage({ type: 'openFile', filePath: r.logFilePath });
+  };
+
+  const normalizeId = (value?: string | null) => (typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : '');
+
+  const descriptorIdFromResult = (r: RunResult) => {
+    const descriptorId = normalizeId(r.descriptor);
+    if (descriptorId) {
+      return descriptorId;
+    }
+    const keyPart = normalizeId((r.key || '').split('_')[0]);
+    return keyPart;
+  };
+
+  const linterIdFromResult = (r: RunResult) => {
+    const key = normalizeId(r.key);
+    if (key && key.includes('_')) {
+      return key; // Prefer full linter key (e.g., HTML_HTMLHINT)
+    }
+
+    const linterId = normalizeId(r.linter);
+    if (linterId) {
+      return linterId;
+    }
+
+    if (key) {
+      return key;
+    }
+
+    return '';
+  };
+
+  const openConfigNavigation = (target: ConfigNavigationTarget | null) => {
+    if (!target) {
+      return;
+    }
+    postMessage({ type: 'openConfigSection', target });
+  };
+
+  const onViewReports = () => {
+    if (!reportFolderPath) {
+      return;
+    }
+    postMessage({ type: 'revealPath', path: reportFolderPath } as RunWebviewToExtensionMessage);
   };
 
   const onViewLogs = () => {
@@ -494,16 +539,6 @@ export const RunApp: React.FC = () => {
           </div>
         </div>
 
-        {workspaceRoot && (
-          <div className="run__hint">
-            Workspace: <span className="run__mono">{workspaceRoot}</span>
-          </div>
-        )}
-        {reportFolderPath && (
-          <div className="run__hint">
-            Reports: <span className="run__mono">{reportFolderPath}</span>
-          </div>
-        )}
       </div>
 
       <div className="run__section">
@@ -518,11 +553,18 @@ export const RunApp: React.FC = () => {
               title="Open the MegaLinter Output channel"
             >
               <span className="codicon codicon-output pill-button__icon" aria-hidden="true" />
-              View logs
+              View Console logs
             </button>
-            {runStatus === 'running' && (
-              <span className="run__badge run__badge--running">running</span>
-            )}
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={onViewReports}
+              disabled={!reportFolderPath}
+              title="Open reports folder in VS Code"
+            >
+              <span className="codicon codicon-folder-opened pill-button__icon" aria-hidden="true" />
+              View reports
+            </button>
             {runId && results.length > 0 && (
               <span className="run__badge">{results.length} linters</span>
             )}
@@ -547,7 +589,7 @@ export const RunApp: React.FC = () => {
                       : initStage === 'activation'
                         ? 'Activating linters...'
                         : initStage === 'collectFiles'
-                          ? 'Collecting files to analyze and matching them with available linters...'
+                          ? 'Collecting files to analyze and match them with available linters...'
                           : 'Initializing mega-linter-runner...'}
             </span>
           </div>
@@ -655,8 +697,45 @@ export const RunApp: React.FC = () => {
                         {STATUS_LABELS[r.status] ?? r.status}
                       </span>
                     </td>
-                    <td>{r.descriptor}</td>
-                    <td className="run__mono">{r.key}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="run__link-button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const descriptorId = descriptorIdFromResult(r);
+                          if (!descriptorId) {
+                            return;
+                          }
+                          openConfigNavigation({ type: 'descriptor', descriptorId });
+                        }}
+                        title="Open descriptor in MegaLinter configuration"
+                      >
+                        {r.descriptor}
+                      </button>
+                    </td>
+                    <td className="run__mono">
+                      <button
+                        type="button"
+                        className="run__link-button run__link-button--mono"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const descriptorId = descriptorIdFromResult(r);
+                          const linterId = linterIdFromResult(r);
+                          if (!descriptorId) {
+                            return;
+                          }
+                          const target: ConfigNavigationTarget =
+                            linterId
+                              ? { type: 'linter', descriptorId, linterId }
+                              : { type: 'descriptor', descriptorId };
+                          openConfigNavigation(target);
+                        }}
+                        title="Open linter in MegaLinter configuration"
+                      >
+                        {r.key}
+                      </button>
+                    </td>
                     <td>{typeof r.files === 'number' ? r.files : ''}</td>
                     <td>{typeof r.errors === 'number' ? r.errors : ''}</td>
                     <td>{typeof r.warnings === 'number' ? r.warnings : ''}</td>

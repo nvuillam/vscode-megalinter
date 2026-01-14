@@ -15,6 +15,7 @@ import type {
   RunInitStatusMessage,
   RunErrorMessage,
   RunResult,
+  ConfigNavigationTarget,
 } from "../../shared/webviewMessages";
 
 // ============================================================================
@@ -94,6 +95,8 @@ export type RunWebViewMessage =
   | RunErrorMessage;
 
 export type { RunResult };
+export type { ConfigNavigationTarget };
+export type { RunWebviewToExtensionMessage };
 
 export type {
   FlavorContextMessage,

@@ -23,7 +23,9 @@ import type {
   RunPanelInboundMessage,
   RunPanelOutboundMessage,
   RunResult,
+  ConfigNavigationTarget,
 } from "./shared/webviewMessages";
+import type { NavigationTarget } from "./extension";
 
 type Engine = "docker" | "podman";
 
@@ -135,6 +137,12 @@ export class RunPanel {
               break;
             case "showOutput":
               showMegaLinterOutput(false);
+              break;
+            case "openConfigSection":
+              await this._navigateToConfig(message.target);
+              break;
+            case "revealPath":
+              await this._revealPath(message.path);
               break;
             case "openFile":
               await this._openFile(message.filePath);
@@ -937,10 +945,49 @@ export class RunPanel {
     this._postMessage({ type: "runInitStatus", runId, stage });
   }
 
+  private async _navigateToConfig(target: ConfigNavigationTarget) {
+    const normalize = (value?: string) =>
+      typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "";
+
+    const descriptorId = normalize(target.descriptorId);
+    if (!descriptorId) {
+      return;
+    }
+
+    const linterId = target.type === "linter" ? normalize(target.linterId) : "";
+
+    const navTarget: NavigationTarget =
+      target.type === "linter" && linterId
+        ? { type: "linter", descriptorId, linterId }
+        : { type: "descriptor", descriptorId };
+
+    logMegaLinter(
+      `Run view: opening config section | descriptor=${descriptorId}` +
+        (navTarget.type === "linter" ? ` linter=${linterId}` : ""),
+    );
+
+    await vscode.commands.executeCommand("megalinter.revealSection", navTarget);
+  }
+
   private async _openFile(filePath: string) {
     const uri = vscode.Uri.file(filePath);
     const doc = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(doc, { preview: true });
+  }
+
+  private async _revealPath(fileOrFolderPath: string) {
+    if (!fileOrFolderPath || typeof fileOrFolderPath !== "string") {
+      return;
+    }
+
+    try {
+      const uri = vscode.Uri.file(fileOrFolderPath);
+      await vscode.commands.executeCommand("revealInExplorer", uri);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logMegaLinter(`Run view: failed to reveal path | ${msg}`);
+      void vscode.window.showErrorMessage("Unable to open reports folder");
+    }
   }
 }
 

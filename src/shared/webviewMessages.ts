@@ -51,6 +51,10 @@ export type ErrorMessage = { type: "error"; message: string };
 
 // --- MegaLinter Run (Webview -> Extension) ---
 
+export type ConfigNavigationTarget =
+  | { type: "descriptor"; descriptorId: string }
+  | { type: "linter"; descriptorId: string; linterId: string };
+
 export type RunWebviewToExtensionMessage =
   | { type: "getRunContext"; force?: boolean }
   | {
@@ -60,6 +64,8 @@ export type RunWebviewToExtensionMessage =
       runnerVersion: string;
     }
   | { type: "cancelRun" }
+  | { type: "openConfigSection"; target: ConfigNavigationTarget }
+  | { type: "revealPath"; path: string }
   | { type: "showOutput" };
 
 export type RunPanelInboundMessage =
