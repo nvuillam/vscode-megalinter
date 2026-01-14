@@ -49,6 +49,87 @@ export type InfoMessage = { type: "info"; message: string };
 
 export type ErrorMessage = { type: "error"; message: string };
 
+// --- MegaLinter Run (Webview -> Extension) ---
+
+export type RunWebviewToExtensionMessage =
+  | { type: "getRunContext"; force?: boolean }
+  | {
+      type: "runMegalinter";
+      engine: "docker" | "podman";
+      flavor: string;
+      runnerVersion: string;
+    }
+  | { type: "cancelRun" };
+
+export type RunPanelInboundMessage =
+  | CommonWebviewToExtensionMessage
+  | RunWebviewToExtensionMessage
+  | { type: "error"; message: string };
+
+// --- MegaLinter Run (Extension -> Webview) ---
+
+export type RunEngineStatus = {
+  available: boolean;
+  running: boolean;
+  details?: string;
+};
+
+export type RunResult = {
+  key: string;
+  descriptor: string;
+  linter: string;
+  status: "SUCCESS" | "WARNING" | "ERROR" | "UNKNOWN";
+  logFilePath?: string;
+  files?: number;
+  elapsedSeconds?: number;
+  errors?: number;
+  warnings?: number;
+};
+
+export type RunContextMessage = {
+  type: "runContext";
+  workspaceRoot: string;
+  flavors: string[];
+  runnerVersions: string[];
+  latestRunnerVersion?: string;
+  engines: {
+    docker: RunEngineStatus;
+    podman: RunEngineStatus;
+  };
+  defaultEngine?: "docker" | "podman";
+};
+
+export type RunStatusMessage = {
+  type: "runStatus";
+  status: "idle" | "running" | "completed" | "error";
+  runId: string;
+  reportFolderPath: string;
+  reportFolderRel: string;
+};
+
+export type RunOutputMessage = {
+  type: "runOutput";
+  runId: string;
+  chunk: string;
+};
+
+export type RunResultsMessage = {
+  type: "runResults";
+  runId: string;
+  reportFolderPath: string;
+  results: RunResult[];
+  exitCode: number | null;
+};
+
+export type RunErrorMessage = { type: "runError"; message: string; commandLine?: string };
+
+export type RunPanelOutboundMessage =
+  | RunContextMessage
+  | RunStatusMessage
+  | RunOutputMessage
+  | RunResultsMessage
+  | RunErrorMessage;
+
 export type FlavorPanelOutboundMessage =
   | FlavorContextMessage
   | FlavorFolderSelectedMessage

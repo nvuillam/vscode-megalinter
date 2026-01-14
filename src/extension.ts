@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import {
+  disposeMegaLinterOutputChannel,
+  getMegaLinterOutputChannel,
+} from "./outputChannel";
 
 export type NavigationTarget =
   | { type: "general" }
@@ -10,6 +14,14 @@ export type NavigationTarget =
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("MegaLinter Configuration extension is now active");
+
+  // Register shared output channel lifecycle (dispose on deactivation).
+  getMegaLinterOutputChannel();
+  context.subscriptions.push(
+    new vscode.Disposable(() => {
+      disposeMegaLinterOutputChannel();
+    }),
+  );
 
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
@@ -81,6 +93,14 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const openRunPanel = vscode.commands.registerCommand(
+    "megalinter.openRun",
+    async () => {
+      const { RunPanel } = await import("./runPanel");
+      RunPanel.createOrShow(context.extensionUri);
+    },
+  );
+
   const revealSection = vscode.commands.registerCommand(
     "megalinter.revealSection",
     async (target: NavigationTarget, uri?: vscode.Uri) => {
@@ -107,6 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
     disposable,
     revealSection,
     openCustomFlavorBuilder,
+    openRunPanel,
   );
 }
 

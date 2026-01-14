@@ -172,6 +172,14 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               <span className="codicon codicon-package pill-button__icon" aria-hidden="true" />
               Custom Flavor Builder
             </button>
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={() => postMessage({ type: 'openRunPanel' })}
+            >
+              <span className="codicon codicon-play-circle pill-button__icon" aria-hidden="true" />
+              Run MegaLinter
+            </button>
             <a
               className="pill-button pill-button--ghost"
               href="https://megalinter.io/latest/"
@@ -210,6 +218,25 @@ export const HomePanel: React.FC<HomePanelProps> = ({
                 </ul>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="home__grid">
+        <div className="home__card">
+          <div className="home__card-label">Run MegaLinter</div>
+          <div className="home__card-value">
+            Launch a local MegaLinter run with <span className="home__mono">mega-linter-runner</span> and review linter logs.
+          </div>
+          <div className="home__card-actions">
+            <button
+              type="button"
+              className="pill-button pill-button--primary"
+              onClick={() => postMessage({ type: 'openRunPanel' })}
+            >
+              <span className="codicon codicon-play pill-button__icon" aria-hidden="true" />
+              Run MegaLinter
+            </button>
           </div>
         </div>
       </div>

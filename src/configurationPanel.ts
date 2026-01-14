@@ -41,6 +41,7 @@ type ConfigurationPanelInboundMessage =
   | { type: "saveConfig"; config: any }
   | { type: "installMegaLinter" }
   | { type: "upgradeMegaLinter" }
+  | { type: "openRunPanel" }
   | { type: "openCustomFlavorBuilder" }
   | { type: "openExternal"; url: string }
   | { type: "openFile"; filePath: string }
@@ -189,6 +190,11 @@ export class ConfigurationPanel {
               "npx --yes mega-linter-runner@latest --upgrade",
             );
             break;
+          case "openRunPanel": {
+            const { RunPanel } = await import("./runPanel");
+            RunPanel.createOrShow(this._extensionUri);
+            break;
+          }
           case "openCustomFlavorBuilder":
             CustomFlavorPanel.createOrShow(this._extensionUri);
             break;

@@ -27,6 +27,11 @@
         "icon": "$(gear)"
       },
       {
+        "command": "megalinter.openRun",
+        "title": "MegaLinter: Run MegaLinter",
+        "icon": "$(play)"
+      },
+      {
         "command": "megalinter.openCustomFlavorBuilder",
         "title": "MegaLinter: Custom Flavor Builder",
         "icon": "$(package)"

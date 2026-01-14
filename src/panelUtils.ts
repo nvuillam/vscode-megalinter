@@ -59,7 +59,7 @@ export const buildWebviewHtml = (args: {
   webview: vscode.Webview;
   extensionUri: vscode.Uri;
   title: string;
-  view: "config" | "flavor";
+  view: "config" | "flavor" | "run";
 }): string => {
   const scriptUri = args.webview.asWebviewUri(
     vscode.Uri.joinPath(args.extensionUri, "dist", "webview.js"),

@@ -4,9 +4,16 @@ import type { LinterDescriptorMetadata } from "../../shared/linterMetadata";
 import type {
   CommonWebviewToExtensionMessage,
   FlavorWebviewToExtensionMessage,
+  RunWebviewToExtensionMessage,
   FlavorContextMessage,
   FlavorDefinitionMessage,
   FlavorFolderSelectedMessage,
+  RunContextMessage,
+  RunStatusMessage,
+  RunOutputMessage,
+  RunResultsMessage,
+  RunErrorMessage,
+  RunResult,
 } from "../../shared/webviewMessages";
 
 // ============================================================================
@@ -35,6 +42,7 @@ export type ExtensionMessage =
   | { type: "saveConfig"; config: MegaLinterConfig }
   | { type: "installMegaLinter" }
   | { type: "upgradeMegaLinter" }
+  | { type: "openRunPanel" }
   | { type: "openCustomFlavorBuilder" }
   | {
       type: "resolveLinterConfigFile";
@@ -48,6 +56,7 @@ export type ExtensionMessage =
       destination?: { linterRulesPath?: string; configFile?: string };
     }
   | FlavorWebviewToExtensionMessage
+  | RunWebviewToExtensionMessage
   | { type: "info"; message: string }
   | { type: "error"; message: string };
 
@@ -74,6 +83,15 @@ export type WebViewMessage =
       defaultTemplate?: LinterDefaultConfigDetails;
     }
   | { type: "navigate"; target: NavigationTarget };
+
+export type RunWebViewMessage =
+  | RunContextMessage
+  | RunStatusMessage
+  | RunOutputMessage
+  | RunResultsMessage
+  | RunErrorMessage;
+
+export type { RunResult };
 
 export type {
   FlavorContextMessage,
