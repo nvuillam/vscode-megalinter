@@ -59,7 +59,8 @@ export type RunWebviewToExtensionMessage =
       flavor: string;
       runnerVersion: string;
     }
-  | { type: "cancelRun" };
+  | { type: "cancelRun" }
+  | { type: "showOutput" };
 
 export type RunPanelInboundMessage =
   | CommonWebviewToExtensionMessage

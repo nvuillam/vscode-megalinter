@@ -1,7 +1,7 @@
 {
   "name": "vscode-megalinter",
-  "displayName": "MegaLinter Configuration",
-  "description": "Configure MegaLinter using a visual interface",
+  "displayName": "MegaLinter",
+  "description": "Configure and Run MegaLinter using a visual interface",
   "version": "0.0.1",
   "publisher": "nvuillam",
   "repository": {
@@ -16,7 +16,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "workspaceContains:megalinter-custom-flavor.yml"
+    "workspaceContains:megalinter-custom-flavor.yml",
+    "workspaceContains:.mega-linter.yml"
   ],
   "main": "./dist/extension.js",
   "contributes": {

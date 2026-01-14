@@ -7,6 +7,7 @@ import * as https from "https";
 import * as YAML from "yaml";
 import type { NavigationTarget } from "./extension";
 import { CustomFlavorPanel } from "./customFlavorPanel";
+import { logMegaLinter } from "./outputChannel";
 import type { LinterDescriptorMetadata } from "./shared/linterMetadata";
 import { sanitizeConfigForSave } from "./shared/sanitizeConfigForSave";
 import {
@@ -117,6 +118,7 @@ export class ConfigurationPanel {
 
     // If we already have a panel, show it
     if (ConfigurationPanel.currentPanel) {
+      logMegaLinter(`Config view: reveal existing panel | configPath=${configPath}`);
       ConfigurationPanel.currentPanel._panel.reveal(column);
       ConfigurationPanel.currentPanel._configPath = configPath;
       ConfigurationPanel.currentPanel._update();
@@ -126,10 +128,12 @@ export class ConfigurationPanel {
     // Otherwise, create a new panel
     const panel = createMegalinterWebviewPanel({
       viewType: "megalinterConfig",
-      title: "MegaLinter Configuration",
+      title: "MegaLinter Config",
       extensionUri,
       column,
     });
+
+    logMegaLinter(`Config view: create panel | configPath=${configPath}`);
 
     ConfigurationPanel.currentPanel = new ConfigurationPanel(
       panel,
@@ -162,8 +166,10 @@ export class ConfigurationPanel {
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
       async (message: ConfigurationPanelInboundMessage) => {
+        const msgStart = Date.now();
         switch (message.type) {
           case "ready":
+            logMegaLinter("Config view: webview ready");
             this._webviewReady = true;
             await this._sendConfig();
             if (this._pendingNavigation) {
@@ -175,39 +181,48 @@ export class ConfigurationPanel {
             }
             break;
           case "getConfig":
+            logMegaLinter("Config view: getConfig");
             await this._sendConfig();
             break;
           case "saveConfig":
+            logMegaLinter("Config view: saveConfig");
             await this._saveConfig(message.config);
             break;
           case "installMegaLinter":
+            logMegaLinter("Config view: installMegaLinter");
             await this._runCommand(
               "npx --yes mega-linter-runner@latest --install",
             );
             break;
           case "upgradeMegaLinter":
+            logMegaLinter("Config view: upgradeMegaLinter");
             await this._runCommand(
               "npx --yes mega-linter-runner@latest --upgrade",
             );
             break;
           case "openRunPanel": {
+            logMegaLinter("Config view: openRunPanel");
             const { RunPanel } = await import("./runPanel");
             RunPanel.createOrShow(this._extensionUri);
             break;
           }
           case "openCustomFlavorBuilder":
+            logMegaLinter("Config view: openCustomFlavorBuilder");
             CustomFlavorPanel.createOrShow(this._extensionUri);
             break;
           case "openFile":
+            logMegaLinter(`Config view: openFile | path=${message.filePath}`);
             await this._openFile(message.filePath);
             break;
           case "resolveLinterConfigFile":
+            logMegaLinter(`Config view: resolveLinterConfigFile | linterKey=${message.linterKey}`);
             await this._resolveAndSendLinterConfigFile(
               message.linterKey,
               message.overrides,
             );
             break;
           case "createLinterConfigFileFromDefault":
+            logMegaLinter(`Config view: createLinterConfigFileFromDefault | linterKey=${message.linterKey}`);
             await this._createLinterConfigFileFromDefault(
               message.linterKey,
               message.destination,
@@ -215,12 +230,16 @@ export class ConfigurationPanel {
             );
             break;
           case "openExternal":
+            logMegaLinter(`Config view: openExternal | url=${message.url}`);
             await openExternalHttpUrl(message.url);
             break;
           case "error":
+            logMegaLinter(`Config view: webview error | ${message.message}`);
             vscode.window.showErrorMessage(message.message);
             break;
         }
+
+        logMegaLinter(`Config view: handled ${message.type} in ${Date.now() - msgStart}ms`);
       },
       null,
       this._disposables,
@@ -448,9 +467,11 @@ export class ConfigurationPanel {
   ): Promise<boolean> {
     const apiUrl =
       "https://api.github.com/repos/oxsecurity/megalinter/contents/megalinter/descriptors";
+    const start = Date.now();
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
+      logMegaLinter("Config view: fetching descriptor metadata (remote)…");
       const response = await fetch(apiUrl, {
         headers: {
           Accept: "application/vnd.github+json",
@@ -475,6 +496,13 @@ export class ConfigurationPanel {
           item.name.toLowerCase().endsWith(".megalinter-descriptor.yml"),
       );
 
+      logMegaLinter(
+        `Config view: remote descriptor list in ${Date.now() - start}ms | files=${descriptorFiles.length}`,
+      );
+
+      let okCount = 0;
+      let failCount = 0;
+
       for (const file of descriptorFiles) {
         if (!file.download_url) {
           continue;
@@ -488,18 +516,29 @@ export class ConfigurationPanel {
           clearTimeout(fileTimeout);
 
           if (!descriptorResponse.ok) {
+            failCount += 1;
             continue;
           }
 
           const content = await descriptorResponse.text();
           this._ingestDescriptorContent(file.name, content, metadata);
+          okCount += 1;
         } catch (fileErr) {
+          failCount += 1;
           console.warn(`Failed to download descriptor ${file.name}`, fileErr);
         }
       }
 
+      logMegaLinter(
+        `Config view: remote descriptor download in ${Date.now() - start}ms | ok=${okCount} failed=${failCount} metaKeys=${Object.keys(metadata).length}`,
+      );
+
       return descriptorFiles.length > 0 && Object.keys(metadata).length > 0;
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logMegaLinter(
+        `Config view: remote descriptor metadata fetch failed in ${Date.now() - start}ms | ${msg}`,
+      );
       console.warn("Remote descriptor metadata fetch failed", err);
       return false;
     }
@@ -509,6 +548,9 @@ export class ConfigurationPanel {
     Record<string, LinterDescriptorMetadata>
   > {
     if (this._linterMetadataCache) {
+      logMegaLinter(
+        `Config view: descriptor metadata cache hit (memory) | keys=${Object.keys(this._linterMetadataCache).length}`,
+      );
       return this._linterMetadataCache;
     }
 
@@ -546,14 +588,23 @@ export class ConfigurationPanel {
       Object.keys(cached.data).length > 0
     ) {
       this._linterMetadataCache = cached.data;
+      logMegaLinter(
+        `Config view: descriptor metadata cache hit (globalState) | keys=${Object.keys(cached.data).length}`,
+      );
       return cached.data;
     }
 
     const metadata: Record<string, LinterDescriptorMetadata> = {};
 
+    const start = Date.now();
+
     const loadedRemotely = await this._loadRemoteDescriptorMetadata(metadata);
     if (!loadedRemotely) {
+      const localStart = Date.now();
       this._loadLocalDescriptorMetadata(metadata);
+      logMegaLinter(
+        `Config view: local descriptor load in ${Date.now() - localStart}ms | keys=${Object.keys(metadata).length}`,
+      );
     }
 
     if (loadedRemotely && Object.keys(metadata).length > 0) {
@@ -564,10 +615,15 @@ export class ConfigurationPanel {
     }
 
     this._linterMetadataCache = metadata;
+    logMegaLinter(
+      `Config view: descriptor metadata ready in ${Date.now() - start}ms | keys=${Object.keys(metadata).length} source=${loadedRemotely ? "remote" : "local"}`,
+    );
     return metadata;
   }
 
   private async _sendConfig() {
+    const start = Date.now();
+    logMegaLinter(`Config view: loading config | path=${this._configPath}`);
     let config: any = {};
     let localConfig: any = {};
     let inheritedConfig: any = {};
@@ -576,19 +632,36 @@ export class ConfigurationPanel {
     let extendsErrors: string[] = [];
     const configExists = fs.existsSync(this._configPath);
 
+    logMegaLinter(`Config view: config exists=${configExists}`);
+
     if (configExists) {
       try {
+        const t0 = Date.now();
         const content = fs.readFileSync(this._configPath, "utf8");
+        logMegaLinter(
+          `Config view: read YAML in ${Date.now() - t0}ms | bytes=${Buffer.byteLength(content, "utf8")}`,
+        );
+
+        const t1 = Date.now();
         const doc = YAML.parseDocument(content);
         localConfig = (doc.toJS() as any) || {};
+        logMegaLinter(
+          `Config view: parse YAML in ${Date.now() - t1}ms | localKeys=${Object.keys(localConfig || {}).length}`,
+        );
 
+        const t2 = Date.now();
         const resolved = await this._resolveExtends(localConfig);
+        logMegaLinter(
+          `Config view: resolve EXTENDS in ${Date.now() - t2}ms | extendsItems=${resolved.extendsItems.length} errors=${resolved.extendsErrors.length}`,
+        );
         config = resolved.effectiveConfig;
         inheritedConfig = resolved.inheritedConfig;
         inheritedKeySources = resolved.inheritedKeySources;
         extendsItems = resolved.extendsItems;
         extendsErrors = resolved.extendsErrors;
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logMegaLinter(`Config view: failed to read config | ${msg}`);
         console.error("Error reading config file:", error);
         config = {};
         localConfig = {};
@@ -598,8 +671,14 @@ export class ConfigurationPanel {
     let linterMetadata: Record<string, LinterDescriptorMetadata> = {};
 
     try {
+      const t0 = Date.now();
       linterMetadata = await this._loadDescriptorMetadata();
+      logMegaLinter(
+        `Config view: load linter metadata in ${Date.now() - t0}ms | keys=${Object.keys(linterMetadata).length}`,
+      );
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logMegaLinter(`Config view: unable to load linter metadata | ${msg}`);
       console.warn("Unable to load linter metadata", err);
     }
 
@@ -615,6 +694,10 @@ export class ConfigurationPanel {
       configExists,
       linterMetadata,
     });
+
+    logMegaLinter(
+      `Config view: config sent to webview in ${Date.now() - start}ms | effectiveKeys=${Object.keys(config || {}).length} localKeys=${Object.keys(localConfig || {}).length}`,
+    );
   }
 
   private _normalizeExtendsValue(value: unknown): string[] {
@@ -690,10 +773,18 @@ export class ConfigurationPanel {
   private async _fetchRemoteYaml(url: string): Promise<any> {
     const cached = this._extendsYamlCache.get(url);
     if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+      logMegaLinter(`Config view: EXTENDS cache hit | ${url}`);
       return cached.parsed;
     }
 
+    const t0 = Date.now();
     const text = await this._fetchText(url, 10_000, 1024 * 1024);
+    logMegaLinter(
+      `Config view: EXTENDS fetched in ${Date.now() - t0}ms | ${url} | bytes=${Buffer.byteLength(
+        text,
+        "utf8",
+      )}`,
+    );
     const parsed = (YAML.parse(text) as any) || {};
     this._extendsYamlCache.set(url, { timestamp: Date.now(), parsed });
     return parsed;
@@ -809,6 +900,7 @@ export class ConfigurationPanel {
     const inheritedConfig: Record<string, any> = {};
 
     if (!extendsItems.length) {
+      logMegaLinter("Config view: EXTENDS not present");
       return {
         localConfig,
         effectiveConfig: localConfig,
@@ -818,6 +910,8 @@ export class ConfigurationPanel {
         extendsErrors: [],
       };
     }
+
+    logMegaLinter(`Config view: EXTENDS detected | items=${extendsItems.length}`);
 
     const appendKeys = this._normalizeConfigPropertiesToAppend(
       localConfig?.CONFIG_PROPERTIES_TO_APPEND,
@@ -844,7 +938,11 @@ export class ConfigurationPanel {
         visited.add(item);
 
         try {
+          const t0 = Date.now();
           const loaded = await this._loadExtendsItem(item);
+          logMegaLinter(
+            `Config view: EXTENDS loaded in ${Date.now() - t0}ms | ${loaded.sourceId}`,
+          );
           const extendsData =
             loaded.data && typeof loaded.data === "object" ? loaded.data : {};
 
@@ -877,6 +975,7 @@ export class ConfigurationPanel {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           extendsErrors.push(msg);
+          logMegaLinter(`Config view: EXTENDS error | ${item} | ${msg}`);
         }
       }
     };
@@ -1268,7 +1367,9 @@ export class ConfigurationPanel {
   }
 
   private async _saveConfig(config: any) {
+    const start = Date.now();
     try {
+      logMegaLinter(`Config view: saving config | path=${this._configPath}`);
       const sanitizedConfig = sanitizeConfigForSave(config || {});
       const existingText = fs.existsSync(this._configPath)
         ? fs.readFileSync(this._configPath, "utf8")
@@ -1316,6 +1417,10 @@ export class ConfigurationPanel {
 
       fs.writeFileSync(this._configPath, yamlContent, "utf8");
 
+      logMegaLinter(
+        `Config view: saved in ${Date.now() - start}ms | bytes=${Buffer.byteLength(yamlContent, "utf8")} keys=${Object.keys(sanitizedConfig || {}).length}`,
+      );
+
       if (this._statusMessage) {
         this._statusMessage.dispose();
       }
@@ -1327,6 +1432,8 @@ export class ConfigurationPanel {
 
       await this._sendConfig();
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logMegaLinter(`Config view: save failed in ${Date.now() - start}ms | ${msg}`);
       vscode.window.showErrorMessage(`Failed to save configuration: ${error}`);
     }
   }
@@ -1353,6 +1460,7 @@ export class ConfigurationPanel {
 
   private async _runCommand(command: string) {
     const cwd = this._configPath ? path.dirname(this._configPath) : undefined;
+    logMegaLinter(`Config view: run command | cwd=${cwd ?? ""} | ${command}`);
     const terminal = vscode.window.createTerminal({
       name: "MegaLinter Setup",
       cwd,
@@ -1366,7 +1474,7 @@ export class ConfigurationPanel {
     return buildWebviewHtml({
       webview,
       extensionUri: this._extensionUri,
-      title: "MegaLinter Configuration",
+      title: "MegaLinter Config",
       view: "config",
     });
   }

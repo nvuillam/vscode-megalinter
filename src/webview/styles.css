@@ -1970,6 +1970,17 @@ img.linter-card__icon {
   margin-bottom: 10px;
 }
 
+.run__section-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run__section-actions .run__badge {
+  margin-left: 0;
+}
+
 .run__badge {
   margin-left: auto;
   font-size: 11px;

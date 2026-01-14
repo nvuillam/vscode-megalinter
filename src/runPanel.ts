@@ -122,6 +122,9 @@ export class RunPanel {
             case "cancelRun":
               await this._cancelRun();
               break;
+            case "showOutput":
+              showMegaLinterOutput(false);
+              break;
             case "openFile":
               await this._openFile(message.filePath);
               break;
@@ -195,10 +198,49 @@ export class RunPanel {
     const start = Date.now();
     logMegaLinter(`Run view: loading context${force ? " (forced)" : ""}…`);
 
+    const flavorsPromise = Promise.resolve().then(() => {
+      const t0 = Date.now();
+      const cached = Boolean(this._flavorEnumCache);
+      const v = this._readFlavorEnum();
+      logMegaLinter(
+        `Run view: init flavors in ${Date.now() - t0}ms` +
+          (cached ? " (cached)" : "") +
+          ` | count=${v.length}`,
+      );
+      return v;
+    });
+
+    const runnerPromise = Promise.resolve().then(async () => {
+      const t0 = Date.now();
+      const cached =
+        this._runnerVersionsCache &&
+        Date.now() - this._runnerVersionsCache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS;
+      const v = await this._getRunnerVersions();
+      logMegaLinter(
+        `Run view: init versions in ${Date.now() - t0}ms` +
+          (cached ? " (cached)" : "") +
+          ` | count=${v.versions.length}`,
+      );
+      return v;
+    });
+
+    const enginesPromise = Promise.resolve().then(async () => {
+      const t0 = Date.now();
+      const cached =
+        !force &&
+        this._engineStatusCache &&
+        Date.now() - this._engineStatusCache.timestamp < ENGINE_STATUS_CACHE_TTL_MS;
+      const v = await this._detectEngines(force);
+      logMegaLinter(
+        `Run view: init engines in ${Date.now() - t0}ms` + (cached ? " (cached)" : ""),
+      );
+      return v;
+    });
+
     const [flavors, runnerInfo, engineStatuses] = await Promise.all([
-      Promise.resolve(this._readFlavorEnum()),
-      this._getRunnerVersions(),
-      this._detectEngines(force),
+      flavorsPromise,
+      runnerPromise,
+      enginesPromise,
     ]);
 
     const { versions, latest } = runnerInfo;
@@ -264,6 +306,10 @@ export class RunPanel {
       this._runnerVersionsCache &&
       now - this._runnerVersionsCache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS
     ) {
+      const ageMs = now - this._runnerVersionsCache.timestamp;
+      logMegaLinter(
+        `Run view: versions cache hit | age=${ageMs}ms size=${this._runnerVersionsCache.versions.length}`,
+      );
       return {
         versions: this._runnerVersionsCache.versions,
         latest: this._runnerVersionsCache.latest,
@@ -273,9 +319,13 @@ export class RunPanel {
     let versions: string[] = [];
     let latest: string | null = "latest";
 
+    const fetchStart = Date.now();
     try {
       logMegaLinter("Run view: fetching MegaLinter versions from GitHub releases…");
       const tags = await fetchMegalinterGithubReleaseTags();
+      logMegaLinter(
+        `Run view: GitHub releases fetched in ${Date.now() - fetchStart}ms | tags=${tags.length}`,
+      );
       const normalized = tags
         .map(normalizeReleaseTag)
         .filter((v): v is string => !!v)
@@ -284,7 +334,11 @@ export class RunPanel {
         .slice(0, 10);
 
       versions = ["latest", "beta", ...normalized];
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logMegaLinter(
+        `Run view: GitHub releases fetch failed in ${Date.now() - fetchStart}ms | ${msg}`,
+      );
       // If GitHub is unreachable (offline, rate limited, etc.), show only channels.
       versions = ["latest", "beta"];
     }
@@ -313,11 +367,26 @@ export class RunPanel {
       this._engineStatusCache &&
       now - this._engineStatusCache.timestamp < ENGINE_STATUS_CACHE_TTL_MS
     ) {
-      logMegaLinter("Run view: using cached engine status");
+      const ageMs = now - this._engineStatusCache.timestamp;
+      logMegaLinter(`Run view: using cached engine status | age=${ageMs}ms`);
       return this._engineStatusCache.statuses;
     }
 
-    const [docker, podman] = await Promise.all([detectEngine("docker"), detectEngine("podman")]);
+    const dockerPromise = (async () => {
+      const t0 = Date.now();
+      const v = await detectEngine("docker");
+      logMegaLinter(`Run view: detect docker in ${Date.now() - t0}ms`);
+      return v;
+    })();
+
+    const podmanPromise = (async () => {
+      const t0 = Date.now();
+      const v = await detectEngine("podman");
+      logMegaLinter(`Run view: detect podman in ${Date.now() - t0}ms`);
+      return v;
+    })();
+
+    const [docker, podman] = await Promise.all([dockerPromise, podmanPromise]);
     const statuses: Record<Engine, EngineStatus> = { docker, podman };
     this._engineStatusCache = { timestamp: now, statuses };
 
@@ -393,8 +462,6 @@ export class RunPanel {
 
     const commandLine = formatCommandLine(npxCmd, redactArgs(args));
 
-    getMegaLinterOutputChannel();
-    showMegaLinterOutput(true);
     logMegaLinter(`Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} version=${safeVersion}`);
     logMegaLinter(`Run ${runId}: report folder ${reportFolderPath}`);
     logMegaLinter(`Run ${runId}: command ${commandLine}`);
@@ -425,11 +492,6 @@ export class RunPanel {
     const forward = (chunk: Buffer) => {
       // Mirror process output to VS Code Output panel.
       appendMegaLinterOutput(chunk.toString("utf8"));
-      this._postMessage({
-        type: "runOutput",
-        runId,
-        chunk: chunk.toString("utf8"),
-      });
     };
 
     child.stdout.on("data", forward);
@@ -918,7 +980,7 @@ async function detectEngine(engine: Engine): Promise<EngineStatus> {
   const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
 
   try {
-    const ok = await execWithTimeout(cmd, ["info"], 3000);
+    const ok = await execWithTimeout(cmd, ["info"], 10000);
     return { available: true, running: ok, details: ok ? "running" : "not running" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -978,7 +1040,7 @@ function execWithTimeout(command: string, args: string[], timeoutMs: number): Pr
 function fetchMegalinterGithubReleaseTags(): Promise<string[]> {
   // Use the GitHub API to list releases. Unauthenticated access is rate limited.
   // If unreachable, caller falls back to "latest".
-  const url = "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=100";
+  const url = "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=10";
 
   return new Promise((resolve, reject) => {
     const req = https.get(

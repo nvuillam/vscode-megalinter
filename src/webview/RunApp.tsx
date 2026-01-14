@@ -38,11 +38,8 @@ export const RunApp: React.FC = () => {
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [reportFolderPath, setReportFolderPath] = useState<string>('');
-  const [output, setOutput] = useState<string>('');
   const [results, setResults] = useState<RunResult[]>([]);
   const [error, setError] = useState<{ message: string; commandLine?: string } | null>(null);
-
-  const outputRef = useRef<HTMLPreElement | null>(null);
 
   const engineHelp = useMemo(() => {
     if (isLoadingContext) {
@@ -125,14 +122,6 @@ export const RunApp: React.FC = () => {
             setResults([]);
           }
           break;
-        case 'runOutput':
-          setRunId(message.runId);
-          setOutput((prev) => {
-            const next = prev + message.chunk;
-            // keep last ~200k chars
-            return next.length > 200_000 ? next.slice(next.length - 200_000) : next;
-          });
-          break;
         case 'runResults':
           setRunId(message.runId);
           setReportFolderPath(message.reportFolderPath);
@@ -140,6 +129,7 @@ export const RunApp: React.FC = () => {
           break;
         case 'runError':
           setError({ message: message.message, commandLine: (message as any).commandLine });
+          setRunStatus('error');
           break;
       }
     };
@@ -148,17 +138,13 @@ export const RunApp: React.FC = () => {
     return () => window.removeEventListener('message', handler as unknown as EventListener);
   }, []);
 
-  useEffect(() => {
-    if (!outputRef.current) {
-      return;
-    }
-    outputRef.current.scrollTop = outputRef.current.scrollHeight;
-  }, [output]);
-
   const onRun = () => {
-    setOutput('');
     setResults([]);
     setError(null);
+    // Optimistic UX: reflect running state immediately.
+    setRunStatus('running');
+    setRunId(null);
+    setReportFolderPath('');
     postMessage({
       type: 'runMegalinter',
       engine,
@@ -181,6 +167,10 @@ export const RunApp: React.FC = () => {
       return;
     }
     postMessage({ type: 'openFile', filePath: r.logFilePath });
+  };
+
+  const onViewLogs = () => {
+    postMessage({ type: 'showOutput' });
   };
 
   return (
@@ -337,9 +327,17 @@ export const RunApp: React.FC = () => {
                 className="pill-button pill-button--primary"
                 onClick={onRun}
                 disabled={!canRun}
+                title={runStatus === 'running' ? 'Running' : 'Run MegaLinter'}
               >
-                <span className="codicon codicon-play pill-button__icon" aria-hidden="true" />
-                Run MegaLinter
+                {runStatus === 'running' ? (
+                  <span
+                    className="codicon codicon-loading codicon-modifier-spin pill-button__icon"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span className="codicon codicon-play pill-button__icon" aria-hidden="true" />
+                )}
+                {runStatus === 'running' ? 'Running' : 'Run MegaLinter'}
               </button>
               <button
                 type="button"
@@ -368,24 +366,25 @@ export const RunApp: React.FC = () => {
 
       <div className="run__section">
         <div className="run__section-title">
-          <span className="codicon codicon-terminal" aria-hidden="true" />
-          Progress
-          {runStatus === 'running' && (
-            <span className="run__badge run__badge--running">running</span>
-          )}
-        </div>
-        <pre className="run__output" ref={outputRef}>
-          {output || (runStatus === 'running' ? 'Starting…' : 'No output yet.')}
-        </pre>
-      </div>
-
-      <div className="run__section">
-        <div className="run__section-title">
           <span className="codicon codicon-checklist" aria-hidden="true" />
           Results
-          {runId && results.length > 0 && (
-            <span className="run__badge">{results.length} linters</span>
-          )}
+          <div className="run__section-actions">
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={onViewLogs}
+              title="Open the MegaLinter Output channel"
+            >
+              <span className="codicon codicon-output pill-button__icon" aria-hidden="true" />
+              View logs
+            </button>
+            {runStatus === 'running' && (
+              <span className="run__badge run__badge--running">running</span>
+            )}
+            {runId && results.length > 0 && (
+              <span className="run__badge">{results.length} linters</span>
+            )}
+          </div>
         </div>
 
         {results.length === 0 ? (
