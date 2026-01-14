@@ -838,9 +838,15 @@ export class ConfigurationPanel {
       return;
     }
     this._extendsWarningShown.add(url);
-    vscode.window.showWarningMessage(
-      `MegaLinter: failed to fetch EXTENDS entry ${url} (${message})`,
-    );
+    const cleanMessage = `MegaLinter: failed to fetch EXTENDS entry (${message})`;
+    void vscode.window
+      .showWarningMessage(cleanMessage, "Try again")
+      .then((choice) => {
+        if (choice === "Try again") {
+          this._extendsWarningShown.delete(url);
+          void this._sendConfig();
+        }
+      });
   }
 
   private async _resolveExtends(

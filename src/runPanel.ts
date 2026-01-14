@@ -424,10 +424,11 @@ export class RunPanel {
     }
 
     const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "all";
-    const safeVersion =
+    const safeRelease =
       runnerVersion === "latest" || runnerVersion === "beta" || isValidSemver(runnerVersion)
         ? runnerVersion
         : "latest";
+    const runnerPackageVersion = "latest";
 
     const runId = createRunId();
     const runFolderName = `${formatRunFolderTimestamp(new Date())}_${safeFlavor}`;
@@ -445,11 +446,13 @@ export class RunPanel {
     const npxCmd = "npx";
     const args = [
       "--yes",
-      `mega-linter-runner@${safeVersion}`,
+      `mega-linter-runner@${runnerPackageVersion}`,
       "--flavor",
       safeFlavor,
       "--container-engine",
       engine,
+      "--release",
+      safeRelease,
       "--path",
       workspaceRoot,
       "-e",
@@ -464,7 +467,9 @@ export class RunPanel {
 
     const commandLine = formatCommandLine(npxCmd, redactArgs(args));
 
-    logMegaLinter(`Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} version=${safeVersion}`);
+    logMegaLinter(
+      `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} release=${safeRelease}`,
+    );
     logMegaLinter(`Run ${runId}: report folder ${reportFolderPath}`);
     logMegaLinter(`Run ${runId}: command ${commandLine}`);
 
