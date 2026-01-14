@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import '@vscode/codicons/dist/codicon.css';
 import './styles.css';
 
@@ -10,6 +10,7 @@ import type {
 } from './types';
 
 type Engine = 'docker' | 'podman';
+type SortColumn = 'status' | 'descriptor' | 'linter' | 'files' | 'errors' | 'warnings' | 'time';
 
 type EnginesState = {
   docker: { available: boolean; running: boolean; details?: string };
@@ -42,6 +43,10 @@ export const RunApp: React.FC = () => {
   const [hasInitialResults, setHasInitialResults] = useState<boolean>(false);
   const [error, setError] = useState<{ message: string; commandLine?: string } | null>(null);
   const [initStage, setInitStage] = useState<'runner' | 'pull' | 'linters' | null>(null);
+  const [sort, setSort] = useState<{ column: SortColumn; direction: 'asc' | 'desc' }>({
+    column: 'linter',
+    direction: 'asc'
+  });
 
   const STATUS_LABELS: Record<RunResult['status'], string> = {
     SUCCESS: 'Success',
@@ -59,6 +64,15 @@ export const RunApp: React.FC = () => {
     RUNNING: 'codicon-loading codicon-modifier-spin',
     PENDING: 'codicon-clock',
     UNKNOWN: 'codicon-question'
+  };
+
+  const STATUS_ORDER: Record<RunResult['status'], number> = {
+    ERROR: 0,
+    WARNING: 1,
+    RUNNING: 2,
+    PENDING: 3,
+    SUCCESS: 4,
+    UNKNOWN: 5
   };
 
   const engineHelp = useMemo(() => {
@@ -198,6 +212,98 @@ export const RunApp: React.FC = () => {
 
   const onViewLogs = () => {
     postMessage({ type: 'showOutput' });
+  };
+
+  const toggleSort = (column: SortColumn) => {
+    setSort((current) => {
+      if (current.column === column) {
+        return { column, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+      }
+
+      const defaultDirection: 'asc' | 'desc' = ['files', 'errors', 'warnings', 'time'].includes(column)
+        ? 'desc'
+        : 'asc';
+
+      return { column, direction: defaultDirection };
+    });
+  };
+
+  const sortedResults = useMemo(() => {
+    const compareText = (a?: string, b?: string) => {
+      const result = (a ?? '').localeCompare(b ?? '');
+      return sort.direction === 'asc' ? result : -result;
+    };
+
+    const compareNumber = (a?: number, b?: number) => {
+      const aNum = typeof a === 'number' ? a : null;
+      const bNum = typeof b === 'number' ? b : null;
+
+      const aMissing = aNum === null;
+      const bMissing = bNum === null;
+
+      if (aMissing && bMissing) {
+        return 0;
+      }
+      if (aMissing) {
+        return 1; // Always push undefined values last.
+      }
+      if (bMissing) {
+        return -1;
+      }
+
+      const diff = aNum - bNum;
+      return sort.direction === 'asc' ? diff : -diff;
+    };
+
+    const comparator = (a: RunResult, b: RunResult) => {
+      let result = 0;
+
+      switch (sort.column) {
+        case 'status':
+          result = compareNumber(STATUS_ORDER[a.status], STATUS_ORDER[b.status]);
+          break;
+        case 'descriptor':
+          result = compareText(a.descriptor, b.descriptor);
+          break;
+        case 'linter':
+          result = compareText(a.key, b.key);
+          break;
+        case 'files':
+          result = compareNumber(a.files, b.files);
+          break;
+        case 'errors':
+          result = compareNumber(a.errors, b.errors);
+          break;
+        case 'warnings':
+          result = compareNumber(a.warnings, b.warnings);
+          break;
+        case 'time':
+          result = compareNumber(a.elapsedSeconds, b.elapsedSeconds);
+          break;
+      }
+
+      if (result === 0) {
+        result = (a.key ?? '').localeCompare(b.key ?? '');
+      }
+
+      return result;
+    };
+
+    return results.slice().sort(comparator);
+  }, [results, sort]);
+
+  const sortIcon = (column: SortColumn) => {
+    if (sort.column !== column) {
+      return 'codicon-arrow-swap';
+    }
+    return sort.direction === 'asc' ? 'codicon-arrow-up' : 'codicon-arrow-down';
+  };
+
+  const ariaSort = (column: SortColumn): 'ascending' | 'descending' | 'none' => {
+    if (sort.column !== column) {
+      return 'none';
+    }
+    return sort.direction === 'asc' ? 'ascending' : 'descending';
   };
 
   return (
@@ -435,17 +541,87 @@ export const RunApp: React.FC = () => {
             <table className="run__table">
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>Descriptor</th>
-                  <th>Linter</th>
-                  <th>Files</th>
-                  <th>Errors</th>
-                  <th>Warnings</th>
-                  <th>Time</th>
+                  <th aria-sort={ariaSort('status')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'status' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('status')}
+                      aria-label={`Sort by status${sort.column === 'status' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Status</span>
+                      <span className={`codicon ${sortIcon('status')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('descriptor')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'descriptor' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('descriptor')}
+                      aria-label={`Sort by descriptor${sort.column === 'descriptor' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Descriptor</span>
+                      <span className={`codicon ${sortIcon('descriptor')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('linter')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'linter' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('linter')}
+                      aria-label={`Sort by linter${sort.column === 'linter' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Linter</span>
+                      <span className={`codicon ${sortIcon('linter')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('files')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'files' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('files')}
+                      aria-label={`Sort by files${sort.column === 'files' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Files</span>
+                      <span className={`codicon ${sortIcon('files')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('errors')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'errors' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('errors')}
+                      aria-label={`Sort by errors${sort.column === 'errors' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Errors</span>
+                      <span className={`codicon ${sortIcon('errors')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('warnings')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'warnings' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('warnings')}
+                      aria-label={`Sort by warnings${sort.column === 'warnings' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Warnings</span>
+                      <span className={`codicon ${sortIcon('warnings')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
+                  <th aria-sort={ariaSort('time')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'time' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('time')}
+                      aria-label={`Sort by time${sort.column === 'time' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Time</span>
+                      <span className={`codicon ${sortIcon('time')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => (
+                {sortedResults.map((r) => (
                   <tr
                     key={r.key}
                     className={`run__row run__row--${r.status.toLowerCase()}`}

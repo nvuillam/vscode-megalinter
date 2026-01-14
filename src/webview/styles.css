@@ -2304,6 +2304,39 @@ img.linter-card__icon {
   color: var(--vscode-descriptionForeground);
 }
 
+.run__sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.run__sort-button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.run__sort-button--active {
+  color: var(--vscode-foreground);
+}
+
+.run__sort-icon {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.run__sort-button--active .run__sort-icon {
+  color: var(--vscode-foreground);
+}
+
 .run__row {
   cursor: pointer;
 }
