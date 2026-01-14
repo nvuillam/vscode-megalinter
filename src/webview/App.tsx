@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import '@vscode/codicons/dist/codicon.css';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import bundledSchema from '../descriptors/schemas/megalinter-configuration.jsonschema.json';
@@ -459,14 +460,13 @@ export const App: React.FC = () => {
       try {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-        const response = await fetch(remoteSchemaUrl, { signal: controller.signal });
+        const response = await axios.get<RJSFSchema>(remoteSchemaUrl, {
+          signal: controller.signal,
+          timeout: 8000,
+        });
         window.clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch schema (HTTP ${response.status})`);
-        }
-
-        const schemaData = await response.json();
+        const schemaData = response.data;
         const filtered = filterRemovedLintersFromSchema(schemaData as RJSFSchema);
         setSchema(filtered);
         setGroups(extractGroups(filtered));

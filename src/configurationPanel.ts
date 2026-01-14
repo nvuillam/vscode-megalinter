@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import * as http from "http";
-import * as https from "https";
+import axios from "axios";
 import * as YAML from "yaml";
 import type { NavigationTarget } from "./extension";
 import { CustomFlavorPanel } from "./customFlavorPanel";
@@ -106,6 +105,13 @@ export class ConfigurationPanel {
     string,
     { timestamp: number; parsed: any }
   >();
+
+  private readonly _httpClient = axios.create({
+    headers: { "User-Agent": "vscode-megalinter" },
+    maxRedirects: 5,
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity,
+  });
 
   public static createOrShow(
     extensionUri: vscode.Uri,
@@ -469,23 +475,16 @@ export class ConfigurationPanel {
       "https://api.github.com/repos/oxsecurity/megalinter/contents/megalinter/descriptors";
     const start = Date.now();
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
       logMegaLinter("Config view: fetching descriptor metadata (remote)…");
-      const response = await fetch(apiUrl, {
+      const response = await this._httpClient.get(apiUrl, {
         headers: {
           Accept: "application/vnd.github+json",
           "User-Agent": "vscode-megalinter-extension",
         },
-        signal: controller.signal,
+        timeout: 8000,
       });
-      clearTimeout(timeout);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const files = (await response.json()) as Array<{
+      const files = response.data as Array<{
         name: string;
         download_url?: string;
         type?: string;
@@ -508,19 +507,15 @@ export class ConfigurationPanel {
           continue;
         }
         try {
-          const fileController = new AbortController();
-          const fileTimeout = setTimeout(() => fileController.abort(), 8000);
-          const descriptorResponse = await fetch(file.download_url, {
-            signal: fileController.signal,
-          });
-          clearTimeout(fileTimeout);
+          const descriptorResponse = await this._httpClient.get<string>(
+            file.download_url,
+            {
+              timeout: 8000,
+              responseType: "text",
+            },
+          );
 
-          if (!descriptorResponse.ok) {
-            failCount += 1;
-            continue;
-          }
-
-          const content = await descriptorResponse.text();
+          const content = descriptorResponse.data;
           this._ingestDescriptorContent(file.name, content, metadata);
           okCount += 1;
         } catch (fileErr) {
@@ -638,16 +633,10 @@ export class ConfigurationPanel {
       try {
         const t0 = Date.now();
         const content = fs.readFileSync(this._configPath, "utf8");
-        logMegaLinter(
-          `Config view: read YAML in ${Date.now() - t0}ms | bytes=${Buffer.byteLength(content, "utf8")}`,
-        );
 
         const t1 = Date.now();
         const doc = YAML.parseDocument(content);
         localConfig = (doc.toJS() as any) || {};
-        logMegaLinter(
-          `Config view: parse YAML in ${Date.now() - t1}ms | localKeys=${Object.keys(localConfig || {}).length}`,
-        );
 
         const t2 = Date.now();
         const resolved = await this._resolveExtends(localConfig);
@@ -778,7 +767,7 @@ export class ConfigurationPanel {
     }
 
     const t0 = Date.now();
-    const text = await this._fetchText(url, 10_000, 1024 * 1024);
+    const text = await this._fetchText(url, 10_000);
     logMegaLinter(
       `Config view: EXTENDS fetched in ${Date.now() - t0}ms | ${url} | bytes=${Buffer.byteLength(
         text,
@@ -793,76 +782,32 @@ export class ConfigurationPanel {
   private _fetchText(
     url: string,
     timeoutMs: number,
-    maxBytes: number,
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const doRequest = (currentUrl: string, redirectsLeft: number) => {
-        const isHttps = currentUrl.startsWith("https://");
-        const transport = isHttps ? https : http;
-
-        const req = transport.get(
-          currentUrl,
-          {
-            headers: {
-              "User-Agent": "vscode-megalinter",
-              Accept: "text/yaml, text/plain, */*",
-            },
-          },
-          (res) => {
-            const status = res.statusCode || 0;
-            const location =
-              typeof res.headers.location === "string"
-                ? res.headers.location
-                : undefined;
-
-            if (
-              status >= 300 &&
-              status < 400 &&
-              location &&
-              redirectsLeft > 0
-            ) {
-              res.resume();
-              const nextUrl = location.startsWith("http")
-                ? location
-                : new URL(location, currentUrl).toString();
-              doRequest(nextUrl, redirectsLeft - 1);
-              return;
-            }
-
-            if (status !== 200) {
-              res.resume();
-              reject(
-                new Error(`Failed to fetch ${currentUrl} (HTTP ${status})`),
-              );
-              return;
-            }
-
-            const chunks: Buffer[] = [];
-            let total = 0;
-            res.on("data", (chunk: Buffer) => {
-              total += chunk.length;
-              if (total > maxBytes) {
-                req.destroy(
-                  new Error(`Remote config too large (> ${maxBytes} bytes)`),
-                );
-                return;
-              }
-              chunks.push(chunk);
-            });
-            res.on("end", () => {
-              resolve(Buffer.concat(chunks).toString("utf8"));
-            });
-          },
-        );
-
-        req.on("error", reject);
-        req.setTimeout(timeoutMs, () => {
-          req.destroy(new Error(`Timeout fetching ${currentUrl}`));
-        });
-      };
-
-      doRequest(url, 5);
-    });
+    return this._httpClient
+      .get<string>(url, {
+        timeout: timeoutMs,
+        responseType: "text",
+        maxRedirects: 5,
+        headers: {
+          Accept: "text/yaml, text/plain, */*",
+        },
+        validateStatus: (status) => status >= 200 && status < 300,
+      })
+      .then((response) => {
+        return response.data ?? "";
+      })
+      .catch((err: unknown) => {
+        if (axios.isAxiosError(err)) {
+          if (err.code === "ECONNABORTED") {
+            throw new Error(`Timeout fetching ${url}`);
+          }
+          const status = err.response?.status;
+          if (status) {
+            throw new Error(`Failed to fetch ${url} (HTTP ${status})`);
+          }
+        }
+        throw err instanceof Error ? err : new Error(String(err));
+      });
   }
 
   private async _loadExtendsItem(
@@ -1183,25 +1128,21 @@ export class ConfigurationPanel {
     configFileRelPosix: string,
   ): Promise<LinterConfigFileInfoMessage["defaultTemplate"]> {
     const normalized = configFileRelPosix.replace(/^\/+/, "");
-    const maxBytes = 512 * 1024;
 
     // Try remote first
     try {
       const url = `https://raw.githubusercontent.com/oxsecurity/megalinter/main/TEMPLATES/${normalized}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (response.ok) {
-        const text = await response.text();
-        const truncated = Buffer.byteLength(text, "utf8") > maxBytes;
-        return {
-          exists: true,
-          source: "remote",
-          content: truncated ? text.slice(0, maxBytes) : text,
-          truncated,
-        };
-      }
+      const response = await this._httpClient.get<string>(url, {
+        timeout: 6000,
+        responseType: "text",
+      });
+      const text = response.data ?? "";
+      return {
+        exists: true,
+        source: "remote",
+        content: text,
+        truncated: false,
+      };
     } catch {
       // ignore
     }
@@ -1218,7 +1159,7 @@ export class ConfigurationPanel {
       if (fs.existsSync(localPath) && fs.lstatSync(localPath).isFile()) {
         const { content, truncated } = this._readTextFileSafe(
           localPath,
-          maxBytes,
+          undefined,
         );
         return { exists: true, source: "local", content, truncated };
       }

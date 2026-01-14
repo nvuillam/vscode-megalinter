@@ -98,6 +98,7 @@
     "package": "vsce package"
   },
   "devDependencies": {
+    "@types/koa": "^2.15.0",
     "@types/node": "^18.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -119,7 +120,9 @@
     "@rjsf/validator-ajv8": "^5.13.0",
     "@types/yaml": "^1.9.6",
     "@vscode/codicons": "^0.0.36",
+    "axios": "^1.13.2",
     "js-yaml": "^4.1.0",
+    "koa": "^3.1.1",
     "marked": "^11.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

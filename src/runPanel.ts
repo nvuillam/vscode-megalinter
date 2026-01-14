@@ -2,8 +2,10 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import * as https from "https";
+import axios from "axios";
+import Koa from "koa";
 import * as http from "http";
+import * as net from "net";
 import { spawn } from "child_process";
 import {
   appendMegaLinterOutput,
@@ -602,24 +604,55 @@ export class RunPanel {
 
     const resultsByKey = new Map<string, RunResult>();
 
-    const server = http.createServer((req, res) => {
-      void this._handleWebhookRequest(
-        {
-          runId: params.runId,
-          reportFolderPath: params.reportFolderPath,
-          token,
-          hookPath,
-          resultsByKey,
-        },
-        req,
-        res,
-      );
+    const app = new Koa();
+
+    app.use(async (ctx) => {
+      const method = (ctx.method || "").toUpperCase();
+      const reqPath = ctx.path;
+
+      if (method !== "POST" || reqPath !== hookPath) {
+        ctx.status = 404;
+        ctx.body = { ok: false };
+        return;
+      }
+
+      const remoteAddress = ctx.req.socket.remoteAddress;
+      if (!isLocalAddress(remoteAddress)) {
+        ctx.status = 403;
+        ctx.body = { ok: false };
+        return;
+      }
+
+      const auth = ctx.req.headers["authorization"];
+      if (auth !== `Bearer ${token}`) {
+        ctx.status = 401;
+        ctx.body = { ok: false };
+        return;
+      }
+
+      try {
+        const raw = await readRequestBody(ctx.req, 2_000_000);
+        const payload = JSON.parse(raw) as any;
+
+        this._ingestWebhookPayload(
+          { runId: params.runId, reportFolderPath: params.reportFolderPath },
+          payload,
+        );
+
+        ctx.status = 200;
+        ctx.body = { ok: true };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        ctx.status = 500;
+        ctx.body = { ok: false, error: msg };
+      }
     });
+
+    const server = app.listen(0, "0.0.0.0");
 
     const { port } = await new Promise<{ port: number }>((resolve, reject) => {
       server.on("error", reject);
-      // Bind to 0.0.0.0 so container-to-host forwarding can reach us.
-      server.listen(0, "0.0.0.0", () => {
+      server.on("listening", () => {
         const addr = server.address();
         if (!addr || typeof addr === "string") {
           reject(new Error("Unable to determine webhook server port"));
@@ -701,52 +734,6 @@ export class RunPanel {
         exitCode: null,
       });
     }, 200);
-  }
-
-  private async _handleWebhookRequest(
-    ctx: {
-      runId: string;
-      reportFolderPath: string;
-      token: string;
-      hookPath: string;
-      resultsByKey: Map<string, RunResult>;
-    },
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ) {
-    try {
-      const method = (req.method || "").toUpperCase();
-      const url = new URL(req.url || "", "http://localhost");
-
-      if (method !== "POST" || url.pathname !== ctx.hookPath) {
-        res.statusCode = 404;
-        res.setHeader("content-type", "application/json");
-        res.end(JSON.stringify({ ok: false }));
-        return;
-      }
-
-      const auth = req.headers["authorization"];
-      if (auth !== `Bearer ${ctx.token}`) {
-        res.statusCode = 401;
-        res.setHeader("content-type", "application/json");
-        res.end(JSON.stringify({ ok: false }));
-        return;
-      }
-
-      const raw = await readRequestBody(req, 2_000_000);
-      const payload = JSON.parse(raw) as any;
-
-      this._ingestWebhookPayload({ runId: ctx.runId, reportFolderPath: ctx.reportFolderPath }, payload);
-
-      res.statusCode = 200;
-      res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ ok: true }));
-    } catch (err) {
-      res.statusCode = 500;
-      res.setHeader("content-type", "application/json");
-      const msg = err instanceof Error ? err.message : String(err);
-      res.end(JSON.stringify({ ok: false, error: msg }));
-    }
   }
 
   private _ingestWebhookPayload(
@@ -862,6 +849,45 @@ export class RunPanel {
     const doc = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(doc, { preview: true });
   }
+}
+
+function isLocalAddress(remoteAddress: string | undefined): boolean {
+  if (!remoteAddress) {
+    return false;
+  }
+
+  const normalized = remoteAddress.startsWith("::ffff:")
+    ? remoteAddress.replace("::ffff:", "")
+    : remoteAddress;
+
+  if (normalized === "127.0.0.1" || normalized === "::1") {
+    return true;
+  }
+
+  if (net.isIPv4(normalized)) {
+    if (normalized.startsWith("10.")) {
+      return true;
+    }
+    const octets = normalized.split(".").map((o) => Number(o));
+    if (octets.length === 4) {
+      const [a, b] = octets;
+      if (a === 172 && b >= 16 && b <= 31) {
+        return true;
+      }
+      if (a === 192 && b === 168) {
+        return true;
+      }
+      if (a === 169 && b === 254) {
+        return true;
+      }
+    }
+  }
+
+  if (net.isIPv6(normalized) && normalized.startsWith("fe80")) {
+    return true;
+  }
+
+  return false;
 }
 
 function createRunId(): string {
@@ -1042,45 +1068,25 @@ function fetchMegalinterGithubReleaseTags(): Promise<string[]> {
   // If unreachable, caller falls back to "latest".
   const url = "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=10";
 
-  return new Promise((resolve, reject) => {
-    const req = https.get(
-      url,
-      {
-        headers: {
-          "User-Agent": "vscode-megalinter",
-          Accept: "application/vnd.github+json",
-        },
+  return axios
+    .get(url, {
+      headers: {
+        "User-Agent": "vscode-megalinter",
+        Accept: "application/vnd.github+json",
       },
-      (res) => {
-        if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-          reject(new Error(`Failed to fetch ${url}: HTTP ${res.statusCode}`));
-          res.resume();
-          return;
-        }
+      timeout: 8000,
+    })
+    .then((response) => {
+      const json = response.data as any;
+      if (!Array.isArray(json)) {
+        return [];
+      }
 
-        const chunks: Buffer[] = [];
-        res.on("data", (d) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
-        res.on("end", () => {
-          try {
-            const text = Buffer.concat(chunks).toString("utf8");
-            const json = JSON.parse(text) as any;
-            if (!Array.isArray(json)) {
-              resolve([]);
-              return;
-            }
-            const tags = json
-              .map((r: any) => (typeof r?.tag_name === "string" ? r.tag_name : null))
-              .filter((t: any): t is string => typeof t === "string");
-            resolve(tags);
-          } catch (err) {
-            reject(err);
-          }
-        });
-      },
-    );
-
-    req.on("error", reject);
-  });
+      const tags = json
+        .map((r: any) => (typeof r?.tag_name === "string" ? r.tag_name : null))
+        .filter((t: any): t is string => typeof t === "string");
+      return tags;
+    });
 }
 
 function normalizeReleaseTag(tag: string): string | null {
