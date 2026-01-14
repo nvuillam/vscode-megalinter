@@ -733,7 +733,7 @@ export const RunApp: React.FC = () => {
                         }}
                         title="Open linter in MegaLinter configuration"
                       >
-                        {r.key}
+                        {r.linter || r.key}
                       </button>
                     </td>
                     <td>{typeof r.files === 'number' ? r.files : ''}</td>
