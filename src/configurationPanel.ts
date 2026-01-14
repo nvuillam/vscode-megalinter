@@ -106,6 +106,8 @@ export class ConfigurationPanel {
     { timestamp: number; parsed: any }
   >();
 
+  private readonly _extendsWarningShown = new Set<string>();
+
   private readonly _httpClient = axios.create({
     headers: { "User-Agent": "vscode-megalinter" },
     maxRedirects: 5,
@@ -831,6 +833,16 @@ export class ConfigurationPanel {
     return { sourceId: trimmed, data };
   }
 
+  private _warnExtendsFetchFailure(url: string, message: string) {
+    if (this._extendsWarningShown.has(url)) {
+      return;
+    }
+    this._extendsWarningShown.add(url);
+    vscode.window.showWarningMessage(
+      `MegaLinter: failed to fetch EXTENDS entry ${url} (${message})`,
+    );
+  }
+
   private async _resolveExtends(
     localConfigInput: any,
   ): Promise<ExtendsResolution> {
@@ -921,6 +933,9 @@ export class ConfigurationPanel {
           const msg = err instanceof Error ? err.message : String(err);
           extendsErrors.push(msg);
           logMegaLinter(`Config view: EXTENDS error | ${item} | ${msg}`);
+          if (/^https?:\/\//i.test(item)) {
+            this._warnExtendsFetchFailure(item, msg);
+          }
         }
       }
     };
