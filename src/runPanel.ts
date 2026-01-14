@@ -310,12 +310,25 @@ export class RunPanel {
     const parsed = JSON.parse(raw) as any;
     const enumValues = parsed?.definitions?.enum_flavors?.enum;
 
-    if (!Array.isArray(enumValues)) {
-      this._flavorEnumCache = ["all"];
-      return this._flavorEnumCache;
+    const uniqueFlavors: string[] = [];
+    if (Array.isArray(enumValues)) {
+      for (const v of enumValues) {
+        if (typeof v !== "string") {
+          continue;
+        }
+        if (v === "all" || v === "all_flavors") {
+          continue;
+        }
+        if (uniqueFlavors.includes(v)) {
+          continue;
+        }
+        uniqueFlavors.push(v);
+      }
     }
 
-    this._flavorEnumCache = enumValues.filter((v: unknown) => typeof v === "string");
+    const withFull = ["full", ...uniqueFlavors.filter((v) => v !== "full")];
+
+    this._flavorEnumCache = withFull.length > 0 ? withFull : ["full"];
     return this._flavorEnumCache;
   }
 
@@ -440,7 +453,7 @@ export class RunPanel {
       );
     }
 
-    const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "all";
+    const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "full";
     const safeRelease =
       runnerVersion === "latest" || runnerVersion === "beta" || isValidSemver(runnerVersion)
         ? runnerVersion
@@ -461,11 +474,12 @@ export class RunPanel {
     // On Windows, spawning a .cmd directly with shell:false frequently fails with spawn EINVAL.
     // Use the shell so VS Code/Node can resolve npx.cmd correctly.
     const npxCmd = "npx";
+    const flavorArgs = safeFlavor === "full" ? [] : ["--flavor", safeFlavor];
+
     const args = [
       "--yes",
       `mega-linter-runner@${runnerPackageVersion}`,
-      "--flavor",
-      safeFlavor,
+      ...flavorArgs,
       "--container-engine",
       engine,
       "--release",

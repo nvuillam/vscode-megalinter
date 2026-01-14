@@ -35,7 +35,7 @@ export const RunApp: React.FC = () => {
   const [latestRunnerVersion, setLatestRunnerVersion] = useState<string>('latest');
   const [engines, setEngines] = useState<EnginesState>(DEFAULT_ENGINES);
   const [engine, setEngine] = useState<Engine>('docker');
-  const [flavor, setFlavor] = useState<string>('all');
+  const [flavor, setFlavor] = useState<string>('full');
   const [runnerVersion, setRunnerVersion] = useState<string>('latest');
 
   const [runId, setRunId] = useState<string | null>(null);
@@ -147,10 +147,23 @@ export const RunApp: React.FC = () => {
         case 'runContext':
           setIsLoadingContext(false);
           setWorkspaceRoot(message.workspaceRoot);
-          setFlavors(message.flavors || []);
+          const incomingFlavors = message.flavors || [];
+          setFlavors(incomingFlavors);
           setRunnerVersions(message.runnerVersions || []);
           setLatestRunnerVersion(message.latestRunnerVersion || 'latest');
           setEngines(message.engines);
+          setFlavor((current) => {
+            if (incomingFlavors.length === 0) {
+              return 'full';
+            }
+            if (incomingFlavors.includes(current)) {
+              return current;
+            }
+            if (incomingFlavors.includes('full')) {
+              return 'full';
+            }
+            return incomingFlavors[0];
+          });
           if (message.defaultEngine) {
             setEngine(message.defaultEngine);
           }
@@ -474,7 +487,7 @@ export const RunApp: React.FC = () => {
               {isLoadingContext ? (
                 <option value={flavor}>Loading…</option>
               ) : (
-                (flavors.length ? flavors : ['all']).map((f) => (
+                (flavors.length ? flavors : ['full']).map((f) => (
                   <option key={f} value={f}>
                     {f}
                   </option>
