@@ -374,7 +374,7 @@ export class RunPanel {
     }
 
     let versions: string[] = [];
-    let latest: string | null = "latest";
+    let latest: string | null = null;
 
     const fetchStart = Date.now();
     try {
@@ -386,22 +386,25 @@ export class RunPanel {
       const normalized = tags
         .map(normalizeReleaseTag)
         .filter((v): v is string => !!v)
-        .filter((v) => isAtLeastSemver(v, "9.0.0"))
+        .filter((v) => isAtLeastSemver(v, "9.4.0"))
         .sort(compareSemverDesc)
         .slice(0, 10);
 
-      versions = ["latest", "beta", ...normalized];
+      const hasEligible = normalized.length > 0;
+      latest = hasEligible ? "latest" : null;
+
+      versions = ["beta", ...(hasEligible ? ["latest"] : []), ...normalized];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logMegaLinter(
         `Run view: GitHub releases fetch failed in ${Date.now() - fetchStart}ms | ${msg}`,
       );
       // If GitHub is unreachable (offline, rate limited, etc.), show only channels.
-      versions = ["latest", "beta"];
+      versions = ["beta"];
     }
 
     if (versions.length === 0) {
-      versions = ["latest", "beta"];
+      versions = ["beta"];
     }
 
     versions = Array.from(new Set(versions));
