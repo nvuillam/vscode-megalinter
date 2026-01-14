@@ -65,7 +65,15 @@ export class RunPanel {
         path: string;
         resultsByKey: Map<string, RunResult>;
         flushTimer: NodeJS.Timeout | null;
-        initStage: "runner" | "pull" | "linters" | null;
+        initStage:
+          | "runner"
+          | "pull"
+          | "startImage"
+          | "analyzeConfig"
+          | "preCommands"
+          | "activation"
+          | "collectFiles"
+          | null;
       }
     | undefined;
 
@@ -757,7 +765,7 @@ export class RunPanel {
       for (const l of payload.linters) {
         this._upsertLinterFromWebhook(ctx, l, "PENDING");
       }
-      this._setInitStage("linters", ctx.runId);
+      // No init stage change here; we surface detailed stages via log parsing.
       this._scheduleWebhookFlush(ctx.runId);
       return;
     }
@@ -866,8 +874,28 @@ export class RunPanel {
       return;
     }
 
+    if (lowered.includes("docker run")) {
+      this._setInitStage("startImage", runId);
+      return;
+    }
+
     if (lowered.includes("[megalinter init] one-shot run")) {
-      this._setInitStage("linters", runId);
+      this._setInitStage("analyzeConfig", runId);
+      return;
+    }
+
+    if (lowered.includes("[pre] run")) {
+      this._setInitStage("preCommands", runId);
+      return;
+    }
+
+    if (lowered.includes("[activation]")) {
+      this._setInitStage("activation", runId);
+      return;
+    }
+
+    if (lowered.includes("megalinter now collects the files")) {
+      this._setInitStage("collectFiles", runId);
       return;
     }
 
@@ -876,13 +904,31 @@ export class RunPanel {
     }
   }
 
-  private _setInitStage(stage: "runner" | "pull" | "linters", runId: string) {
+  private _setInitStage(
+    stage:
+      | "runner"
+      | "pull"
+      | "startImage"
+      | "analyzeConfig"
+      | "preCommands"
+      | "activation"
+      | "collectFiles",
+    runId: string,
+  ) {
     if (!this._webhook || this._webhook.runId !== runId) {
       return;
     }
 
     const current = this._webhook.initStage;
-    const order: Record<typeof stage, number> = { runner: 0, pull: 1, linters: 2 };
+    const order: Record<typeof stage, number> = {
+      runner: 0,
+      pull: 1,
+      startImage: 2,
+      analyzeConfig: 3,
+      preCommands: 4,
+      activation: 5,
+      collectFiles: 6,
+    };
     if (current && order[current] >= order[stage]) {
       return;
     }

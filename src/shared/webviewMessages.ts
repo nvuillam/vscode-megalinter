@@ -125,7 +125,14 @@ export type RunResultsMessage = {
 export type RunInitStatusMessage = {
   type: "runInitStatus";
   runId: string;
-  stage: "runner" | "pull" | "linters";
+  stage:
+    | "runner"
+    | "pull"
+    | "startImage"
+    | "analyzeConfig"
+    | "preCommands"
+    | "activation"
+    | "collectFiles";
 };
 
 export type RunErrorMessage = { type: "runError"; message: string; commandLine?: string };

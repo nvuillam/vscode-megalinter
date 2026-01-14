@@ -42,7 +42,16 @@ export const RunApp: React.FC = () => {
   const [results, setResults] = useState<RunResult[]>([]);
   const [hasInitialResults, setHasInitialResults] = useState<boolean>(false);
   const [error, setError] = useState<{ message: string; commandLine?: string } | null>(null);
-  const [initStage, setInitStage] = useState<'runner' | 'pull' | 'linters' | null>(null);
+  const [initStage, setInitStage] = useState<
+    | 'runner'
+    | 'pull'
+    | 'startImage'
+    | 'analyzeConfig'
+    | 'preCommands'
+    | 'activation'
+    | 'collectFiles'
+    | null
+  >(null);
   const [sort, setSort] = useState<{ column: SortColumn; direction: 'asc' | 'desc' }>({
     column: 'linter',
     direction: 'asc'
@@ -529,9 +538,17 @@ export const RunApp: React.FC = () => {
             <span>
               {initStage === 'pull'
                 ? 'Pulling MegaLinter docker image...'
-                : initStage === 'linters'
-                  ? 'Identifying linters to run...'
-                  : 'Initializing mega-linter-runner...'}
+                : initStage === 'startImage'
+                  ? 'Starting MegaLinter docker image...'
+                  : initStage === 'analyzeConfig'
+                    ? 'Analyzing MegaLinter configuration...'
+                    : initStage === 'preCommands'
+                      ? 'Running pre-commands...'
+                      : initStage === 'activation'
+                        ? 'Activating linters...'
+                        : initStage === 'collectFiles'
+                          ? 'Collecting files to analyze and matching them with available linters...'
+                          : 'Initializing mega-linter-runner...'}
             </span>
           </div>
         ) : results.length === 0 ? (
