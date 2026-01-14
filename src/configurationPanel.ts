@@ -662,7 +662,11 @@ export class ConfigurationPanel {
       }
 
       const current = target[key];
-      if (Array.isArray(current) && Array.isArray(value) && appendKeys.has(key)) {
+      if (
+        Array.isArray(current) &&
+        Array.isArray(value) &&
+        appendKeys.has(key)
+      ) {
         target[key] = [...current, ...value];
         if (sourceId) {
           keySources[key] = sourceId;
@@ -730,7 +734,9 @@ export class ConfigurationPanel {
 
             if (status !== 200) {
               res.resume();
-              reject(new Error(`Failed to fetch ${currentUrl} (HTTP ${status})`));
+              reject(
+                new Error(`Failed to fetch ${currentUrl} (HTTP ${status})`),
+              );
               return;
             }
 
@@ -739,7 +745,9 @@ export class ConfigurationPanel {
             res.on("data", (chunk: Buffer) => {
               total += chunk.length;
               if (total > maxBytes) {
-                req.destroy(new Error(`Remote config too large (> ${maxBytes} bytes)`));
+                req.destroy(
+                  new Error(`Remote config too large (> ${maxBytes} bytes)`),
+                );
                 return;
               }
               chunks.push(chunk);
@@ -781,10 +789,13 @@ export class ConfigurationPanel {
     return { sourceId: trimmed, data };
   }
 
-  private async _resolveExtends(localConfigInput: any): Promise<ExtendsResolution> {
-    const localConfig = (localConfigInput && typeof localConfigInput === "object")
-      ? localConfigInput
-      : {};
+  private async _resolveExtends(
+    localConfigInput: any,
+  ): Promise<ExtendsResolution> {
+    const localConfig =
+      localConfigInput && typeof localConfigInput === "object"
+        ? localConfigInput
+        : {};
 
     const extendsItems = this._normalizeExtendsValue(localConfig?.EXTENDS);
     const extendsErrors: string[] = [];
@@ -828,9 +839,8 @@ export class ConfigurationPanel {
 
         try {
           const loaded = await this._loadExtendsItem(item);
-          const extendsData = (loaded.data && typeof loaded.data === "object")
-            ? loaded.data
-            : {};
+          const extendsData =
+            loaded.data && typeof loaded.data === "object" ? loaded.data : {};
 
           this._mergeDicts(
             inheritedConfig,
@@ -841,7 +851,11 @@ export class ConfigurationPanel {
             { skipKeys: skipExtendsKey },
           );
 
-          if (extendsData && typeof extendsData === "object" && extendsData.EXTENDS) {
+          if (
+            extendsData &&
+            typeof extendsData === "object" &&
+            extendsData.EXTENDS
+          ) {
             await combineConfig(extendsData, depth + 1);
           }
 
