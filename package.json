@@ -85,6 +85,27 @@
           "when": "resourceFilename == 'megalinter-custom-flavor.yml' || resourceFilename == 'megalinter-custom-flavor.yaml' || resourceFilename == 'mega-linter-flavor.yml' || resourceFilename == 'mega-linter-flavor.yaml'"
         }
       ]
+    },
+    "configuration": {
+      "title": "MegaLinter",
+      "properties": {
+        "megalinter.run.engine": {
+          "type": "string",
+          "enum": ["docker", "podman"],
+          "default": "docker",
+          "description": "Container engine used by the MegaLinter Run view."
+        },
+        "megalinter.run.flavor": {
+          "type": "string",
+          "default": "full",
+          "description": "Default MegaLinter flavor used by the Run view."
+        },
+        "megalinter.run.version": {
+          "type": "string",
+          "default": "latest",
+          "description": "Default MegaLinter runner version used by the Run view."
+        }
+      }
     }
   },
   "scripts": {

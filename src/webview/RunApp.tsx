@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import '@vscode/codicons/dist/codicon.css';
 import './styles.css';
+import oxSecurityIconLight from '../../media/ox-security-light.svg';
+import oxSecurityIconDark from '../../media/ox-security-dark.svg';
 
 import { useVSCodeApi } from './hooks';
 import type {
@@ -147,28 +149,52 @@ export const RunApp: React.FC = () => {
         case 'runContext':
           setIsLoadingContext(false);
           setWorkspaceRoot(message.workspaceRoot);
+          const preferences = message.runPreferences || {};
+
           const incomingFlavors = message.flavors || [];
-          setFlavors(incomingFlavors);
-          setRunnerVersions(message.runnerVersions || []);
+          const flavorsWithPref = preferences.flavor && !incomingFlavors.includes(preferences.flavor)
+            ? [preferences.flavor, ...incomingFlavors]
+            : incomingFlavors;
+          setFlavors(flavorsWithPref);
+
+          const incomingRunnerVersions = message.runnerVersions || [];
+          const runnerVersionsWithPref = preferences.runnerVersion && !incomingRunnerVersions.includes(preferences.runnerVersion)
+            ? [preferences.runnerVersion, ...incomingRunnerVersions]
+            : incomingRunnerVersions;
+          setRunnerVersions(runnerVersionsWithPref);
           setLatestRunnerVersion(message.latestRunnerVersion || 'latest');
           setEngines(message.engines);
           setFlavor((current) => {
-            if (incomingFlavors.length === 0) {
-              return 'full';
+            const list = flavorsWithPref.length ? flavorsWithPref : ['full'];
+            if (preferences.flavor && list.includes(preferences.flavor)) {
+              return preferences.flavor;
             }
-            if (incomingFlavors.includes(current)) {
+            if (list.includes(current)) {
               return current;
             }
-            if (incomingFlavors.includes('full')) {
+            if (list.includes('full')) {
               return 'full';
             }
-            return incomingFlavors[0];
+            return list[0];
           });
-          if (message.defaultEngine) {
+          setRunnerVersion((current) => {
+            const list = runnerVersionsWithPref;
+            if (preferences.runnerVersion && (list.length === 0 || list.includes(preferences.runnerVersion))) {
+              return preferences.runnerVersion;
+            }
+            if (list.includes(current)) {
+              return current;
+            }
+            if (message.latestRunnerVersion && list.includes(message.latestRunnerVersion)) {
+              return message.latestRunnerVersion;
+            }
+            return list[0] || current;
+          });
+          const preferredEngine = preferences.engine;
+          if (preferredEngine && message.engines[preferredEngine]?.available) {
+            setEngine(preferredEngine as Engine);
+          } else if (message.defaultEngine) {
             setEngine(message.defaultEngine);
-          }
-          if (message.latestRunnerVersion) {
-            setRunnerVersion(message.latestRunnerVersion);
           }
           break;
         case 'runStatus':
@@ -379,18 +405,21 @@ export const RunApp: React.FC = () => {
         <div>
           <h1 className="run__title">Run MegaLinter</h1>
           <div className="run__subtitle">
-            Run <span className="run__mono">mega-linter-runner</span> via <span className="run__mono">npx</span> and view live logs + per-linter results.
+            Runs inside Docker/Podman so local execution is slower; MegaLinter is best for CI/CD, and for local edits prefer the individual linter VS Code extensions.
           </div>
         </div>
         <div className="run__header-actions">
-          <button
-            type="button"
-            className="pill-button pill-button--ghost"
-            onClick={() => postMessage({ type: 'openExternal', url: 'https://www.npmjs.com/package/mega-linter-runner' })}
+          <a
+            className="run__ox-link"
+            href="https://www.ox.security/?ref=megalinter-vscode-run"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open OX Security website"
           >
-            <span className="codicon codicon-link-external pill-button__icon" aria-hidden="true" />
-            Runner docs
-          </button>
+            <img className="run__ox-logo run__ox-logo--light" src={oxSecurityIconLight} alt="OX Security" />
+            <img className="run__ox-logo run__ox-logo--dark" src={oxSecurityIconDark} alt="OX Security" />
+            <span className="run__ox-caption">Powered by OX Security</span>
+          </a>
         </div>
       </div>
 
@@ -458,7 +487,11 @@ export const RunApp: React.FC = () => {
             <select
               className="run__select"
               value={engine}
-              onChange={(e) => setEngine(e.target.value as Engine)}
+              onChange={(e) => {
+                const next = e.target.value as Engine;
+                setEngine(next);
+                postMessage({ type: 'updateRunSetting', key: 'engine', value: next });
+              }}
               disabled={runStatus === 'running' || isLoadingContext}
             >
               {isLoadingContext ? (
@@ -481,7 +514,11 @@ export const RunApp: React.FC = () => {
             <select
               className="run__select"
               value={flavor}
-              onChange={(e) => setFlavor(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFlavor(next);
+                postMessage({ type: 'updateRunSetting', key: 'flavor', value: next });
+              }}
               disabled={runStatus === 'running' || isLoadingContext}
             >
               {isLoadingContext ? (
@@ -501,7 +538,11 @@ export const RunApp: React.FC = () => {
             <select
               className="run__select"
               value={runnerVersion}
-              onChange={(e) => setRunnerVersion(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setRunnerVersion(next);
+                postMessage({ type: 'updateRunSetting', key: 'version', value: next });
+              }}
               disabled={runStatus === 'running' || isLoadingContext}
             >
               {isLoadingContext ? (

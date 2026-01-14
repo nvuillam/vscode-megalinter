@@ -24,6 +24,7 @@ import type {
   RunPanelOutboundMessage,
   RunResult,
   ConfigNavigationTarget,
+  RunPreferences,
 } from "./shared/webviewMessages";
 import type { NavigationTarget } from "./extension";
 
@@ -135,6 +136,9 @@ export class RunPanel {
             case "cancelRun":
               await this._cancelRun();
               break;
+            case "updateRunSetting":
+              await this._updateRunSetting(message.key, message.value);
+              break;
             case "showOutput":
               showMegaLinterOutput(false);
               break;
@@ -201,6 +205,21 @@ export class RunPanel {
     this._panel.webview.postMessage(message);
   }
 
+  private _getRunPreferences(): RunPreferences {
+    const config = vscode.workspace.getConfiguration("megalinter.run");
+
+    const engineRaw = config.get<string>("engine");
+    const engine = engineRaw === "docker" || engineRaw === "podman" ? engineRaw : undefined;
+
+    const flavorRaw = config.get<string>("flavor");
+    const flavor = typeof flavorRaw === "string" && flavorRaw.trim() ? flavorRaw.trim() : undefined;
+
+    const versionRaw = config.get<string>("version");
+    const runnerVersion = typeof versionRaw === "string" && versionRaw.trim() ? versionRaw.trim() : undefined;
+
+    return { engine, flavor, runnerVersion };
+  }
+
   private _getWorkspaceRoot(): string {
     const folders = vscode.workspace.workspaceFolders || [];
     if (folders.length === 0) {
@@ -256,6 +275,8 @@ export class RunPanel {
       return v;
     });
 
+    const runPreferences = this._getRunPreferences();
+
     const [flavors, runnerInfo, engineStatuses] = await Promise.all([
       flavorsPromise,
       runnerPromise,
@@ -264,16 +285,19 @@ export class RunPanel {
 
     const { versions, latest } = runnerInfo;
 
-    const defaultEngine: Engine | undefined =
-      engineStatuses.docker.running
-        ? "docker"
-        : engineStatuses.podman.running
-          ? "podman"
-          : engineStatuses.docker.available
-            ? "docker"
-            : engineStatuses.podman.available
-              ? "podman"
-              : undefined;
+    const preferredEngine = runPreferences.engine;
+
+    const defaultEngine: Engine | undefined = preferredEngine && engineStatuses[preferredEngine]?.available
+      ? preferredEngine
+      : engineStatuses.docker.running
+          ? "docker"
+          : engineStatuses.podman.running
+            ? "podman"
+            : engineStatuses.docker.available
+              ? "docker"
+              : engineStatuses.podman.available
+                ? "podman"
+                : undefined;
 
     logMegaLinter(
       `Run view: context loaded in ${Date.now() - start}ms | ` +
@@ -290,6 +314,7 @@ export class RunPanel {
       latestRunnerVersion: latest || undefined,
       engines: engineStatuses,
       defaultEngine,
+      runPreferences,
     });
   }
 
@@ -428,6 +453,39 @@ export class RunPanel {
         `podman=${podman.available ? (podman.running ? "available" : "not started") : "not installed"}`,
     );
     return statuses;
+  }
+
+  private async _updateRunSetting(key: "engine" | "flavor" | "version", value: string) {
+    const config = vscode.workspace.getConfiguration("megalinter.run");
+
+    if (key === "engine") {
+      const normalized = value === "docker" || value === "podman" ? value : undefined;
+      if (!normalized) {
+        return;
+      }
+      logMegaLinter(`Run view: setting updated | key=engine value=${normalized}`);
+      await config.update("engine", normalized, vscode.ConfigurationTarget.Workspace);
+      return;
+    }
+
+    if (key === "flavor") {
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      if (!trimmed) {
+        return;
+      }
+      logMegaLinter(`Run view: setting updated | key=flavor value=${trimmed}`);
+      await config.update("flavor", trimmed, vscode.ConfigurationTarget.Workspace);
+      return;
+    }
+
+    if (key === "version") {
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      if (!trimmed) {
+        return;
+      }
+      logMegaLinter(`Run view: setting updated | key=version value=${trimmed}`);
+      await config.update("version", trimmed, vscode.ConfigurationTarget.Workspace);
+    }
   }
 
   private async _runMegalinter(engine: Engine, flavor: string, runnerVersion: string) {

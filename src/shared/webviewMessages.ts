@@ -55,6 +55,12 @@ export type ConfigNavigationTarget =
   | { type: "descriptor"; descriptorId: string }
   | { type: "linter"; descriptorId: string; linterId: string };
 
+export type RunPreferences = {
+  engine?: "docker" | "podman";
+  flavor?: string;
+  runnerVersion?: string;
+};
+
 export type RunWebviewToExtensionMessage =
   | { type: "getRunContext"; force?: boolean }
   | {
@@ -66,7 +72,8 @@ export type RunWebviewToExtensionMessage =
   | { type: "cancelRun" }
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
-  | { type: "showOutput" };
+  | { type: "showOutput" }
+  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version"; value: string };
 
 export type RunPanelInboundMessage =
   | CommonWebviewToExtensionMessage
@@ -104,6 +111,7 @@ export type RunContextMessage = {
     podman: RunEngineStatus;
   };
   defaultEngine?: "docker" | "podman";
+  runPreferences?: RunPreferences;
 };
 
 export type RunStatusMessage = {
