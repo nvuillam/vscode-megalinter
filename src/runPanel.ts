@@ -6,6 +6,7 @@ import axios from "axios";
 import Koa from "koa";
 import * as http from "http";
 import * as net from "net";
+import * as os from "os";
 import { spawn } from "child_process";
 import {
   appendMegaLinterOutput,
@@ -131,7 +132,12 @@ export class RunPanel {
               await this._sendRunContext(message.force);
               break;
             case "runMegalinter":
-              await this._runMegalinter(message.engine, message.flavor, message.runnerVersion);
+              await this._runMegalinter(
+                message.engine,
+                message.flavor,
+                message.runnerVersion,
+                message.parallelCores,
+              );
               break;
             case "cancelRun":
               await this._cancelRun();
@@ -217,7 +223,10 @@ export class RunPanel {
     const versionRaw = config.get<string>("version");
     const runnerVersion = typeof versionRaw === "string" && versionRaw.trim() ? versionRaw.trim() : undefined;
 
-    return { engine, flavor, runnerVersion };
+    const parallelCoresRaw = config.get<number>("parallelCores");
+    const parallelCores = typeof parallelCoresRaw === "number" && parallelCoresRaw > 0 ? parallelCoresRaw : undefined;
+
+    return { engine, flavor, runnerVersion, parallelCores };
   }
 
   private _getWorkspaceRoot(): string {
@@ -284,6 +293,7 @@ export class RunPanel {
     ]);
 
     const { versions, latest } = runnerInfo;
+    const availableCores = Math.max(1, (os.cpus()?.length ?? 1));
 
     const preferredEngine = runPreferences.engine;
 
@@ -314,6 +324,7 @@ export class RunPanel {
       latestRunnerVersion: latest || undefined,
       engines: engineStatuses,
       defaultEngine,
+      maxParallelCores: availableCores,
       runPreferences,
     });
   }
@@ -458,7 +469,10 @@ export class RunPanel {
     return statuses;
   }
 
-  private async _updateRunSetting(key: "engine" | "flavor" | "version", value: string) {
+  private async _updateRunSetting(
+    key: "engine" | "flavor" | "version" | "parallelCores",
+    value: string,
+  ) {
     const config = vscode.workspace.getConfiguration("megalinter.run");
 
     if (key === "engine") {
@@ -489,9 +503,23 @@ export class RunPanel {
       logMegaLinter(`Run view: setting updated | key=version value=${trimmed}`);
       await config.update("version", trimmed, vscode.ConfigurationTarget.Workspace);
     }
+
+    if (key === "parallelCores") {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return;
+      }
+      logMegaLinter(`Run view: setting updated | key=parallelCores value=${parsed}`);
+      await config.update("parallelCores", parsed, vscode.ConfigurationTarget.Workspace);
+    }
   }
 
-  private async _runMegalinter(engine: Engine, flavor: string, runnerVersion: string) {
+  private async _runMegalinter(
+    engine: Engine,
+    flavor: string,
+    runnerVersion: string,
+    parallelCores: number,
+  ) {
     if (this._runningChild) {
       throw new Error("MegaLinter is already running");
     }
@@ -519,6 +547,8 @@ export class RunPanel {
       runnerVersion === "latest" || runnerVersion === "beta" || isValidSemver(runnerVersion)
         ? runnerVersion
         : "latest";
+    const cpuCount = Math.max(1, (os.cpus()?.length ?? 1));
+    const safeParallel = Math.min(cpuCount, Math.max(1, Math.floor(parallelCores || 4)));
     const runnerPackageVersion = "latest";
 
     const runId = createRunId();
@@ -556,12 +586,14 @@ export class RunPanel {
       `WEBHOOK_REPORTER_URL=${webhookUrl}`,
       "-e",
       `WEBHOOK_REPORTER_BEARER_TOKEN=${webhookToken}`,
+      "-e",
+      `PARALLEL_PROCESS_NUMBER=${safeParallel}`,
     ];
 
     const commandLine = formatCommandLine(npxCmd, redactArgs(args));
 
     logMegaLinter(
-      `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} release=${safeRelease}`,
+      `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} release=${safeRelease} cores=${safeParallel}/${cpuCount}`,
     );
     logMegaLinter(`Run ${runId}: report folder ${reportFolderPath}`);
     logMegaLinter(`Run ${runId}: command ${commandLine}`);

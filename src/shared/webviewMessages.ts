@@ -59,6 +59,7 @@ export type RunPreferences = {
   engine?: "docker" | "podman";
   flavor?: string;
   runnerVersion?: string;
+  parallelCores?: number;
 };
 
 export type RunWebviewToExtensionMessage =
@@ -68,12 +69,13 @@ export type RunWebviewToExtensionMessage =
       engine: "docker" | "podman";
       flavor: string;
       runnerVersion: string;
+      parallelCores: number;
     }
   | { type: "cancelRun" }
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
   | { type: "showOutput" }
-  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version"; value: string };
+  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores"; value: string };
 
 export type RunPanelInboundMessage =
   | CommonWebviewToExtensionMessage
@@ -106,6 +108,7 @@ export type RunContextMessage = {
   flavors: string[];
   runnerVersions: string[];
   latestRunnerVersion?: string;
+  maxParallelCores: number;
   engines: {
     docker: RunEngineStatus;
     podman: RunEngineStatus;

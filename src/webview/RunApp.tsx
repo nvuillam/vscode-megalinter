@@ -39,6 +39,8 @@ export const RunApp: React.FC = () => {
   const [engine, setEngine] = useState<Engine>('docker');
   const [flavor, setFlavor] = useState<string>('full');
   const [runnerVersion, setRunnerVersion] = useState<string>('latest');
+  const [maxParallelCores, setMaxParallelCores] = useState<number>(4);
+  const [parallelCores, setParallelCores] = useState<number>(4);
 
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
@@ -131,12 +133,12 @@ export const RunApp: React.FC = () => {
     if (engineHelp) {
       return false;
     }
-    if (!engine || !flavor || !runnerVersion) {
+    if (!engine || !flavor || !runnerVersion || !parallelCores) {
       return false;
     }
     const selected = engines[engine];
     return Boolean(selected?.available && selected?.running);
-  }, [runStatus, isLoadingContext, engineHelp, engine, flavor, runnerVersion, engines]);
+  }, [runStatus, isLoadingContext, engineHelp, engine, flavor, runnerVersion, parallelCores, engines]);
 
   useEffect(() => {
     postMessage({ type: 'ready' });
@@ -150,6 +152,9 @@ export const RunApp: React.FC = () => {
           setIsLoadingContext(false);
           setWorkspaceRoot(message.workspaceRoot);
           const preferences = message.runPreferences || {};
+
+          const availableCores = Math.max(1, message.maxParallelCores || 1);
+          setMaxParallelCores(availableCores);
 
           const incomingFlavors = message.flavors || [];
           const flavorsWithPref = preferences.flavor && !incomingFlavors.includes(preferences.flavor)
@@ -189,6 +194,17 @@ export const RunApp: React.FC = () => {
               return message.latestRunnerVersion;
             }
             return list[0] || current;
+          });
+          const defaultParallel = Math.min(availableCores, availableCores >= 4 ? 4 : availableCores);
+          const preferredParallel = typeof preferences.parallelCores === 'number' ? preferences.parallelCores : undefined;
+          const nextParallel = preferredParallel && preferredParallel > 0
+            ? Math.min(availableCores, Math.max(1, Math.floor(preferredParallel)))
+            : defaultParallel;
+          setParallelCores((current) => {
+            if (current > 0 && current <= availableCores && !preferredParallel) {
+              return current;
+            }
+            return nextParallel;
           });
           const preferredEngine = preferences.engine;
           if (preferredEngine && message.engines[preferredEngine]?.available) {
@@ -240,7 +256,8 @@ export const RunApp: React.FC = () => {
       type: 'runMegalinter',
       engine,
       flavor,
-      runnerVersion
+      runnerVersion,
+      parallelCores
     });
   };
 
@@ -557,6 +574,30 @@ export const RunApp: React.FC = () => {
                   ))}
                 </>
               )}
+            </select>
+          </label>
+
+          <label className="run__field">
+            <span className="run__label">Parallel cores</span>
+            <select
+              className="run__select"
+              value={parallelCores}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (!Number.isFinite(next)) {
+                  return;
+                }
+                const clamped = Math.min(maxParallelCores, Math.max(1, Math.floor(next)));
+                setParallelCores(clamped);
+                postMessage({ type: 'updateRunSetting', key: 'parallelCores', value: String(clamped) });
+              }}
+              disabled={runStatus === 'running' || isLoadingContext}
+            >
+              {Array.from({ length: maxParallelCores }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
           </label>
 

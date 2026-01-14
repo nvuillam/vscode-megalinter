@@ -104,6 +104,12 @@
           "type": "string",
           "default": "latest",
           "description": "Default MegaLinter runner version used by the Run view."
+        },
+        "megalinter.run.parallelCores": {
+          "type": "number",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of parallel cores to use when running MegaLinter from the Run view."
         }
       }
     }
