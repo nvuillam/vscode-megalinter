@@ -214,29 +214,6 @@ export const HomePanel: React.FC<HomePanelProps> = ({
         </div>
       </div>
 
-      <div className="home__grid" role="list">
-        <div className="home__card" role="listitem">
-          <div className="home__card-label">Configured values</div>
-          <div className="home__card-value">
-            {configuredCount}
-            <span className="home__card-sub">of {totalKeys || '-'} fields</span>
-          </div>
-          <p className="home__card-note">
-            {hasConfiguration
-              ? 'Great start - keep adding detail or jump to Summary.'
-              : 'No overrides yet. Begin with general settings to set the foundation.'}
-          </p>
-        </div>
-
-        <div className="home__card" role="listitem">
-          <div className="home__card-label">Coverage</div>
-          <div className="home__card-value">
-            {descriptorCount}
-            <span className="home__card-sub">descriptors</span>
-          </div>
-          <p className="home__card-note">{linterCount} linters available across your stack.</p>
-        </div>
-      </div>
     </div>
   );
 };

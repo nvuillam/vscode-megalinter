@@ -2,6 +2,8 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import * as http from "http";
+import * as https from "https";
 import * as YAML from "yaml";
 import type { NavigationTarget } from "./extension";
 import { CustomFlavorPanel } from "./customFlavorPanel";
@@ -71,6 +73,15 @@ type CachedDescriptorMetadata = {
   data: Record<string, LinterDescriptorMetadata>;
 };
 
+type ExtendsResolution = {
+  localConfig: any;
+  effectiveConfig: any;
+  inheritedConfig: any;
+  inheritedKeySources: Record<string, string>;
+  extendsItems: string[];
+  extendsErrors: string[];
+};
+
 const DESCRIPTOR_CACHE_KEY = "megalinter.descriptorMetadataCache.v5";
 const DESCRIPTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -88,6 +99,11 @@ export class ConfigurationPanel {
     string,
     LinterDescriptorMetadata
   > | null = null;
+
+  private _extendsYamlCache = new Map<
+    string,
+    { timestamp: number; parsed: any }
+  >();
 
   public static createOrShow(
     extensionUri: vscode.Uri,
@@ -547,16 +563,29 @@ export class ConfigurationPanel {
 
   private async _sendConfig() {
     let config: any = {};
+    let localConfig: any = {};
+    let inheritedConfig: any = {};
+    let inheritedKeySources: Record<string, string> = {};
+    let extendsItems: string[] = [];
+    let extendsErrors: string[] = [];
     const configExists = fs.existsSync(this._configPath);
 
     if (configExists) {
       try {
         const content = fs.readFileSync(this._configPath, "utf8");
         const doc = YAML.parseDocument(content);
-        config = (doc.toJS() as any) || {};
+        localConfig = (doc.toJS() as any) || {};
+
+        const resolved = await this._resolveExtends(localConfig);
+        config = resolved.effectiveConfig;
+        inheritedConfig = resolved.inheritedConfig;
+        inheritedKeySources = resolved.inheritedKeySources;
+        extendsItems = resolved.extendsItems;
+        extendsErrors = resolved.extendsErrors;
       } catch (error) {
         console.error("Error reading config file:", error);
         config = {};
+        localConfig = {};
       }
     }
 
@@ -571,10 +600,307 @@ export class ConfigurationPanel {
     this._panel.webview.postMessage({
       type: "configData",
       config: config,
+      localConfig,
+      inheritedConfig,
+      inheritedKeySources,
+      extendsItems,
+      extendsErrors,
       configPath: this._configPath,
       configExists,
       linterMetadata,
     });
+  }
+
+  private _normalizeExtendsValue(value: unknown): string[] {
+    if (typeof value === "string" && value.trim()) {
+      return [value.trim()];
+    }
+    if (Array.isArray(value)) {
+      return value
+        .filter((v) => typeof v === "string")
+        .map((v) => String(v).trim())
+        .filter(Boolean);
+    }
+    return [];
+  }
+
+  private _normalizeConfigPropertiesToAppend(value: unknown): Set<string> {
+    if (!Array.isArray(value)) {
+      return new Set<string>();
+    }
+    const entries = value
+      .filter((v) => typeof v === "string")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    return new Set(entries);
+  }
+
+  private _mergeDicts(
+    target: Record<string, any>,
+    source: Record<string, any> | undefined,
+    appendKeys: Set<string>,
+    sourceId: string | undefined,
+    keySources: Record<string, string>,
+    options?: { skipKeys?: Set<string> },
+  ) {
+    if (!source) {
+      return;
+    }
+
+    const skipKeys = options?.skipKeys;
+    Object.entries(source).forEach(([key, value]) => {
+      if (skipKeys?.has(key)) {
+        return;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(target, key)) {
+        target[key] = value;
+        if (sourceId) {
+          keySources[key] = sourceId;
+        }
+        return;
+      }
+
+      const current = target[key];
+      if (
+        Array.isArray(current) &&
+        Array.isArray(value) &&
+        appendKeys.has(key)
+      ) {
+        target[key] = [...current, ...value];
+        if (sourceId) {
+          keySources[key] = sourceId;
+        }
+        return;
+      }
+
+      target[key] = value;
+      if (sourceId) {
+        keySources[key] = sourceId;
+      }
+    });
+  }
+
+  private async _fetchRemoteYaml(url: string): Promise<any> {
+    const cached = this._extendsYamlCache.get(url);
+    if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+      return cached.parsed;
+    }
+
+    const text = await this._fetchText(url, 10_000, 1024 * 1024);
+    const parsed = (YAML.parse(text) as any) || {};
+    this._extendsYamlCache.set(url, { timestamp: Date.now(), parsed });
+    return parsed;
+  }
+
+  private _fetchText(
+    url: string,
+    timeoutMs: number,
+    maxBytes: number,
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const doRequest = (currentUrl: string, redirectsLeft: number) => {
+        const isHttps = currentUrl.startsWith("https://");
+        const transport = isHttps ? https : http;
+
+        const req = transport.get(
+          currentUrl,
+          {
+            headers: {
+              "User-Agent": "vscode-megalinter",
+              Accept: "text/yaml, text/plain, */*",
+            },
+          },
+          (res) => {
+            const status = res.statusCode || 0;
+            const location =
+              typeof res.headers.location === "string"
+                ? res.headers.location
+                : undefined;
+
+            if (
+              status >= 300 &&
+              status < 400 &&
+              location &&
+              redirectsLeft > 0
+            ) {
+              res.resume();
+              const nextUrl = location.startsWith("http")
+                ? location
+                : new URL(location, currentUrl).toString();
+              doRequest(nextUrl, redirectsLeft - 1);
+              return;
+            }
+
+            if (status !== 200) {
+              res.resume();
+              reject(
+                new Error(`Failed to fetch ${currentUrl} (HTTP ${status})`),
+              );
+              return;
+            }
+
+            const chunks: Buffer[] = [];
+            let total = 0;
+            res.on("data", (chunk: Buffer) => {
+              total += chunk.length;
+              if (total > maxBytes) {
+                req.destroy(
+                  new Error(`Remote config too large (> ${maxBytes} bytes)`),
+                );
+                return;
+              }
+              chunks.push(chunk);
+            });
+            res.on("end", () => {
+              resolve(Buffer.concat(chunks).toString("utf8"));
+            });
+          },
+        );
+
+        req.on("error", reject);
+        req.setTimeout(timeoutMs, () => {
+          req.destroy(new Error(`Timeout fetching ${currentUrl}`));
+        });
+      };
+
+      doRequest(url, 5);
+    });
+  }
+
+  private async _loadExtendsItem(
+    extendsItem: string,
+  ): Promise<{ sourceId: string; data: any }> {
+    const trimmed = extendsItem.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      const data = await this._fetchRemoteYaml(trimmed);
+      return { sourceId: trimmed, data };
+    }
+
+    const workspaceRoot = this._resolveWorkspaceRoot();
+    const candidate = path.isAbsolute(trimmed)
+      ? trimmed
+      : path.join(workspaceRoot, trimmed);
+    if (!fs.existsSync(candidate)) {
+      throw new Error(`EXTENDS file not found: ${trimmed}`);
+    }
+    const content = fs.readFileSync(candidate, "utf8");
+    const data = (YAML.parse(content) as any) || {};
+    return { sourceId: trimmed, data };
+  }
+
+  private async _resolveExtends(
+    localConfigInput: any,
+  ): Promise<ExtendsResolution> {
+    const localConfig =
+      localConfigInput && typeof localConfigInput === "object"
+        ? localConfigInput
+        : {};
+
+    const extendsItems = this._normalizeExtendsValue(localConfig?.EXTENDS);
+    const extendsErrors: string[] = [];
+    const inheritedKeySources: Record<string, string> = {};
+    const inheritedConfig: Record<string, any> = {};
+
+    if (!extendsItems.length) {
+      return {
+        localConfig,
+        effectiveConfig: localConfig,
+        inheritedConfig: {},
+        inheritedKeySources: {},
+        extendsItems: [],
+        extendsErrors: [],
+      };
+    }
+
+    const appendKeys = this._normalizeConfigPropertiesToAppend(
+      localConfig?.CONFIG_PROPERTIES_TO_APPEND,
+    );
+
+    const visited = new Set<string>();
+    const skipExtendsKey = new Set<string>(["EXTENDS"]);
+
+    const combineConfig = async (configToProcess: any, depth: number) => {
+      if (depth > 10) {
+        extendsErrors.push("EXTENDS nesting too deep (max 10)");
+        return;
+      }
+
+      const items = this._normalizeExtendsValue(configToProcess?.EXTENDS);
+      for (const item of items) {
+        if (!item) {
+          continue;
+        }
+        if (visited.has(item)) {
+          extendsErrors.push(`EXTENDS cycle detected: ${item}`);
+          continue;
+        }
+        visited.add(item);
+
+        try {
+          const loaded = await this._loadExtendsItem(item);
+          const extendsData =
+            loaded.data && typeof loaded.data === "object" ? loaded.data : {};
+
+          this._mergeDicts(
+            inheritedConfig,
+            extendsData,
+            appendKeys,
+            loaded.sourceId,
+            inheritedKeySources,
+            { skipKeys: skipExtendsKey },
+          );
+
+          if (
+            extendsData &&
+            typeof extendsData === "object" &&
+            extendsData.EXTENDS
+          ) {
+            await combineConfig(extendsData, depth + 1);
+          }
+
+          // Ensure nested EXTENDS configs can override what they extend.
+          this._mergeDicts(
+            inheritedConfig,
+            extendsData,
+            appendKeys,
+            loaded.sourceId,
+            inheritedKeySources,
+            { skipKeys: skipExtendsKey },
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          extendsErrors.push(msg);
+        }
+      }
+    };
+
+    await combineConfig(localConfig, 0);
+
+    // Compute the effective config shown in the UI: inherited + local overrides.
+    const effectiveConfig: Record<string, any> = { ...inheritedConfig };
+    const localWithoutExtends: Record<string, any> = { ...localConfig };
+    delete localWithoutExtends.EXTENDS;
+
+    this._mergeDicts(
+      effectiveConfig,
+      localWithoutExtends,
+      appendKeys,
+      undefined,
+      inheritedKeySources,
+    );
+
+    // Keep local EXTENDS visible/editable.
+    effectiveConfig.EXTENDS = localConfig.EXTENDS;
+
+    return {
+      localConfig,
+      effectiveConfig,
+      inheritedConfig,
+      inheritedKeySources,
+      extendsItems,
+      extendsErrors,
+    };
   }
 
   private async _openFile(filePath: string) {

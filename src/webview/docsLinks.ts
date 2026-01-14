@@ -4,6 +4,7 @@ export const DOCS_BASE = "https://megalinter.io/latest" as const;
 export interface MegaLinterSchemaMeta {
   ["x-section"]?: unknown;
   ["x-category"]?: unknown;
+  ["x-doc-key"]?: unknown;
 }
 
 const RESERVED_CATEGORY_IDS = new Set(
@@ -141,6 +142,17 @@ export const getDocsUrlForVariable = (
 ): string | undefined => {
   if (!variableName) {
     return undefined;
+  }
+
+  // Build url from schema "x-doc-key" if present in JSON schema
+  if (typeof schemaMeta?.["x-doc-key"] === "string") {
+    const docKey = schemaMeta["x-doc-key"].trim();
+    if (docKey) {
+      if (docKey.includes("#")) {
+        return `${DOCS_BASE}/${docKey}`; // Example: "config-file/#some-anchor"
+      }
+      return `${DOCS_BASE}/${docKey}/`; // Examples: "config-filtering", "reporters/AzureCommentReporter"
+    }
   }
 
   const normalized = normalizeKey(variableName);

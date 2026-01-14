@@ -21,6 +21,8 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
   title,
   uiSchema,
   formData,
+  inheritedConfig,
+  inheritedKeySources,
   onSubsetChange,
   activeThemeTab,
   setActiveThemeTab,
@@ -93,7 +95,15 @@ export const ThemedForm: React.FC<ThemedFormProps> = ({
         <Form
           key={`${title}-${effectiveActive || 'default'}`}
           schema={buildSubsetSchema(baseSchema, activeKeys, `${title} - ${activeLabel}`, prefixToStrip)}
-          uiSchema={buildScopedUiSchema(baseSchema, activeKeys, uiSchema, highlightedKeys)}
+          uiSchema={buildScopedUiSchema(
+            baseSchema,
+            activeKeys,
+            uiSchema,
+            highlightedKeys,
+            inheritedConfig,
+            inheritedKeySources,
+            formData
+          )}
           formData={filterFormData(formData, activeKeys)}
           validator={validator}
           templates={templates}

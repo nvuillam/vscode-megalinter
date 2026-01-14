@@ -18,6 +18,7 @@ import { ConfigPreviewPanel } from './ConfigPreviewPanel';
 import { ThemedForm } from './ThemedForm';
 import { LinterDescription } from './LinterDescription';
 import { DocFieldTemplate } from './DocFieldTemplate';
+import { BareObjectFieldTemplate } from './BareObjectFieldTemplate';
 import { CheckboxWidget, DualListWidget, TagArrayFieldTemplate } from './widgets';
 
 export const MainTabs: React.FC<MainTabsProps> = ({
@@ -25,6 +26,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
   groups,
   formData,
   originalConfig,
+  inheritedConfig,
+  inheritedKeySources,
   uiSchema,
   onSubsetChange,
   postMessage,
@@ -287,7 +290,15 @@ export const MainTabs: React.FC<MainTabsProps> = ({
     }
 
     const summarySchema = buildSubsetSchema(schema, orderedKeys, 'Configured values');
-    const summaryUiSchema = buildScopedUiSchema(schema, orderedKeys, uiSchema, highlightedKeys);
+    const summaryUiSchema = buildScopedUiSchema(
+      schema,
+      orderedKeys,
+      uiSchema,
+      highlightedKeys,
+      inheritedConfig,
+      inheritedKeySources,
+      formData
+    );
 
     return (
       <div className="summary-panel">
@@ -310,7 +321,11 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           noHtml5Validate
           showErrorList={false}
           widgets={{ dualList: DualListWidget, CheckboxWidget }}
-          templates={{ ArrayFieldTemplate: TagArrayFieldTemplate, FieldTemplate: DocFieldTemplate }}
+          templates={{
+            ArrayFieldTemplate: TagArrayFieldTemplate,
+            FieldTemplate: DocFieldTemplate,
+            ObjectFieldTemplate: BareObjectFieldTemplate
+          }}
           idPrefix="summary"
         >
           <></>
@@ -338,6 +353,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
         setActiveThemeTab={setActiveGeneralTheme}
         sectionMeta={groups.sectionMeta}
         highlightedKeys={highlightedKeys}
+        inheritedConfig={inheritedConfig}
+        inheritedKeySources={inheritedKeySources}
       />
     </div>
   );
@@ -394,6 +411,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           }
           sectionMeta={groups.sectionMeta}
           highlightedKeys={highlightedKeys}
+            inheritedConfig={inheritedConfig}
+            inheritedKeySources={inheritedKeySources}
         />
       </div>
     );
@@ -481,6 +500,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
         prefixToStrip={`${descriptorId}_`}
         sectionMeta={groups.sectionMeta}
         highlightedKeys={highlightedKeys}
+          inheritedConfig={inheritedConfig}
+          inheritedKeySources={inheritedKeySources}
       />
     );
 
@@ -627,6 +648,8 @@ export const MainTabs: React.FC<MainTabsProps> = ({
           title={`${linterLabel} linter`}
           uiSchema={uiSchema}
           formData={filterFormData(formData, keys)}
+          inheritedConfig={inheritedConfig}
+          inheritedKeySources={inheritedKeySources}
           onSubsetChange={(k, subset) => onSubsetChange(k, subset)}
           activeThemeTab={activeLinterThemes[descriptorId]?.[linterKey] || null}
           setActiveThemeTab={(id) =>
