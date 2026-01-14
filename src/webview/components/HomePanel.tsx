@@ -159,11 +159,11 @@ export const HomePanel: React.FC<HomePanelProps> = ({
           <div className="home__section-actions">
             <button
               type="button"
-              className="pill-button pill-button--primary"
+              className="pill-button pill-button--solid"
               onClick={onOpenGeneral}
               disabled={!configExists || referenceDataLoading}
             >
-              <span className="codicon codicon-sliders pill-button__icon" aria-hidden="true" />
+              <span className="codicon codicon-settings-gear pill-button__icon" aria-hidden="true" />
               Start with general settings
             </button>
             <button
@@ -254,10 +254,10 @@ export const HomePanel: React.FC<HomePanelProps> = ({
           <div className="home__section-actions">
             <button
               type="button"
-              className="pill-button pill-button--ghost"
+              className="pill-button pill-button--solid"
               onClick={() => postMessage({ type: 'openCustomFlavorBuilder' })}
             >
-              <span className="codicon codicon-circuit pill-button__icon" aria-hidden="true" />
+              <span className="codicon codicon-rocket pill-button__icon" aria-hidden="true" />
               Launch builder
             </button>
             <a
