@@ -9,22 +9,15 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   referenceDataLoading,
   configuredCount,
   totalKeys,
-  descriptorCount,
   linterCount,
   postMessage,
   onOpenGeneral,
   onOpenSummary,
-  onOpenFirstDescriptor,
-  onOpenReporters,
   logoUrl,
   logoFallbackUrl,
   bannerUrl,
   bannerFallbackUrl,
-  descriptorLabel,
-  reportersLabel,
   hasConfiguration,
-  descriptorNavigationReady,
-  reporterNavigationReady,
   searchItems,
   onSearchSelect
 }) => {
@@ -100,59 +93,77 @@ export const HomePanel: React.FC<HomePanelProps> = ({
 
   return (
     <div className="home">
-      <a
-        className="home__banner"
-        href="https://megalinter.io/latest/"
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Open MegaLinter website"
-      >
-        <img
-          src={bannerSrc}
-          alt="MegaLinter banner"
-          className="home__banner-image"
-          onError={(event) => {
-            if (event.currentTarget.src !== bannerFallbackUrl) {
-              setBannerSrc(bannerFallbackUrl);
-            }
-          }}
-        />
-      </a>
-      <div className="home__hero">
+      <div className="home__banner-row">
         <a
-          className="home__logo-tile"
-          href="https://www.ox.security/?ref=megalinter-vscode"
+          className="home__banner"
+          href="https://megalinter.io/latest/"
           target="_blank"
           rel="noreferrer"
-          aria-label="Open OX Security website"
+          aria-label="Open MegaLinter website"
         >
           <img
-            src={logoSrc}
-            alt="OX Security logo"
-            className="home__logo"
+            src={bannerSrc}
+            alt="MegaLinter banner"
+            className="home__banner-image"
             onError={(event) => {
-              if (event.currentTarget.src !== logoFallbackUrl) {
-                setLogoSrc(logoFallbackUrl);
+              if (event.currentTarget.src !== bannerFallbackUrl) {
+                setBannerSrc(bannerFallbackUrl);
               }
             }}
           />
-          <div className="home__logo-caption">Powered by OX Security</div>
         </a>
-        <div className="home__intro">
-          <p className="eyebrow">MegaLinter workspace home</p>
-          <h1 className="home__title">Configure once, ship confidently</h1>
-          <p className="home__subtitle">
-            Tailor MegaLinter to your repository, preview the impact, and keep every run aligned with your team.
-          </p>
-          <div className="home__actions">
-            {renderInstallOrUpgrade()}
+        <div className="home__brand-stack">
+          <a
+            className="home__logo-tile home__logo-tile--glow"
+            href="https://www.ox.security/?ref=megalinter-vscode"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open OX Security website"
+          >
+            <img
+              src={logoSrc}
+              alt="OX Security logo"
+              className="home__logo"
+              onError={(event) => {
+                if (event.currentTarget.src !== logoFallbackUrl) {
+                  setLogoSrc(logoFallbackUrl);
+                }
+              }}
+            />
+            <div className="home__logo-caption">Powered by OX Security</div>
+          </a>
+        </div>
+      </div>
+
+      <div className="home__sections-grid">
+        <div className="home__section home__section--primary">
+          <div className="home__section-header">
+            <span className="home__section-icon codicon codicon-settings-gear" aria-hidden="true" />
+            <div>
+              <div className="home__section-title">MegaLinter configuration</div>
+              <div className="home__section-copy">Edit, review, and search your configuration in one place.</div>
+            </div>
+          </div>
+          <div className="home__status-grid home__status-grid--inline">
+            <div className="home__stat">
+              <div className="home__stat-label">Configured keys</div>
+              <div className="home__stat-value">{configuredCount} / {totalKeys || 0}</div>
+              <div className="home__stat-hint">Saved to {configExists ? configPath || 'your config file' : 'no config yet'}</div>
+            </div>
+            <div className="home__stat">
+              <div className="home__stat-label">Linters</div>
+              <div className="home__stat-value">{linterCount}</div>
+              <div className="home__stat-hint">Jump into configured linters or search below</div>
+            </div>
+          </div>
+          <div className="home__section-actions">
             <button
               type="button"
               className="pill-button pill-button--primary"
               onClick={onOpenGeneral}
               disabled={!configExists || referenceDataLoading}
             >
-              <span className="codicon codicon-settings-gear pill-button__icon" aria-hidden="true" />
+              <span className="codicon codicon-sliders pill-button__icon" aria-hidden="true" />
               Start with general settings
             </button>
             <button
@@ -164,33 +175,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
               <span className="codicon codicon-checklist pill-button__icon" aria-hidden="true" />
               Review configured values
             </button>
-            <button
-              type="button"
-              className="pill-button pill-button--ghost"
-              onClick={() => postMessage({ type: 'openCustomFlavorBuilder' })}
-            >
-              <span className="codicon codicon-package pill-button__icon" aria-hidden="true" />
-              Custom Flavor Builder
-            </button>
-            <button
-              type="button"
-              className="pill-button pill-button--ghost"
-              onClick={() => postMessage({ type: 'openRunPanel' })}
-            >
-              <span className="codicon codicon-play-circle pill-button__icon" aria-hidden="true" />
-              Run MegaLinter
-            </button>
-            <a
-              className="pill-button pill-button--ghost"
-              href="https://megalinter.io/latest/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span className="codicon codicon-book pill-button__icon" aria-hidden="true" />
-              Open MegaLinter docs
-            </a>
           </div>
-
           <div className="home__search-section">
             <div className="home__search-container">
               <input
@@ -220,24 +205,72 @@ export const HomePanel: React.FC<HomePanelProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="home__grid">
-        <div className="home__card">
-          <div className="home__card-label">Run MegaLinter</div>
-          <div className="home__card-value">
-            Launch a local MegaLinter run with <span className="home__mono">mega-linter-runner</span> and review linter logs.
+        <div className="home__section">
+          <div className="home__section-header">
+            <span className="home__section-icon codicon codicon-play" aria-hidden="true" />
+            <div>
+              <div className="home__section-title">Running MegaLinter</div>
+              <div className="home__section-copy">Launch a local run with mega-linter-runner and review linter logs.</div>
+            </div>
           </div>
-          <div className="home__card-actions">
+          <div className="home__section-actions">
             <button
               type="button"
-              className="pill-button pill-button--primary"
+              className="pill-button pill-button--solid"
               onClick={() => postMessage({ type: 'openRunPanel' })}
             >
-              <span className="codicon codicon-play pill-button__icon" aria-hidden="true" />
+              <span className="codicon codicon-play-circle pill-button__icon" aria-hidden="true" />
               Run MegaLinter
             </button>
           </div>
+          <div className="home__section-foot">Uses latest runner package with your selected release.</div>
+        </div>
+
+        <div className="home__section">
+          <div className="home__section-header">
+            <span className="home__section-icon codicon codicon-cloud-download" aria-hidden="true" />
+            <div>
+              <div className="home__section-title">Upgrade MegaLinter</div>
+              <div className="home__section-copy">Stay current with the newest checks and descriptor updates.</div>
+            </div>
+          </div>
+          <div className="home__section-actions">
+            {renderInstallOrUpgrade()}
+          </div>
+          <div className="home__section-foot">
+            {configExists ? 'Upgrade runs against your existing config.' : 'Install to generate a starter config.'}
+          </div>
+        </div>
+
+        <div className="home__section">
+          <div className="home__section-header">
+            <span className="home__section-icon codicon codicon-package" aria-hidden="true" />
+            <div>
+              <div className="home__section-title">Custom Flavor Builder</div>
+              <div className="home__section-copy">Assemble a curated MegaLinter flavor tailored to your stack.</div>
+            </div>
+          </div>
+          <div className="home__section-actions">
+            <button
+              type="button"
+              className="pill-button pill-button--ghost"
+              onClick={() => postMessage({ type: 'openCustomFlavorBuilder' })}
+            >
+              <span className="codicon codicon-circuit pill-button__icon" aria-hidden="true" />
+              Launch builder
+            </button>
+            <a
+              className="pill-button pill-button--ghost"
+              href="https://megalinter.io/latest/flavors/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="codicon codicon-book" aria-hidden="true" />
+              View flavor docs
+            </a>
+          </div>
+          <div className="home__section-foot">Share presets with your team using the builder output.</div>
         </div>
       </div>
 

@@ -278,22 +278,15 @@ export interface HomePanelProps {
   referenceDataLoading: boolean;
   configuredCount: number;
   totalKeys: number;
-  descriptorCount: number;
   linterCount: number;
   postMessage: (message: ExtensionMessage) => void;
   onOpenGeneral: () => void;
   onOpenSummary: () => void;
-  onOpenFirstDescriptor: () => void;
-  onOpenReporters: () => void;
   logoUrl: string;
   logoFallbackUrl: string;
   bannerUrl: string;
   bannerFallbackUrl: string;
-  descriptorLabel: string;
-  reportersLabel: string;
   hasConfiguration: boolean;
-  descriptorNavigationReady: boolean;
-  reporterNavigationReady: boolean;
   searchItems: SearchItem[];
   onSearchSelect: (item: SearchItem) => void;
 }
