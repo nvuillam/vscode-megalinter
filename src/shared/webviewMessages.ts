@@ -79,7 +79,7 @@ export type RunResult = {
   key: string;
   descriptor: string;
   linter: string;
-  status: "SUCCESS" | "WARNING" | "ERROR" | "UNKNOWN";
+  status: "SUCCESS" | "WARNING" | "ERROR" | "RUNNING" | "PENDING" | "UNKNOWN";
   logFilePath?: string;
   files?: number;
   elapsedSeconds?: number;
@@ -122,6 +122,12 @@ export type RunResultsMessage = {
   exitCode: number | null;
 };
 
+export type RunInitStatusMessage = {
+  type: "runInitStatus";
+  runId: string;
+  stage: "runner" | "pull" | "linters";
+};
+
 export type RunErrorMessage = { type: "runError"; message: string; commandLine?: string };
 
 export type RunPanelOutboundMessage =
@@ -129,6 +135,7 @@ export type RunPanelOutboundMessage =
   | RunStatusMessage
   | RunOutputMessage
   | RunResultsMessage
+  | RunInitStatusMessage
   | RunErrorMessage;
 
 export type FlavorPanelOutboundMessage =

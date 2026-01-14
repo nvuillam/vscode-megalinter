@@ -39,7 +39,27 @@ export const RunApp: React.FC = () => {
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
   const [reportFolderPath, setReportFolderPath] = useState<string>('');
   const [results, setResults] = useState<RunResult[]>([]);
+  const [hasInitialResults, setHasInitialResults] = useState<boolean>(false);
   const [error, setError] = useState<{ message: string; commandLine?: string } | null>(null);
+  const [initStage, setInitStage] = useState<'runner' | 'pull' | 'linters' | null>(null);
+
+  const STATUS_LABELS: Record<RunResult['status'], string> = {
+    SUCCESS: 'Success',
+    WARNING: 'Warning',
+    ERROR: 'Error',
+    RUNNING: 'Running',
+    PENDING: 'Pending',
+    UNKNOWN: 'Unknown'
+  };
+
+  const STATUS_ICONS: Record<RunResult['status'], string> = {
+    SUCCESS: 'codicon-check',
+    WARNING: 'codicon-warning',
+    ERROR: 'codicon-error',
+    RUNNING: 'codicon-loading codicon-modifier-spin',
+    PENDING: 'codicon-clock',
+    UNKNOWN: 'codicon-question'
+  };
 
   const engineHelp = useMemo(() => {
     if (isLoadingContext) {
@@ -120,12 +140,18 @@ export const RunApp: React.FC = () => {
           if (message.status === 'running') {
             setError(null);
             setResults([]);
+            setHasInitialResults(false);
+            setInitStage('runner');
           }
           break;
         case 'runResults':
           setRunId(message.runId);
           setReportFolderPath(message.reportFolderPath);
           setResults(message.results || []);
+          setHasInitialResults(true);
+          break;
+        case 'runInitStatus':
+          setInitStage(message.stage);
           break;
         case 'runError':
           setError({ message: message.message, commandLine: (message as any).commandLine });
@@ -141,6 +167,7 @@ export const RunApp: React.FC = () => {
   const onRun = () => {
     setResults([]);
     setError(null);
+    setHasInitialResults(false);
     // Optimistic UX: reflect running state immediately.
     setRunStatus('running');
     setRunId(null);
@@ -387,7 +414,21 @@ export const RunApp: React.FC = () => {
           </div>
         </div>
 
-        {results.length === 0 ? (
+        {runStatus === 'running' && !hasInitialResults ? (
+          <div className="run__callout" role="status" aria-live="polite">
+            <span
+              className="codicon codicon-loading codicon-modifier-spin run__spinner"
+              aria-hidden="true"
+            />
+            <span>
+              {initStage === 'pull'
+                ? 'Pulling MegaLinter docker image...'
+                : initStage === 'linters'
+                  ? 'Identifying linters to run...'
+                  : 'Initializing mega-linter-runner...'}
+            </span>
+          </div>
+        ) : results.length === 0 ? (
           <div className="run__empty">No results yet.</div>
         ) : (
           <div className="run__table-wrap">
@@ -413,7 +454,13 @@ export const RunApp: React.FC = () => {
                     role={r.logFilePath ? 'button' : undefined}
                   >
                     <td className="run__status">
-                      <span className={`run__status-pill run__status-pill--${r.status.toLowerCase()}`}>{r.status}</span>
+                      <span className={`run__status-pill run__status-pill--${r.status.toLowerCase()}`}>
+                        <span
+                          className={`codicon ${STATUS_ICONS[r.status] || ''} run__status-pill-icon`}
+                          aria-hidden="true"
+                        />
+                        {STATUS_LABELS[r.status] ?? r.status}
+                      </span>
                     </td>
                     <td>{r.descriptor}</td>
                     <td className="run__mono">{r.key}</td>

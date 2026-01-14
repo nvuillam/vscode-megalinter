@@ -65,6 +65,7 @@ export class RunPanel {
         path: string;
         resultsByKey: Map<string, RunResult>;
         flushTimer: NodeJS.Timeout | null;
+        initStage: "runner" | "pull" | "linters" | null;
       }
     | undefined;
 
@@ -455,6 +456,7 @@ export class RunPanel {
       safeRelease,
       "--path",
       workspaceRoot,
+      "--remove-container",
       "-e",
       `REPORT_OUTPUT_FOLDER=${reportFolderRel}`,
       "-e",
@@ -498,7 +500,9 @@ export class RunPanel {
 
     const forward = (chunk: Buffer) => {
       // Mirror process output to VS Code Output panel.
-      appendMegaLinterOutput(chunk.toString("utf8"));
+      const text = chunk.toString("utf8");
+      appendMegaLinterOutput(text);
+      this._maybeUpdateInitStageFromLog(text, runId);
     };
 
     child.stdout.on("data", forward);
@@ -621,13 +625,6 @@ export class RunPanel {
         return;
       }
 
-      const remoteAddress = ctx.req.socket.remoteAddress;
-      if (!isLocalAddress(remoteAddress)) {
-        ctx.status = 403;
-        ctx.body = { ok: false };
-        return;
-      }
-
       const auth = ctx.req.headers["authorization"];
       if (auth !== `Bearer ${token}`) {
         ctx.status = 401;
@@ -653,6 +650,7 @@ export class RunPanel {
       }
     });
 
+    // Bind to all interfaces so host.docker.internal/host.containers.internal can reach us.
     const server = app.listen(0, "0.0.0.0");
 
     const { port } = await new Promise<{ port: number }>((resolve, reject) => {
@@ -677,10 +675,14 @@ export class RunPanel {
       path: hookPath,
       resultsByKey,
       flushTimer: null,
+      initStage: null,
     };
 
-    const host = params.engine === "docker" ? "host.docker.internal" : "host.containers.internal";
+    const host = await resolveWebhookHost(params.engine);
     const webhookUrl = `http://${host}:${port}${hookPath}`;
+    logMegaLinter(
+      `Run ${params.runId}: webhook server on port ${port} | engine=${params.engine} host=${host}`,
+    );
 
     return { webhookUrl, webhookToken: token };
   }
@@ -753,14 +755,15 @@ export class RunPanel {
 
     if (messageType === "megalinterStart" && Array.isArray(payload?.linters)) {
       for (const l of payload.linters) {
-        this._upsertLinterFromWebhook(ctx, l, undefined);
+        this._upsertLinterFromWebhook(ctx, l, "PENDING");
       }
+      this._setInitStage("linters", ctx.runId);
       this._scheduleWebhookFlush(ctx.runId);
       return;
     }
 
     if (messageType === "linterStart") {
-      this._upsertLinterFromWebhook(ctx, payload, "UNKNOWN");
+      this._upsertLinterFromWebhook(ctx, payload, "RUNNING");
       this._scheduleWebhookFlush(ctx.runId);
       return;
     }
@@ -835,8 +838,10 @@ export class RunPanel {
     const order: Record<string, number> = {
       ERROR: 0,
       WARNING: 1,
-      SUCCESS: 2,
-      UNKNOWN: 3,
+      RUNNING: 2,
+      PENDING: 3,
+      SUCCESS: 4,
+      UNKNOWN: 5,
     };
 
     return results.slice().sort((a, b) => {
@@ -849,50 +854,48 @@ export class RunPanel {
     });
   }
 
+  private _maybeUpdateInitStageFromLog(text: string, runId: string) {
+    if (!this._webhook || this._webhook.runId !== runId) {
+      return;
+    }
+
+    const lowered = text.toLowerCase();
+
+    if (lowered.includes("pulling docker image")) {
+      this._setInitStage("pull", runId);
+      return;
+    }
+
+    if (lowered.includes("[megalinter init] one-shot run")) {
+      this._setInitStage("linters", runId);
+      return;
+    }
+
+    if (lowered.includes("mega-linter-runner") || lowered.includes("initializing")) {
+      this._setInitStage("runner", runId);
+    }
+  }
+
+  private _setInitStage(stage: "runner" | "pull" | "linters", runId: string) {
+    if (!this._webhook || this._webhook.runId !== runId) {
+      return;
+    }
+
+    const current = this._webhook.initStage;
+    const order: Record<typeof stage, number> = { runner: 0, pull: 1, linters: 2 };
+    if (current && order[current] >= order[stage]) {
+      return;
+    }
+
+    this._webhook.initStage = stage;
+    this._postMessage({ type: "runInitStatus", runId, stage });
+  }
+
   private async _openFile(filePath: string) {
     const uri = vscode.Uri.file(filePath);
     const doc = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(doc, { preview: true });
   }
-}
-
-function isLocalAddress(remoteAddress: string | undefined): boolean {
-  if (!remoteAddress) {
-    return false;
-  }
-
-  const normalized = remoteAddress.startsWith("::ffff:")
-    ? remoteAddress.replace("::ffff:", "")
-    : remoteAddress;
-
-  if (normalized === "127.0.0.1" || normalized === "::1") {
-    return true;
-  }
-
-  if (net.isIPv4(normalized)) {
-    if (normalized.startsWith("10.")) {
-      return true;
-    }
-    const octets = normalized.split(".").map((o) => Number(o));
-    if (octets.length === 4) {
-      const [a, b] = octets;
-      if (a === 172 && b >= 16 && b <= 31) {
-        return true;
-      }
-      if (a === 192 && b === 168) {
-        return true;
-      }
-      if (a === 169 && b === 254) {
-        return true;
-      }
-    }
-  }
-
-  if (net.isIPv6(normalized) && normalized.startsWith("fe80")) {
-    return true;
-  }
-
-  return false;
 }
 
 function createRunId(): string {
@@ -1005,6 +1008,19 @@ function formatRunFolderTimestamp(d: Date): string {
   return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(
     d.getHours(),
   )}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+}
+
+async function resolveWebhookHost(engine: Engine): Promise<string> {
+  const envOverride = process.env.MEGALINTER_WEBHOOK_HOST;
+  if (envOverride && typeof envOverride === "string" && envOverride.trim() !== "") {
+    return envOverride.trim();
+  }
+  if (engine === "docker") {
+    return "host.docker.internal";
+  }
+
+  // podman default
+  return "host.containers.internal";
 }
 
 async function detectEngine(engine: Engine): Promise<EngineStatus> {

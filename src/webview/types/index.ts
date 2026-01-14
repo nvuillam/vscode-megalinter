@@ -12,6 +12,7 @@ import type {
   RunStatusMessage,
   RunOutputMessage,
   RunResultsMessage,
+  RunInitStatusMessage,
   RunErrorMessage,
   RunResult,
 } from "../../shared/webviewMessages";
@@ -89,6 +90,7 @@ export type RunWebViewMessage =
   | RunStatusMessage
   | RunOutputMessage
   | RunResultsMessage
+  | RunInitStatusMessage
   | RunErrorMessage;
 
 export type { RunResult };

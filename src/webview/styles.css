@@ -2316,25 +2316,52 @@ img.linter-card__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  border: 1px solid var(--vscode-panel-border);
+  gap: 6px;
+  border: 1px solid transparent;
+  color: var(--vscode-editor-foreground);
+}
+
+.run__status-pill-icon {
+  margin-right: 6px;
+  font-size: 14px;
 }
 
 .run__status-pill--success {
-  border-color: var(--vscode-testing-iconPassed, #3fb950);
+  color: var(--vscode-testing-iconPassed, #3fb950);
+  background: color-mix(in srgb, var(--vscode-testing-iconPassed, #3fb950) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-testing-iconPassed, #3fb950) 55%, transparent);
 }
 
 .run__status-pill--warning {
-  border-color: var(--vscode-notificationsWarningIcon-foreground, #d29922);
+  color: var(--vscode-notificationsWarningIcon-foreground, #d29922);
+  background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, #d29922) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, #d29922) 55%, transparent);
 }
 
 .run__status-pill--error {
-  border-color: var(--vscode-notificationsErrorIcon-foreground, #f85149);
+  color: var(--vscode-notificationsErrorIcon-foreground, #f85149);
+  background: color-mix(in srgb, var(--vscode-notificationsErrorIcon-foreground, #f85149) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-notificationsErrorIcon-foreground, #f85149) 55%, transparent);
 }
 
 .run__status-pill--unknown {
-  border-color: var(--vscode-panel-border);
+  color: var(--vscode-descriptionForeground, #808080);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground, #808080) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-descriptionForeground, #808080) 55%, transparent);
+}
+
+.run__status-pill--running {
+  color: var(--vscode-progressBar-background, #3794ff);
+  background: color-mix(in srgb, var(--vscode-progressBar-background, #3794ff) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-progressBar-background, #3794ff) 55%, transparent);
+}
+
+.run__status-pill--pending {
+  color: var(--vscode-descriptionForeground, #8a8a8a);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground, #8a8a8a) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-descriptionForeground, #8a8a8a) 55%, transparent);
 }
