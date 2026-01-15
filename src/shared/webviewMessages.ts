@@ -62,6 +62,13 @@ export type RunPreferences = {
   parallelCores?: number;
 };
 
+export type RunRecommendation = {
+  extensionId: string;
+  installed: boolean;
+  label: string;
+  author: string;
+};
+
 export type RunWebviewToExtensionMessage =
   | { type: "getRunContext"; force?: boolean }
   | {
@@ -75,7 +82,8 @@ export type RunWebviewToExtensionMessage =
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
   | { type: "showOutput" }
-  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores"; value: string };
+  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores"; value: string }
+  | { type: "openExtension"; extensionId: string };
 
 export type RunPanelInboundMessage =
   | CommonWebviewToExtensionMessage
@@ -139,6 +147,12 @@ export type RunResultsMessage = {
   exitCode: number | null;
 };
 
+export type RunRecommendationsMessage = {
+  type: "runRecommendations";
+  runId: string;
+  recommendations: RunRecommendation[];
+};
+
 export type RunInitStatusMessage = {
   type: "runInitStatus";
   runId: string;
@@ -160,6 +174,7 @@ export type RunPanelOutboundMessage =
   | RunOutputMessage
   | RunResultsMessage
   | RunInitStatusMessage
+  | RunRecommendationsMessage
   | RunErrorMessage;
 
 export type FlavorPanelOutboundMessage =

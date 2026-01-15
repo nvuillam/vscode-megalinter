@@ -10,7 +10,8 @@ import type {
   RunWebViewMessage,
   RunResult,
   ConfigNavigationTarget,
-  RunWebviewToExtensionMessage
+  RunWebviewToExtensionMessage,
+  RunRecommendation
 } from './types';
 
 type Engine = 'docker' | 'podman';
@@ -47,6 +48,7 @@ export const RunApp: React.FC = () => {
   const [reportFolderPath, setReportFolderPath] = useState<string>('');
   const [results, setResults] = useState<RunResult[]>([]);
   const [hasInitialResults, setHasInitialResults] = useState<boolean>(false);
+  const [recommendedExtensions, setRecommendedExtensions] = useState<RunRecommendation[]>([]);
   const [error, setError] = useState<{ message: string; commandLine?: string } | null>(null);
   const [initStage, setInitStage] = useState<
     | 'runner'
@@ -222,6 +224,7 @@ export const RunApp: React.FC = () => {
             setResults([]);
             setHasInitialResults(false);
             setInitStage('runner');
+            setRecommendedExtensions([]);
           }
           break;
         case 'runResults':
@@ -229,6 +232,9 @@ export const RunApp: React.FC = () => {
           setReportFolderPath(message.reportFolderPath);
           setResults(message.results || []);
           setHasInitialResults(true);
+          break;
+        case 'runRecommendations':
+          setRecommendedExtensions(message.recommendations || []);
           break;
         case 'runInitStatus':
           setInitStage(message.stage);
@@ -322,6 +328,13 @@ export const RunApp: React.FC = () => {
 
   const onViewLogs = () => {
     postMessage({ type: 'showOutput' });
+  };
+
+  const onInstallExtension = (extensionId: string) => {
+    if (!extensionId) {
+      return;
+    }
+    postMessage({ type: 'openExtension', extensionId });
   };
 
   const toggleSort = (column: SortColumn) => {
@@ -842,6 +855,68 @@ export const RunApp: React.FC = () => {
           </div>
         )}
       </div>
+
+      {recommendedExtensions.length > 0 && (
+        <div className="run__section">
+          <div className="run__section-title">
+            <span className="codicon codicon-extensions" aria-hidden="true" />
+            Recommended extensions
+          </div>
+          <div className="run__recommendations">
+            <table className="run__recommendations-table">
+              <thead>
+                <tr>
+                  <th>Extension</th>
+                  <th>Author</th>
+                  <th>Extension ID</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recommendedExtensions.map((rec) => (
+                  <tr key={rec.extensionId}>
+                    <td>
+                      <button
+                        type="button"
+                        className="run__link-button run__link-button--mono"
+                        onClick={() => onInstallExtension(rec.extensionId)}
+                        title="Open extension details"
+                      >
+                        {rec.label || rec.extensionId}
+                      </button>
+                    </td>
+                    <td>{rec.author || '—'}</td>
+                    <td className="run__mono">
+                      <button
+                        type="button"
+                        className="run__link-button run__link-button--mono"
+                        onClick={() => onInstallExtension(rec.extensionId)}
+                        title="Open extension details"
+                      >
+                        {rec.extensionId}
+                      </button>
+                    </td>
+                    <td className="run__recommendation-actions">
+                      {rec.installed ? (
+                        <span className="run__badge run__badge--installed">Installed</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="pill-button pill-button--ghost"
+                          onClick={() => onInstallExtension(rec.extensionId)}
+                        >
+                          <span className="codicon codicon-cloud-download pill-button__icon" aria-hidden="true" />
+                          Install
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2244,6 +2244,12 @@ img.linter-card__icon {
   color: var(--vscode-foreground);
 }
 
+.run__badge--installed {
+  background: var(--vscode-testing-iconPassed);
+  color: var(--vscode-editor-background);
+  border-color: var(--vscode-testing-iconPassed);
+}
+
 .run__spinner {
   font-size: 14px;
   opacity: 0.85;
@@ -2273,6 +2279,28 @@ img.linter-card__icon {
 
 .run__callout--error {
   border-color: var(--vscode-notificationsErrorIcon-foreground, var(--vscode-editorError-foreground));
+}
+
+.run__recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run__recommendation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+}
+
+.run__recommendation-name {
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  word-break: break-all;
 }
 
 .run__grid {
@@ -2322,22 +2350,88 @@ img.linter-card__icon {
   color: var(--vscode-descriptionForeground);
 }
 
-.run__output {
-  margin: 0;
-  padding: 12px;
-  border-radius: 10px;
+.run__recommendations-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   border: 1px solid var(--vscode-panel-border);
-  background: var(--vscode-terminal-background, var(--vscode-editor-background));
-  color: var(--vscode-terminal-foreground, var(--vscode-foreground));
-  max-height: 320px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgb(255 255 255 / 4%), rgb(0 0 0 / 6%)),
+    var(--vscode-editor-background);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 24%);
 }
 
-.run__empty {
+.run__recommendations-table th,
+.run__recommendations-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.run__recommendations-table th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
-  padding: 6px 2px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 70%, var(--vscode-panel-border));
+}
+
+.run__recommendations-table th:nth-child(1) {
+  width: 24%;
+}
+
+.run__recommendations-table th:nth-child(2) {
+  width: 18%;
+}
+
+.run__recommendations-table th:nth-child(3) {
+  width: 36%;
+}
+
+.run__recommendations-table th:nth-child(4) {
+  width: 12%;
+  text-align: right;
+}
+
+.run__recommendations-table td {
+  vertical-align: middle;
+}
+
+.run__recommendations-table tr:last-child td {
+  border-bottom: none;
+}
+
+.run__recommendations-table tbody tr:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.run__recommendations-extension {
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run__recommendations-author {
+  color: var(--vscode-descriptionForeground);
+}
+
+.run__recommendations-id {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-textLink-foreground);
+  word-break: break-all;
+}
+
+.run__recommendation-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.run__install-button {
+  padding: 8px 12px;
+  border-radius: 999px;
 }
 
 .run__table-wrap {
