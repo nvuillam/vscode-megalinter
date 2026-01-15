@@ -109,7 +109,7 @@
         "megalinter.run.version": {
           "type": "string",
           "default": "latest",
-          "description": "Default MegaLinter runner version used by the Run view."
+          "description": "Default MegaLinter docker image version used by the Run view."
         },
         "megalinter.run.parallelCores": {
           "type": "number",
