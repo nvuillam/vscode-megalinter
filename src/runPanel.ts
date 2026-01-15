@@ -14,6 +14,7 @@ import {
   logMegaLinter,
   showMegaLinterOutput,
 } from "./outputChannel";
+import { getConfiguredRunnerVersion } from "./runnerVersion";
 import {
   buildWebviewHtml,
   createMegalinterWebviewPanel,
@@ -549,7 +550,7 @@ export class RunPanel {
         : "latest";
     const cpuCount = Math.max(1, (os.cpus()?.length ?? 1));
     const safeParallel = Math.min(cpuCount, Math.max(1, Math.floor(parallelCores || 4)));
-    const runnerPackageVersion = "latest";
+    const runnerPackageVersion = getConfiguredRunnerVersion();
 
     const runId = createRunId();
     const runFolderName = `${formatRunFolderTimestamp(new Date())}_${safeFlavor}`;

@@ -9,6 +9,7 @@ import { CustomFlavorPanel } from "./customFlavorPanel";
 import { logMegaLinter } from "./outputChannel";
 import type { LinterDescriptorMetadata } from "./shared/linterMetadata";
 import { sanitizeConfigForSave } from "./shared/sanitizeConfigForSave";
+import { getConfiguredRunnerVersion } from "./runnerVersion";
 import {
   buildWebviewHtml,
   createMegalinterWebviewPanel,
@@ -198,14 +199,16 @@ export class ConfigurationPanel {
             break;
           case "installMegaLinter":
             logMegaLinter("Config view: installMegaLinter");
+            const installRunnerVersion = getConfiguredRunnerVersion();
             await this._runCommand(
-              "npx --yes mega-linter-runner@latest --install",
+              `npx --yes mega-linter-runner@${installRunnerVersion} --install`,
             );
             break;
           case "upgradeMegaLinter":
             logMegaLinter("Config view: upgradeMegaLinter");
+            const upgradeRunnerVersion = getConfiguredRunnerVersion();
             await this._runCommand(
-              "npx --yes mega-linter-runner@latest --upgrade",
+              `npx --yes mega-linter-runner@${upgradeRunnerVersion} --upgrade`,
             );
             break;
           case "openRunPanel": {

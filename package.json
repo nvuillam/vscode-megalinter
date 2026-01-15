@@ -89,6 +89,12 @@
     "configuration": {
       "title": "MegaLinter",
       "properties": {
+        "megalinter.megaLinterRunnerVersion": {
+          "type": "string",
+          "default": "latest",
+          "markdownDescription": "Version used for mega-linter-runner (channels: `latest`, `beta`, `alpha`, or an explicit semver like `9.4.0`).",
+          "scope": "application"
+        },
         "megalinter.run.engine": {
           "type": "string",
           "enum": ["docker", "podman"],
