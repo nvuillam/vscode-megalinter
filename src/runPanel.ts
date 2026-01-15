@@ -588,6 +588,8 @@ export class RunPanel {
       "-e",
       `REPORT_OUTPUT_FOLDER=/tmp/lint/${reportFolderRel}`,
       "-e",
+      "OUTPUT_DETAIL=detailed",
+      "-e",
       "WEBHOOK_REPORTER=true",
       "-e",
       `WEBHOOK_REPORTER_URL=${webhookUrl}`,
