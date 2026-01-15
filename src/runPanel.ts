@@ -404,18 +404,18 @@ export class RunPanel {
       const hasEligible = normalized.length > 0;
       latest = hasEligible ? "latest" : null;
 
-      versions = ["beta", ...(hasEligible ? ["latest"] : []), ...normalized];
+      versions = ["beta", ...(hasEligible ? ["latest"] : []), ...normalized, "alpha"];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logMegaLinter(
         `Run view: GitHub releases fetch failed in ${Date.now() - fetchStart}ms | ${msg}`,
       );
       // If GitHub is unreachable (offline, rate limited, etc.), show only channels.
-      versions = ["beta"];
+      versions = ["beta", "alpha"];
     }
 
     if (versions.length === 0) {
-      versions = ["beta"];
+      versions = ["beta", "alpha"];
     }
 
     versions = Array.from(new Set(versions));
