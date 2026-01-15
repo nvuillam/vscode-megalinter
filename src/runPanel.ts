@@ -56,7 +56,13 @@ export class RunPanel {
   private _disposables: vscode.Disposable[] = [];
 
   private _runningChild:
-    | { runId: string; reportFolderPath: string; child: ReturnType<typeof spawn> }
+    | {
+        runId: string;
+        reportFolderPath: string;
+        child: ReturnType<typeof spawn>;
+        engine: Engine;
+        containerImage?: string;
+      }
     | undefined;
 
   private _webhook:
@@ -620,12 +626,13 @@ export class RunPanel {
       windowsHide: true,
     });
 
-    this._runningChild = { runId, reportFolderPath, child };
+    this._runningChild = { runId, reportFolderPath, child, engine, containerImage: undefined };
 
     const forward = (chunk: Buffer) => {
       // Mirror process output to VS Code Output panel.
       const text = chunk.toString("utf8");
       appendMegaLinterOutput(text);
+      this._maybeCaptureContainerImage(text, runId);
       this._maybeUpdateInitStageFromLog(text, runId);
     };
 
@@ -707,7 +714,7 @@ export class RunPanel {
       return;
     }
 
-    const { runId, reportFolderPath, child } = this._runningChild;
+    const { runId, reportFolderPath, child, engine, containerImage } = this._runningChild;
     try {
       child.kill();
     } catch {
@@ -715,6 +722,8 @@ export class RunPanel {
     }
 
     this._runningChild = undefined;
+
+    await this._killRunningContainerIfAny(runId, engine, containerImage);
 
     this._stopWebhookServer();
 
@@ -725,6 +734,32 @@ export class RunPanel {
       reportFolderPath,
       reportFolderRel: "",
     });
+  }
+
+  private async _killRunningContainerIfAny(
+    runId: string,
+    engine: Engine,
+    containerImage?: string,
+  ) {
+    if (!containerImage) {
+      return;
+    }
+
+    try {
+      const ids = await listContainersByImage(engine, containerImage);
+      if (!ids.length) {
+        logMegaLinter(`Run ${runId}: no running containers found for ${containerImage}`);
+        return;
+      }
+
+      await killContainers(engine, ids);
+      logMegaLinter(
+        `Run ${runId}: killed ${ids.length} container(s) for image ${containerImage} -> ${ids.join(",")}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logMegaLinter(`Run ${runId}: failed to stop containers for ${containerImage} | ${msg}`);
+    }
   }
 
   private async _startWebhookServer(params: {
@@ -1020,6 +1055,25 @@ export class RunPanel {
     }
   }
 
+  private _maybeCaptureContainerImage(text: string, runId: string) {
+    if (!this._runningChild || this._runningChild.runId !== runId) {
+      return;
+    }
+    if (this._runningChild.containerImage) {
+      return;
+    }
+
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      const image = extractContainerImageFromLine(line);
+      if (image) {
+        this._runningChild.containerImage = image;
+        logMegaLinter(`Run ${runId}: detected container image ${image}`);
+        break;
+      }
+    }
+  }
+
   private _setInitStage(
     stage:
       | "runner"
@@ -1241,6 +1295,109 @@ async function detectEngine(engine: Engine): Promise<EngineStatus> {
     // Executable exists but info failed -> treat as installed but not running
     return { available: true, running: false, details: "not running" };
   }
+}
+
+function extractContainerImageFromLine(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = /\b(?:docker|podman)\s+run\b[^\n]*$/i.exec(trimmed);
+  if (!match) {
+    return null;
+  }
+
+  const segment = match[0];
+  const tokens = segment.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return null;
+  }
+
+  const raw = tokens[tokens.length - 1];
+  const unquoted = raw.replace(/^['"]|['"]$/g, "");
+
+  if (/^[^\s]+(?::[^\s]+|@[^\s]+)?$/.test(unquoted) && /[/:]/.test(unquoted)) {
+    return unquoted;
+  }
+
+  return null;
+}
+
+async function listContainersByImage(engine: Engine, image: string): Promise<string[]> {
+  const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
+  const args = ["ps", "--filter", `ancestor=${image}`, "--format", "{{.ID}}"]; // ancestor matches by image
+  const { stdout } = await execCaptureWithTimeout(cmd, args, 8000);
+  return stdout
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function killContainers(engine: Engine, containerIds: string[]): Promise<void> {
+  if (!containerIds.length) {
+    return;
+  }
+
+  const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
+  const args = ["kill", ...containerIds];
+  await execCaptureWithTimeout(cmd, args, 8000);
+}
+
+function execCaptureWithTimeout(
+  command: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      shell: false,
+      windowsHide: true,
+    });
+
+    let settled = false;
+    let stdout = "";
+    let stderr = "";
+
+    const timer = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      try {
+        child.kill();
+      } catch {
+        // ignore
+      }
+      resolve({ stdout, stderr });
+    }, timeoutMs);
+
+    child.stdout.on("data", (b: Buffer) => {
+      stdout += b.toString("utf8");
+    });
+
+    child.stderr.on("data", (b: Buffer) => {
+      stderr += b.toString("utf8");
+    });
+
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(err);
+    });
+
+    child.on("close", () => {
+      clearTimeout(timer);
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve({ stdout, stderr });
+    });
+  });
 }
 
 function execWithTimeout(command: string, args: string[], timeoutMs: number): Promise<boolean> {
