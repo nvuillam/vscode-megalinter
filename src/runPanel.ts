@@ -224,6 +224,12 @@ export class RunPanel {
     this._panel.webview.postMessage(message);
   }
 
+  private _recommendationsEnabled(): boolean {
+    const config = vscode.workspace.getConfiguration("megalinter.run");
+    const flag = config.get<boolean>("recommendVsCodeExtensions");
+    return flag !== false;
+  }
+
   private _getRunPreferences(): RunPreferences {
     const config = vscode.workspace.getConfiguration("megalinter.run");
 
@@ -755,6 +761,11 @@ export class RunPanel {
   }
 
   private async _sendRecommendedExtensions(runId: string, reportFolderPath: string) {
+    if (!this._recommendationsEnabled()) {
+      this._postMessage({ type: "runRecommendations", runId, recommendations: [] });
+      return;
+    }
+
     try {
       const recommendations = await this._loadExtensionRecommendations(reportFolderPath);
       this._postMessage({ type: "runRecommendations", runId, recommendations });

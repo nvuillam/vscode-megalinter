@@ -116,6 +116,11 @@
           "minimum": 1,
           "default": 4,
           "description": "Number of parallel cores to use when running MegaLinter from the Run view."
+        },
+        "megalinter.run.recommendVsCodeExtensions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show and open recommended VS Code extensions produced by MegaLinter reports."
         }
       }
     }
