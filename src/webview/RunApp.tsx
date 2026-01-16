@@ -337,6 +337,16 @@ export const RunApp: React.FC = () => {
     postMessage({ type: 'openExtension', extensionId });
   };
 
+  const onHideRecommendations = () => {
+    setRecommendedExtensions([]);
+    postMessage({ type: 'updateRunSetting', key: 'recommendVsCodeExtensions', value: 'false' });
+    postMessage({
+      type: 'info',
+      message:
+        'Recommended extensions hidden. To show them again, enable "MegaLinter: Recommend VS Code Extensions" in VS Code settings.'
+    });
+  };
+
   const toggleSort = (column: SortColumn) => {
     setSort((current) => {
       if (current.column === column) {
@@ -861,6 +871,17 @@ export const RunApp: React.FC = () => {
           <div className="run__section-title">
             <span className="codicon codicon-extensions" aria-hidden="true" />
             Recommended extensions
+            <div className="run__section-actions">
+              <button
+                type="button"
+                className="pill-button pill-button--ghost"
+                onClick={onHideRecommendations}
+                title="Hide recommended extensions"
+              >
+                <span className="codicon codicon-eye-closed pill-button__icon" aria-hidden="true" />
+                Hide
+              </button>
+            </div>
           </div>
           <div className="run__recommendations">
             <table className="run__recommendations-table">

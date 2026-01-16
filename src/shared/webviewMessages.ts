@@ -82,12 +82,14 @@ export type RunWebviewToExtensionMessage =
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
   | { type: "showOutput" }
-  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores"; value: string }
-  | { type: "openExtension"; extensionId: string };
+  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions"; value: string }
+  | { type: "openExtension"; extensionId: string }
+  | InfoMessage;
 
 export type RunPanelInboundMessage =
   | CommonWebviewToExtensionMessage
   | RunWebviewToExtensionMessage
+  | InfoMessage
   | { type: "error"; message: string };
 
 // --- MegaLinter Run (Extension -> Webview) ---

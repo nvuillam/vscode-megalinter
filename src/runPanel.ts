@@ -151,6 +151,9 @@ export class RunPanel {
             case "openExternal":
               await openExternalHttpUrl(message.url);
               break;
+            case "info":
+              void vscode.window.showInformationMessage(message.message);
+              break;
             case "error":
               vscode.window.showErrorMessage(message.message);
               break;
@@ -363,7 +366,7 @@ export class RunPanel {
   }
 
   private async _updateRunSetting(
-    key: "engine" | "flavor" | "version" | "parallelCores",
+    key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions",
     value: string,
   ) {
     const config = vscode.workspace.getConfiguration("megalinter.run");
@@ -404,6 +407,12 @@ export class RunPanel {
       }
       logMegaLinter(`Run view: setting updated | key=parallelCores value=${parsed}`);
       await config.update("parallelCores", parsed, vscode.ConfigurationTarget.Workspace);
+    }
+
+    if (key === "recommendVsCodeExtensions") {
+      const boolValue = value === "true";
+      logMegaLinter(`Run view: setting updated | key=recommendVsCodeExtensions value=${boolValue}`);
+      await config.update("recommendVsCodeExtensions", boolValue, vscode.ConfigurationTarget.Workspace);
     }
   }
 
