@@ -2,10 +2,8 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import axios from "axios";
 import Koa from "koa";
 import * as http from "http";
-import * as net from "net";
 import * as os from "os";
 import { spawn } from "child_process";
 import {
@@ -30,23 +28,9 @@ import type {
   RunRecommendation,
 } from "./shared/webviewMessages";
 import type { NavigationTarget } from "./extension";
-
-type Engine = "docker" | "podman";
-
-type EngineStatus = {
-  available: boolean;
-  running: boolean;
-  details?: string;
-};
-
-type RunnerVersionsCache = {
-  timestamp: number;
-  versions: string[];
-  latest: string | null;
-};
-
-const RUNNER_VERSIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const ENGINE_STATUS_CACHE_TTL_MS = 10 * 1000;
+import { EngineStatusService, type Engine, type EngineStatus } from "./run/engineStatus";
+import { RunnerVersionService, isValidSemver } from "./run/runnerVersions";
+import { RecommendationsService } from "./run/recommendations";
 
 export class RunPanel {
   public static currentPanel: RunPanel | undefined;
@@ -89,16 +73,10 @@ export class RunPanel {
       }
     | undefined;
 
-  private _runnerVersionsCache: RunnerVersionsCache | null = null;
   private _flavorEnumCache: string[] | null = null;
-  private _engineStatusCache:
-    | {
-        timestamp: number;
-        statuses: Record<Engine, EngineStatus>;
-      }
-    | null = null;
-
-  private _extensionMetadataCache = new Map<string, { label?: string; author?: string }>();
+  private readonly _engineStatusService = new EngineStatusService();
+  private readonly _runnerVersionService = new RunnerVersionService();
+  private readonly _recommendationsService = new RecommendationsService();
 
   public static createOrShow(extensionUri: vscode.Uri): RunPanel {
     const column = vscode.window.activeTextEditor
@@ -278,28 +256,17 @@ export class RunPanel {
 
     const runnerPromise = Promise.resolve().then(async () => {
       const t0 = Date.now();
-      const cached =
-        this._runnerVersionsCache &&
-        Date.now() - this._runnerVersionsCache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS;
       const v = await this._getRunnerVersions();
       logMegaLinter(
-        `Run view: init versions in ${Date.now() - t0}ms` +
-          (cached ? " (cached)" : "") +
-          ` | count=${v.versions.length}`,
+        `Run view: init versions in ${Date.now() - t0}ms | count=${v.versions.length}`,
       );
       return v;
     });
 
     const enginesPromise = Promise.resolve().then(async () => {
       const t0 = Date.now();
-      const cached =
-        !force &&
-        this._engineStatusCache &&
-        Date.now() - this._engineStatusCache.timestamp < ENGINE_STATUS_CACHE_TTL_MS;
       const v = await this._detectEngines(force);
-      logMegaLinter(
-        `Run view: init engines in ${Date.now() - t0}ms` + (cached ? " (cached)" : ""),
-      );
+      logMegaLinter(`Run view: init engines in ${Date.now() - t0}ms`);
       return v;
     });
 
@@ -388,104 +355,11 @@ export class RunPanel {
   }
 
   private async _getRunnerVersions(): Promise<{ versions: string[]; latest: string | null }> {
-    const now = Date.now();
-    if (
-      this._runnerVersionsCache &&
-      now - this._runnerVersionsCache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS
-    ) {
-      const ageMs = now - this._runnerVersionsCache.timestamp;
-      logMegaLinter(
-        `Run view: versions cache hit | age=${ageMs}ms size=${this._runnerVersionsCache.versions.length}`,
-      );
-      return {
-        versions: this._runnerVersionsCache.versions,
-        latest: this._runnerVersionsCache.latest,
-      };
-    }
-
-    let versions: string[] = [];
-    let latest: string | null = null;
-
-    const fetchStart = Date.now();
-    try {
-      logMegaLinter("Run view: fetching MegaLinter versions from GitHub releases…");
-      const tags = await fetchMegalinterGithubReleaseTags();
-      logMegaLinter(
-        `Run view: GitHub releases fetched in ${Date.now() - fetchStart}ms | tags=${tags.length}`,
-      );
-      const normalized = tags
-        .map(normalizeReleaseTag)
-        .filter((v): v is string => !!v)
-        .filter((v) => isAtLeastSemver(v, "9.4.0"))
-        .sort(compareSemverDesc)
-        .slice(0, 10);
-
-      const hasEligible = normalized.length > 0;
-      latest = hasEligible ? "latest" : null;
-
-      versions = ["beta", ...(hasEligible ? ["latest"] : []), ...normalized, "alpha"];
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logMegaLinter(
-        `Run view: GitHub releases fetch failed in ${Date.now() - fetchStart}ms | ${msg}`,
-      );
-      // If GitHub is unreachable (offline, rate limited, etc.), show only channels.
-      versions = ["beta", "alpha"];
-    }
-
-    if (versions.length === 0) {
-      versions = ["beta", "alpha"];
-    }
-
-    versions = Array.from(new Set(versions));
-
-    logMegaLinter(`Run view: versions resolved (${versions.length}) [${versions.join(", ")}]`);
-
-    this._runnerVersionsCache = {
-      timestamp: now,
-      versions,
-      latest,
-    };
-
-    return { versions, latest };
+    return this._runnerVersionService.getRunnerVersions();
   }
 
   private async _detectEngines(force?: boolean): Promise<Record<Engine, EngineStatus>> {
-    const now = Date.now();
-    if (
-      !force &&
-      this._engineStatusCache &&
-      now - this._engineStatusCache.timestamp < ENGINE_STATUS_CACHE_TTL_MS
-    ) {
-      const ageMs = now - this._engineStatusCache.timestamp;
-      logMegaLinter(`Run view: using cached engine status | age=${ageMs}ms`);
-      return this._engineStatusCache.statuses;
-    }
-
-    const dockerPromise = (async () => {
-      const t0 = Date.now();
-      const v = await detectEngine("docker");
-      logMegaLinter(`Run view: detect docker in ${Date.now() - t0}ms`);
-      return v;
-    })();
-
-    const podmanPromise = (async () => {
-      const t0 = Date.now();
-      const v = await detectEngine("podman");
-      logMegaLinter(`Run view: detect podman in ${Date.now() - t0}ms`);
-      return v;
-    })();
-
-    const [docker, podman] = await Promise.all([dockerPromise, podmanPromise]);
-    const statuses: Record<Engine, EngineStatus> = { docker, podman };
-    this._engineStatusCache = { timestamp: now, statuses };
-
-    logMegaLinter(
-      `Run view: engine status | ` +
-        `docker=${docker.available ? (docker.running ? "available" : "not started") : "not installed"} ` +
-        `podman=${podman.available ? (podman.running ? "available" : "not started") : "not installed"}`,
-    );
-    return statuses;
+    return this._engineStatusService.detect(force);
   }
 
   private async _updateRunSetting(
@@ -551,9 +425,7 @@ export class RunPanel {
     const engineStatuses = await this._detectEngines(true);
     const selectedStatus = engineStatuses[engine];
     if (!selectedStatus.available) {
-      throw new Error(
-        `${engine} is not available. Please install it and try again.`,
-      );
+      throw new Error(`${engine} is not available. Please install it and try again.`);
     }
     if (!selectedStatus.running) {
       throw new Error(
@@ -776,110 +648,7 @@ export class RunPanel {
   }
 
   private async _loadExtensionRecommendations(reportFolderPath: string): Promise<RunRecommendation[]> {
-    const configPath = path.join(reportFolderPath, "IDE-config", ".vscode", "extensions.json");
-
-    if (!fs.existsSync(configPath)) {
-      return [];
-    }
-
-    try {
-      const raw = fs.readFileSync(configPath, "utf8");
-      const parsed = JSON.parse(raw) as any;
-      const rawRecommendations = Array.isArray(parsed?.recommendations)
-        ? (parsed.recommendations as unknown[])
-        : [];
-
-      const cleaned = rawRecommendations
-        .filter((r: unknown): r is string => typeof r === "string")
-        .map((r: string) => r.trim())
-        .filter(Boolean);
-
-      const seen = new Set<string>();
-      const unique = cleaned.filter((id: string) => {
-        const key = id.toLowerCase();
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
-
-      if (!unique.length) {
-        return [];
-      }
-
-      const installedMap = new Map<string, vscode.Extension<any>>(
-        vscode.extensions.all.map((ext) => [ext.id.toLowerCase(), ext]),
-      );
-
-      const recs: RunRecommendation[] = await Promise.all(
-        unique.map(async (extensionId: string) => {
-          const lowered = extensionId.toLowerCase();
-          const installedExt = installedMap.get(lowered);
-          const meta = await this._resolveExtensionMetadata(extensionId, installedExt);
-
-          return {
-            extensionId,
-            installed: Boolean(installedExt),
-            label: meta.label || inferLabelFromExtensionId(extensionId),
-            author: meta.author || inferAuthorFromExtensionId(extensionId),
-          } satisfies RunRecommendation;
-        }),
-      );
-
-      return recs;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logMegaLinter(`Run view: failed to parse recommended extensions | ${msg}`);
-      return [];
-    }
-  }
-
-  private async _resolveExtensionMetadata(
-    extensionId: string,
-    installedExt?: vscode.Extension<any>,
-  ): Promise<{ label: string; author: string }> {
-    const cacheKey = extensionId.toLowerCase();
-    const cached = this._extensionMetadataCache.get(cacheKey);
-    if (cached?.label && cached?.author) {
-      return { label: cached.label, author: cached.author };
-    }
-
-    let label =
-      typeof installedExt?.packageJSON?.displayName === "string"
-        ? installedExt.packageJSON.displayName.trim()
-        : "";
-
-    let author =
-      typeof installedExt?.packageJSON?.publisherDisplayName === "string"
-        ? installedExt.packageJSON.publisherDisplayName.trim()
-        : typeof installedExt?.packageJSON?.publisher === "string"
-          ? installedExt.packageJSON.publisher.trim()
-          : "";
-
-    if (!label || !author) {
-      const marketplace = await fetchExtensionMetadataFromMarketplace(extensionId);
-      if (marketplace) {
-        if (!label && marketplace.label) {
-          label = marketplace.label.trim();
-        }
-        if (!author && marketplace.author) {
-          author = marketplace.author.trim();
-        }
-      }
-    }
-
-    if (!label) {
-      label = inferLabelFromExtensionId(extensionId);
-    }
-
-    if (!author) {
-      author = inferAuthorFromExtensionId(extensionId);
-    }
-
-    const meta = { label, author };
-    this._extensionMetadataCache.set(cacheKey, meta);
-    return meta;
+    return this._recommendationsService.load(reportFolderPath);
   }
 
   private async _killRunningContainerIfAny(
@@ -1366,129 +1135,6 @@ function quoteArgForShell(arg: string): string {
   return `"${arg.replace(/"/g, '\\"')}"`;
 }
 
-function formatCommandLine(command: string, args: string[]): string {
-  return [command, ...args.map(quoteArgForShell)].join(" ");
-}
-
-function redactArgs(args: string[]): string[] {
-  return args.map((a) => {
-    if (typeof a !== "string") {
-      return a;
-    }
-    if (a.startsWith("WEBHOOK_REPORTER_BEARER_TOKEN=")) {
-      return "WEBHOOK_REPORTER_BEARER_TOKEN=***";
-    }
-    return a;
-  });
-}
-
-async function logWhereNpxDiagnostics(): Promise<void> {
-  try {
-    const comspec = process.env.COMSPEC || "cmd.exe";
-    const child = spawn(comspec, ["/d", "/s", "/c", "where", "npx"], {
-      shell: false,
-      windowsHide: true,
-    });
-
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (b: Buffer) => {
-      stdout += b.toString("utf8");
-    });
-    child.stderr.on("data", (b: Buffer) => {
-      stderr += b.toString("utf8");
-    });
-
-    await new Promise<void>((resolve) => {
-      child.on("close", () => resolve());
-      child.on("error", () => resolve());
-    });
-
-    const out = stdout.trim();
-    const err = stderr.trim();
-    if (out) {
-      logMegaLinter(`Windows diagnostics: where npx -> ${out}`);
-    } else if (err) {
-      logMegaLinter(`Windows diagnostics: where npx (stderr) -> ${err}`);
-    } else {
-      logMegaLinter("Windows diagnostics: where npx -> (no output)");
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    logMegaLinter(`Windows diagnostics: where npx failed -> ${msg}`);
-  }
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function formatRunFolderTimestamp(d: Date): string {
-  // YYYYMMDD-HHMMSS
-  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(
-    d.getHours(),
-  )}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
-}
-
-async function resolveWebhookHost(engine: Engine): Promise<string> {
-  const envOverride = process.env.MEGALINTER_WEBHOOK_HOST;
-  if (envOverride && typeof envOverride === "string" && envOverride.trim() !== "") {
-    return envOverride.trim();
-  }
-  if (engine === "docker") {
-    return "host.docker.internal";
-  }
-
-  // podman default
-  return "host.containers.internal";
-}
-
-async function detectEngine(engine: Engine): Promise<EngineStatus> {
-  const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
-
-  try {
-    const ok = await execWithTimeout(cmd, ["info"], 10000);
-    return { available: true, running: ok, details: ok ? "running" : "not running" };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-
-    // If executable is missing, mark unavailable
-    if (/ENOENT/i.test(msg) || /not found/i.test(msg)) {
-      return { available: false, running: false, details: "not installed" };
-    }
-
-    // Executable exists but info failed -> treat as installed but not running
-    return { available: true, running: false, details: "not running" };
-  }
-}
-
-function extractContainerImageFromLine(line: string): string | null {
-  const trimmed = line.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const match = /\b(?:docker|podman)\s+run\b[^\n]*$/i.exec(trimmed);
-  if (!match) {
-    return null;
-  }
-
-  const segment = match[0];
-  const tokens = segment.split(/\s+/).filter(Boolean);
-  if (!tokens.length) {
-    return null;
-  }
-
-  const raw = tokens[tokens.length - 1];
-  const unquoted = raw.replace(/^['"]|['"]$/g, "");
-
-  if (/^[^\s]+(?::[^\s]+|@[^\s]+)?$/.test(unquoted) && /[/:]/.test(unquoted)) {
-    return unquoted;
-  }
-
-  return null;
-}
-
 async function listContainersByImage(engine: Engine, image: string): Promise<string[]> {
   const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
   const args = ["ps", "--filter", `ancestor=${image}`, "--format", "{{.ID}}"]; // ancestor matches by image
@@ -1565,238 +1211,113 @@ function execCaptureWithTimeout(
   });
 }
 
-function execWithTimeout(command: string, args: string[], timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      shell: false,
-      windowsHide: true,
-    });
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
 
-    let settled = false;
+function formatRunFolderTimestamp(d: Date): string {
+  // YYYYMMDD-HHMMSS for predictable report folder naming.
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(
+    d.getHours(),
+  )}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+}
 
-    const timer = setTimeout(() => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      try {
-        child.kill();
-      } catch {
-        // ignore
-      }
-      resolve(false);
-    }, timeoutMs);
+function formatCommandLine(cmd: string, args: string[]): string {
+  return [cmd, ...args.map(quoteArgForShell)].join(" ");
+}
 
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      if (settled) {
-        return;
-      }
-      settled = true;
-      reject(err);
-    });
-
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve(code === 0);
-    });
+function redactArgs(args: string[]): string[] {
+  return args.map((arg) => {
+    if (/WEBHOOK_REPORTER_BEARER_TOKEN=/i.test(arg)) {
+      return arg.replace(/(WEBHOOK_REPORTER_BEARER_TOKEN=).*/i, "$1<redacted>");
+    }
+    if (/TOKEN=|PASSWORD=|SECRET=/i.test(arg)) {
+      return arg.replace(/(TOKEN=|PASSWORD=|SECRET=).*/i, "$1<redacted>");
+    }
+    return arg;
   });
 }
 
-function inferLabelFromExtensionId(extensionId: string): string {
-  if (!extensionId) {
-    return "";
+async function logWhereNpxDiagnostics(): Promise<void> {
+  if (process.platform !== "win32") {
+    return;
   }
-
-  const trimmed = extensionId.trim();
-  const withoutPublisher = trimmed.includes(".") ? trimmed.slice(trimmed.indexOf(".") + 1) : trimmed;
-  const parts = withoutPublisher.split(/[-._]/g).filter(Boolean);
-  if (parts.length === 0) {
-    return trimmed;
-  }
-
-  const words = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
-  return words.join(" ");
-}
-
-function inferAuthorFromExtensionId(extensionId: string): string {
-  if (!extensionId) {
-    return "";
-  }
-
-  const trimmed = extensionId.trim();
-  const publisher = trimmed.includes(".") ? trimmed.slice(0, trimmed.indexOf(".")) : trimmed;
-  const parts = publisher.split(/[-._]/g).filter(Boolean);
-  if (parts.length === 0) {
-    return publisher;
-  }
-
-  return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
-}
-
-type ExtensionMarketplaceMetadata = {
-  label?: string;
-  author?: string;
-};
-
-async function fetchExtensionMetadataFromMarketplace(
-  extensionId: string,
-): Promise<ExtensionMarketplaceMetadata | null> {
-  const trimmed = typeof extensionId === "string" ? extensionId.trim() : "";
-  if (!trimmed || !trimmed.includes(".")) {
-    return null;
-  }
-
-  const url = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery";
-  const body = {
-    filters: [
-      {
-        criteria: [{ filterType: 7, value: trimmed }],
-        pageNumber: 1,
-        pageSize: 1,
-        sortBy: 0,
-        sortOrder: 0,
-      },
-    ],
-    // Include metadata + latest version without payload heavy assets.
-    flags: 914,
-  };
 
   try {
-    const response = await axios.post(url, body, {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json;api-version=7.1-preview.1",
-      },
-      timeout: 4000,
+    const child = spawn("where", ["npx"], { windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (b: Buffer) => {
+      stdout += b.toString("utf8");
     });
 
-    const ext = response.data?.results?.[0]?.extensions?.[0];
-    if (!ext) {
-      return null;
+    child.stderr.on("data", (b: Buffer) => {
+      stderr += b.toString("utf8");
+    });
+
+    await new Promise<void>((resolve) => {
+      child.on("close", () => resolve());
+      child.on("error", () => resolve());
+    });
+
+    const out = stdout.trim();
+    const err = stderr.trim();
+    if (out) {
+      logMegaLinter(`Windows diagnostics: where npx -> ${out}`);
+    } else if (err) {
+      logMegaLinter(`Windows diagnostics: where npx (stderr) -> ${err}`);
+    } else {
+      logMegaLinter("Windows diagnostics: where npx -> (no output)");
     }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logMegaLinter(`Windows diagnostics: where npx failed -> ${msg}`);
+  }
+}
 
-    const label = typeof ext.displayName === "string" ? ext.displayName : undefined;
-    const author =
-      typeof ext.publisher?.displayName === "string"
-        ? ext.publisher.displayName
-        : typeof ext.publisher?.publisherName === "string"
-          ? ext.publisher.publisherName
-          : undefined;
+async function resolveWebhookHost(engine: Engine): Promise<string> {
+  const envOverride = process.env.MEGALINTER_WEBHOOK_HOST;
+  if (envOverride && typeof envOverride === "string" && envOverride.trim() !== "") {
+    return envOverride.trim();
+  }
+  if (engine === "docker") {
+    return "host.docker.internal";
+  }
 
-    return { label, author };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logMegaLinter(`Run view: marketplace lookup failed for ${trimmed} | ${msg}`);
+  // podman default
+  return "host.containers.internal";
+}
+
+function extractContainerImageFromLine(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed) {
     return null;
   }
-}
 
-function fetchMegalinterGithubReleaseTags(): Promise<string[]> {
-  // Use the GitHub API to list releases. Unauthenticated access is rate limited.
-  // If unreachable, caller falls back to "latest".
-  const url = "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=10";
-
-  return axios
-    .get(url, {
-      headers: {
-        "User-Agent": "vscode-megalinter",
-        Accept: "application/vnd.github+json",
-      },
-      timeout: 8000,
-    })
-    .then((response) => {
-      const json = response.data as any;
-      if (!Array.isArray(json)) {
-        return [];
-      }
-
-      const tags = json
-        .map((r: any) => (typeof r?.tag_name === "string" ? r.tag_name : null))
-        .filter((t: any): t is string => typeof t === "string");
-      return tags;
-    });
-}
-
-function normalizeReleaseTag(tag: string): string | null {
-  const trimmed = String(tag || "").trim();
-  const withoutV = trimmed.startsWith("v") ? trimmed.slice(1) : trimmed;
-  // Only keep semver-ish tags; ignore other release naming.
-  return /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(withoutV) ? withoutV : null;
-}
-
-function compareSemverDesc(a: string, b: string): number {
-  const pa = parseSemver(a);
-  const pb = parseSemver(b);
-
-  // Unknown versions go last
-  if (!pa && !pb) {
-    return b.localeCompare(a);
-  }
-  if (!pa) {
-    return 1;
-  }
-  if (!pb) {
-    return -1;
-  }
-
-  if (pa.major !== pb.major) {
-    return pb.major - pa.major;
-  }
-  if (pa.minor !== pb.minor) {
-    return pb.minor - pa.minor;
-  }
-  if (pa.patch !== pb.patch) {
-    return pb.patch - pa.patch;
-  }
-
-  // Stable releases should come before prereleases
-  if (pa.prerelease && !pb.prerelease) {
-    return 1;
-  }
-  if (!pa.prerelease && pb.prerelease) {
-    return -1;
-  }
-
-  return (pb.prerelease || "").localeCompare(pa.prerelease || "");
-}
-
-function parseSemver(v: string):
-  | { major: number; minor: number; patch: number; prerelease?: string }
-  | null {
-  const m = /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z.-]+))?$/.exec(v);
-  if (!m) {
+  const match = /\b(?:docker|podman)\s+run\b[^\n]*$/i.exec(trimmed);
+  if (!match) {
     return null;
   }
-  return {
-    major: Number(m[1]),
-    minor: Number(m[2]),
-    patch: Number(m[3]),
-    prerelease: m[4] || undefined,
-  };
-}
 
-function isValidSemver(v: string): boolean {
-  return parseSemver(v) !== null;
-}
-
-function isAtLeastSemver(v: string, min: string): boolean {
-  const pv = parseSemver(v);
-  const pm = parseSemver(min);
-  if (!pv || !pm) {
-    return false;
+  const segment = match[0];
+  const tokens = segment.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return null;
   }
 
-  if (pv.major !== pm.major) {
-    return pv.major > pm.major;
+  const raw = tokens[tokens.length - 1];
+  const unquoted = raw.replace(/^[\'"]|[\'"]$/g, "");
+
+  if (/^[^\s]+(?::[^\s]+|@[^\s]+)?$/.test(unquoted) && /[/:]/.test(unquoted)) {
+    return unquoted;
   }
-  if (pv.minor !== pm.minor) {
-    return pv.minor > pm.minor;
-  }
-  return pv.patch >= pm.patch;
+
+  return null;
 }
+
+
+
+
+
 

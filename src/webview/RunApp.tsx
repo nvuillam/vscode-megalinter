@@ -695,7 +695,7 @@ export const RunApp: React.FC = () => {
                     : initStage === 'preCommands'
                       ? 'Running pre-commands...'
                       : initStage === 'activation'
-                        ? 'Activating linters...'
+                        ? 'Listing available linters...'
                         : initStage === 'collectFiles'
                           ? 'Collecting files to analyze and match them with available linters...'
                           : 'Initializing mega-linter-runner...'}
