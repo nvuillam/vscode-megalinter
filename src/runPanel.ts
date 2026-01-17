@@ -521,6 +521,19 @@ export class RunPanel {
     const npxCmd = "npx";
     const flavorArgs = safeFlavor === "full" ? [] : ["--flavor", safeFlavor];
 
+    const singleLinterEnv = isLinterSelection
+      ? [
+          "-e",
+          "TEXT_REPORTER=true",
+          "-e",
+          "PRINT_ALPACA=true",
+          "-e",
+          "SARIF_TO_HUMAN=true",
+          "-e",
+          "CONFIG_REPORTER=true",
+        ]
+      : [];
+
     const args = [
       "--yes",
       `mega-linter-runner@${runnerPackageVersion}`,
@@ -537,6 +550,7 @@ export class RunPanel {
         (isLinterSelection
           ? ["-e", `ENABLE_LINTERS=${safeFlavor}`]
           : []),
+      ...singleLinterEnv,
       "-e",
       `REPORT_OUTPUT_FOLDER=/tmp/lint/${reportFolderRel}`,
       "-e",
