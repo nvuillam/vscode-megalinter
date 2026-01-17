@@ -768,7 +768,11 @@ export const RunApp: React.FC = () => {
             </span>
           </div>
         ) : results.length === 0 ? (
-          <div className="run__empty">No results yet.</div>
+          <div className="run__empty">
+            {runStatus === 'completed'
+              ? 'There was no file matching available linters.'
+              : 'No results yet.'}
+          </div>
         ) : (
           <div className="run__table-wrap">
             <table className="run__table">
