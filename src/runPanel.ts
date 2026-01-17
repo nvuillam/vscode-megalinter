@@ -495,10 +495,10 @@ export class RunPanel {
     const linterKeys = this._readLinterEnum();
     const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "full";
     const isLinterSelection = linterKeys.includes(safeFlavor);
-    const safeRelease =
-      runnerVersion === "latest" || runnerVersion === "beta" || isValidSemver(runnerVersion)
-        ? runnerVersion
-        : "latest";
+    const allowedChannels = new Set(["latest", "beta", "alpha"]);
+    const safeRelease = allowedChannels.has(runnerVersion) || isValidSemver(runnerVersion)
+      ? runnerVersion
+      : "latest";
     const cpuCount = Math.max(1, (os.cpus()?.length ?? 1));
     const safeParallel = Math.min(cpuCount, Math.max(1, Math.floor(parallelCores || 4)));
     const runnerPackageVersion = getConfiguredRunnerVersion();
