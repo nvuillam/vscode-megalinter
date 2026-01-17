@@ -15,7 +15,7 @@ import type {
 } from './types';
 
 type Engine = 'docker' | 'podman';
-type SortColumn = 'status' | 'descriptor' | 'linter' | 'files' | 'errors' | 'warnings' | 'time';
+type SortColumn = 'status' | 'descriptor' | 'linter' | 'version' | 'files' | 'errors' | 'warnings' | 'time';
 
 type EnginesState = {
   docker: { available: boolean; running: boolean; details?: string };
@@ -441,6 +441,9 @@ export const RunApp: React.FC = () => {
         case 'linter':
           result = compareText(a.key, b.key);
           break;
+        case 'version':
+          result = compareText(a.linterVersion, b.linterVersion);
+          break;
         case 'files':
           result = compareNumber(a.files, b.files);
           break;
@@ -804,6 +807,17 @@ export const RunApp: React.FC = () => {
                       <span className={`codicon ${sortIcon('linter')} run__sort-icon`} aria-hidden="true" />
                     </button>
                   </th>
+                  <th aria-sort={ariaSort('version')}>
+                    <button
+                      type="button"
+                      className={`run__sort-button${sort.column === 'version' ? ' run__sort-button--active' : ''}`}
+                      onClick={() => toggleSort('version')}
+                      aria-label={`Sort by version${sort.column === 'version' ? ` (${sort.direction})` : ''}`}
+                    >
+                      <span>Version</span>
+                      <span className={`codicon ${sortIcon('version')} run__sort-icon`} aria-hidden="true" />
+                    </button>
+                  </th>
                   <th aria-sort={ariaSort('files')}>
                     <button
                       type="button"
@@ -907,6 +921,7 @@ export const RunApp: React.FC = () => {
                         {r.linter || r.key}
                       </button>
                     </td>
+                    <td className="run__mono" title={r.linterVersion || ''}>{r.linterVersion || ''}</td>
                     <td>{typeof r.files === 'number' ? r.files : ''}</td>
                     <td>{typeof r.errors === 'number' ? r.errors : ''}</td>
                     <td>{typeof r.warnings === 'number' ? r.warnings : ''}</td>

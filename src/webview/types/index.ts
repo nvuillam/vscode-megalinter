@@ -212,6 +212,7 @@ export interface MenuChild {
   id: string;
   label: string;
   type: "linter";
+  linterVersion?: string;
   parentId: string;
   hasValues: boolean;
 }

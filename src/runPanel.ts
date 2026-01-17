@@ -961,6 +961,10 @@ export class RunPanel {
       typeof payload?.linterElapsedTime === "number" ? payload.linterElapsedTime : existing?.elapsedSeconds;
     const errors =
       typeof payload?.linterErrorNumber === "number" ? payload.linterErrorNumber : existing?.errors;
+    const linterVersion =
+      typeof payload?.linterVersion === "string" && payload.linterVersion.trim() !== ""
+        ? payload.linterVersion
+        : existing?.linterVersion;
 
     const status: RunResult["status"] = statusOverride ?? existing?.status ?? "UNKNOWN";
 
@@ -971,6 +975,7 @@ export class RunPanel {
       key: keyRaw,
       descriptor: existing?.descriptor || descriptorId || (keyRaw.includes("_") ? keyRaw.split("_")[0] : keyRaw),
       linter: existing?.linter || linterId || (keyRaw.includes("_") ? keyRaw.substring(keyRaw.indexOf("_") + 1) : keyRaw),
+      linterVersion,
       status,
       logFilePath,
       files: filesNumber ?? existing?.files,

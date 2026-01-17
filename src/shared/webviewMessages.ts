@@ -104,6 +104,7 @@ export type RunResult = {
   key: string;
   descriptor: string;
   linter: string;
+  linterVersion?: string;
   status: "SUCCESS" | "WARNING" | "ERROR" | "RUNNING" | "PENDING" | "UNKNOWN";
   logFilePath?: string;
   files?: number;
