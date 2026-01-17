@@ -462,6 +462,8 @@ export class RunPanel {
     const webhook = await this._startWebhookServer({ runId, engine, reportFolderPath });
     const { webhookUrl, webhookToken } = webhook;
 
+    const envFromDotenv = loadDotenvEnv(workspaceRoot);
+
     // On Windows, spawning a .cmd directly with shell:false frequently fails with spawn EINVAL.
     // Use the shell so VS Code/Node can resolve npx.cmd correctly.
     const npxCmd = "npx";
@@ -521,6 +523,7 @@ export class RunPanel {
     const child = spawn(npxCmd, args, {
       cwd: workspaceRoot,
       env: {
+        ...envFromDotenv,
         ...process.env,
       },
       shell: process.platform === "win32",
@@ -1323,6 +1326,47 @@ function extractContainerImageFromLine(line: string): string | null {
   }
 
   return null;
+}
+
+function loadDotenvEnv(workspaceRoot: string): Record<string, string> {
+  const envPath = path.join(workspaceRoot, ".env");
+  if (!fs.existsSync(envPath)) {
+    return {};
+  }
+
+  try {
+    const raw = fs.readFileSync(envPath, "utf8");
+    const vars: Record<string, string> = {};
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        continue;
+      }
+
+      const match = /^([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*)$/.exec(trimmed);
+      if (!match) {
+        continue;
+      }
+
+      const key = match[1];
+      let value = match[2];
+      if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      vars[key] = value;
+    }
+
+    const count = Object.keys(vars).length;
+    if (count > 0) {
+      logMegaLinter(`Run view: loaded ${count} variables from .env`);
+    }
+
+    return vars;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logMegaLinter(`Run view: failed to read .env | ${msg}`);
+    return {};
+  }
 }
 
 

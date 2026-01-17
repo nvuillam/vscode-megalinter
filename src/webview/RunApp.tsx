@@ -216,7 +216,6 @@ export const RunApp: React.FC = () => {
           }
           break;
         case 'runStatus':
-          setRunId(message.runId);
           setRunStatus(message.status);
           setReportFolderPath(message.reportFolderPath);
           if (message.status === 'running') {
@@ -225,6 +224,16 @@ export const RunApp: React.FC = () => {
             setHasInitialResults(false);
             setInitStage('runner');
             setRecommendedExtensions([]);
+            setRunId(message.runId);
+          } else if (message.status === 'idle') {
+            setError(null);
+            setResults([]);
+            setHasInitialResults(false);
+            setInitStage(null);
+            setRecommendedExtensions([]);
+            setRunId(null);
+          } else {
+            setRunId(message.runId);
           }
           break;
         case 'runResults':
