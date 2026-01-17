@@ -998,8 +998,11 @@ export class RunPanel {
 
     const status: RunResult["status"] = statusOverride ?? existing?.status ?? "UNKNOWN";
 
-    const inferredLogPath = path.join(ctx.reportFolderPath, "linters_logs", `${keyRaw}-${status}.log`);
-    const logFilePath = fs.existsSync(inferredLogPath) ? inferredLogPath : existing?.logFilePath;
+    const logCandidates = [status, "WARNING", "ERROR", "SUCCESS", "RUNNING", "PENDING", "UNKNOWN"]
+      .filter((v, idx, arr) => arr.indexOf(v) === idx)
+      .map((s) => path.join(ctx.reportFolderPath, "linters_logs", `${keyRaw}-${s}.log`));
+
+    const logFilePath = logCandidates.find((p) => fs.existsSync(p)) || existing?.logFilePath;
 
     const next: RunResult = {
       key: keyRaw,
