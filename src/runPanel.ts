@@ -211,6 +211,11 @@ export class RunPanel {
     this._panel.webview.postMessage(message);
   }
 
+  private _debugEnabled(): boolean {
+    const config = vscode.workspace.getConfiguration("megalinter");
+    return config.get<boolean>("debug") === true;
+  }
+
   private _recommendationsEnabled(): boolean {
     const config = vscode.workspace.getConfiguration("megalinter.run");
     const flag = config.get<boolean>("recommendVsCodeExtensions");
@@ -900,6 +905,17 @@ export class RunPanel {
     }
 
     const messageType = typeof payload?.messageType === "string" ? payload.messageType : "";
+
+    if (this._debugEnabled()) {
+      try {
+        const raw = JSON.stringify(payload);
+        const trimmed = raw.length > 5000 ? `${raw.slice(0, 5000)}... (truncated)` : raw;
+        logMegaLinter(`Run ${ctx.runId}: webhook ${messageType} received -> ${trimmed}`);
+      } catch {
+        logMegaLinter(`Run ${ctx.runId}: webhook ${messageType} received -> [unserializable]`);
+      }
+    }
+
 
     if (messageType === "megalinterStart" && Array.isArray(payload?.linters)) {
       for (const l of payload.linters) {

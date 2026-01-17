@@ -121,6 +121,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show and open recommended VS Code extensions produced by MegaLinter reports."
+        },
+        "megalinter.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Display more debugging logs in MegaLinter Output Channel"
         }
       }
     }
