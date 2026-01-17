@@ -12,6 +12,23 @@ export type NavigationTarget =
   | { type: "descriptor"; descriptorId: string }
   | { type: "linter"; descriptorId: string; linterId: string };
 
+const DEFAULT_STATUS_TEXT = "$(tools) MegaLinter";
+const DEFAULT_STATUS_COMMAND = "megalinter.openConfiguration";
+
+let statusBarItem: vscode.StatusBarItem | undefined;
+
+export function setRunStatusBarBusy(isBusy: boolean) {
+  if (!statusBarItem) {
+    return;
+  }
+
+  statusBarItem.text = isBusy ? "$(sync~spin) MegaLinter" : DEFAULT_STATUS_TEXT;
+  statusBarItem.tooltip = isBusy
+    ? "MegaLinter: run in progress (open Run view)"
+    : "Open MegaLinter configuration";
+  statusBarItem.command = isBusy ? "megalinter.openRun" : DEFAULT_STATUS_COMMAND;
+}
+
 export function activate(context: vscode.ExtensionContext) {
   console.log("MegaLinter Configuration extension is now active");
 
@@ -23,12 +40,12 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  const statusBarItem = vscode.window.createStatusBarItem(
+  statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100,
   );
-  statusBarItem.text = "$(tools) MegaLinter";
-  statusBarItem.command = "megalinter.openConfiguration";
+  statusBarItem.text = DEFAULT_STATUS_TEXT;
+  statusBarItem.command = DEFAULT_STATUS_COMMAND;
   statusBarItem.tooltip = "Open MegaLinter configuration";
   statusBarItem.show();
 

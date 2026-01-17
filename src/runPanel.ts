@@ -27,7 +27,7 @@ import type {
   RunPreferences,
   RunRecommendation,
 } from "./shared/webviewMessages";
-import type { NavigationTarget } from "./extension";
+import { setRunStatusBarBusy, type NavigationTarget } from "./extension";
 import { EngineStatusService, type Engine, type EngineStatus } from "./run/engineStatus";
 import { RunnerVersionService, isValidSemver } from "./run/runnerVersions";
 import { RecommendationsService } from "./run/recommendations";
@@ -60,6 +60,7 @@ export class RunPanel {
         runId: string;
         engine: Engine;
         reportFolderPath: string;
+        containerImage?: string;
         server: http.Server;
         port: number;
         token: string;
@@ -527,6 +528,8 @@ export class RunPanel {
 
     const envFromDotenv = loadDotenvEnv(workspaceRoot);
 
+    const containerImage = isLinterSelection ? buildOnlyLinterImage(safeFlavor, safeRelease) : undefined;
+
     // On Windows, spawning a .cmd directly with shell:false frequently fails with spawn EINVAL.
     // Use the shell so VS Code/Node can resolve npx.cmd correctly.
     const npxCmd = "npx";
@@ -553,9 +556,7 @@ export class RunPanel {
       ...(isLinterSelection ? [] : flavorArgs),
       "--container-engine",
       engine,
-      ...(isLinterSelection
-        ? ["--image", buildOnlyLinterImage(safeFlavor, safeRelease)]
-        : ["--release", safeRelease]),
+      ...(isLinterSelection ? ["--image", containerImage!] : ["--release", safeRelease]),
       "--path",
       workspaceRoot,
       // "--remove-container",
@@ -583,13 +584,13 @@ export class RunPanel {
 
     logMegaLinter(
       `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} ${
-        isLinterSelection
-          ? `image=${buildOnlyLinterImage(safeFlavor, safeRelease)}`
-          : `release=${safeRelease}`
+        isLinterSelection ? `image=${containerImage}` : `release=${safeRelease}`
       } cores=${safeParallel}/${cpuCount}`,
     );
     logMegaLinter(`Run ${runId}: report folder ${reportFolderPath}`);
     logMegaLinter(`Run ${runId}: command ${commandLine}`);
+
+    setRunStatusBarBusy(true);
 
     this._postMessage({
       type: "runStatus",
@@ -597,6 +598,7 @@ export class RunPanel {
       runId,
       reportFolderPath,
       reportFolderRel,
+      containerImage,
     });
 
     this._postMessage({
@@ -624,8 +626,12 @@ export class RunPanel {
       reportFolderPath,
       child,
       engine,
-      containerImage: isLinterSelection ? buildOnlyLinterImage(safeFlavor, safeRelease) : undefined,
+      containerImage,
     };
+
+    if (this._webhook && this._webhook.runId === runId) {
+      this._webhook.containerImage = containerImage;
+    }
 
     const forward = (chunk: Buffer) => {
       // Mirror process output to VS Code Output panel.
@@ -655,6 +661,7 @@ export class RunPanel {
         message: err instanceof Error ? err.message : String(err),
         commandLine,
       });
+      setRunStatusBarBusy(false);
       this._postMessage({
         type: "runStatus",
         status: "error",
@@ -695,6 +702,8 @@ export class RunPanel {
           reportFolderRel,
         });
 
+        setRunStatusBarBusy(false);
+
         await this._sendRecommendedExtensions(runId, reportFolderPath);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -706,6 +715,7 @@ export class RunPanel {
           reportFolderPath,
           reportFolderRel,
         });
+        setRunStatusBarBusy(false);
       }
     });
   }
@@ -727,6 +737,8 @@ export class RunPanel {
     await this._killRunningContainerIfAny(runId, engine, containerImage);
 
     this._stopWebhookServer();
+
+    setRunStatusBarBusy(false);
 
     this._postMessage({
       type: "runStatus",
@@ -850,6 +862,7 @@ export class RunPanel {
       runId: params.runId,
       engine: params.engine,
       reportFolderPath: params.reportFolderPath,
+      containerImage: undefined,
       server,
       port,
       token,
@@ -1109,6 +1122,15 @@ export class RunPanel {
       const image = extractContainerImageFromLine(line);
       if (image) {
         this._runningChild.containerImage = image;
+        if (this._webhook && this._webhook.runId === runId) {
+          this._webhook.containerImage = image;
+          this._postMessage({
+            type: "runInitStatus",
+            runId,
+            stage: this._webhook.initStage ?? "runner",
+            containerImage: image,
+          });
+        }
         logMegaLinter(`Run ${runId}: detected container image ${image}`);
         break;
       }
@@ -1145,7 +1167,7 @@ export class RunPanel {
     }
 
     this._webhook.initStage = stage;
-    this._postMessage({ type: "runInitStatus", runId, stage });
+    this._postMessage({ type: "runInitStatus", runId, stage, containerImage: this._webhook.containerImage });
   }
 
   private async _navigateToConfig(target: ConfigNavigationTarget) {

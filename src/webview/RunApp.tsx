@@ -44,6 +44,7 @@ export const RunApp: React.FC = () => {
   const [maxParallelCores, setMaxParallelCores] = useState<number>(4);
   const [parallelCores, setParallelCores] = useState<number>(4);
   const [applyFixes, setApplyFixes] = useState<boolean>(false);
+  const [containerImage, setContainerImage] = useState<string>('');
 
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
@@ -252,6 +253,13 @@ export const RunApp: React.FC = () => {
           setRunStatus(message.status);
           setReportFolderPath(message.reportFolderPath);
           if (message.status === 'running') {
+            setContainerImage(message.containerImage || '');
+          } else if (message.status === 'idle') {
+            setContainerImage('');
+          } else if (message.containerImage) {
+            setContainerImage(message.containerImage);
+          }
+          if (message.status === 'running') {
             setError(null);
             setResults([]);
             setHasInitialResults(false);
@@ -280,6 +288,9 @@ export const RunApp: React.FC = () => {
           break;
         case 'runInitStatus':
           setInitStage(message.stage);
+          if (message.containerImage) {
+            setContainerImage(message.containerImage);
+          }
           break;
         case 'runError':
           setError({ message: message.message, commandLine: (message as any).commandLine });
@@ -484,6 +495,8 @@ export const RunApp: React.FC = () => {
     }
     return sort.direction === 'asc' ? 'ascending' : 'descending';
   };
+
+  const containerLabel = containerImage?.trim() ? containerImage : 'MegaLinter docker image';
 
   return (
     <div className="run">
@@ -844,9 +857,9 @@ export const RunApp: React.FC = () => {
             />
             <span>
               {initStage === 'pull'
-                ? 'Pulling MegaLinter docker image...'
+                  ? `Pulling ${containerLabel}...`
                 : initStage === 'startImage'
-                  ? 'Starting MegaLinter docker image...'
+                    ? `Starting ${containerLabel}...`
                   : initStage === 'analyzeConfig'
                     ? 'Analyzing MegaLinter configuration...'
                     : initStage === 'preCommands'

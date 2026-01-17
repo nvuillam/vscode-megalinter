@@ -137,6 +137,7 @@ export type RunStatusMessage = {
   runId: string;
   reportFolderPath: string;
   reportFolderRel: string;
+  containerImage?: string;
 };
 
 export type RunOutputMessage = {
@@ -170,6 +171,7 @@ export type RunInitStatusMessage = {
     | "preCommands"
     | "activation"
     | "collectFiles";
+  containerImage?: string;
 };
 
 export type RunErrorMessage = { type: "runError"; message: string; commandLine?: string };
