@@ -34,6 +34,7 @@ export const RunApp: React.FC = () => {
 
   const [workspaceRoot, setWorkspaceRoot] = useState<string>('');
   const [flavors, setFlavors] = useState<string[]>([]);
+  const [linters, setLinters] = useState<string[]>([]);
   const [runnerVersions, setRunnerVersions] = useState<string[]>([]);
   const [latestRunnerVersion, setLatestRunnerVersion] = useState<string>('latest');
   const [engines, setEngines] = useState<EnginesState>(DEFAULT_ENGINES);
@@ -91,6 +92,29 @@ export const RunApp: React.FC = () => {
     SUCCESS: 4,
     UNKNOWN: 5
   };
+
+  const flavorOptions = useMemo(() => {
+    const base = flavors.length ? flavors : ['full'];
+    const seen = new Set<string>();
+    return base.filter((item) => {
+      if (!item || seen.has(item)) {
+        return false;
+      }
+      seen.add(item);
+      return true;
+    });
+  }, [flavors]);
+
+  const linterOptions = useMemo(() => {
+    const seen = new Set<string>(flavorOptions);
+    return linters.filter((item) => {
+      if (!item || seen.has(item)) {
+        return false;
+      }
+      seen.add(item);
+      return true;
+    });
+  }, [linters, flavorOptions]);
 
   const engineHelp = useMemo(() => {
     if (isLoadingContext) {
@@ -164,6 +188,12 @@ export const RunApp: React.FC = () => {
             : incomingFlavors;
           setFlavors(flavorsWithPref);
 
+          const incomingLinters = message.linters || [];
+          const lintersWithPref = preferences.flavor && !incomingLinters.includes(preferences.flavor)
+            ? [preferences.flavor, ...incomingLinters]
+            : incomingLinters;
+          setLinters(lintersWithPref);
+
           const incomingRunnerVersions = message.runnerVersions || [];
           const runnerVersionsWithPref = preferences.runnerVersion && !incomingRunnerVersions.includes(preferences.runnerVersion)
             ? [preferences.runnerVersion, ...incomingRunnerVersions]
@@ -172,7 +202,8 @@ export const RunApp: React.FC = () => {
           setLatestRunnerVersion(message.latestRunnerVersion || 'latest');
           setEngines(message.engines);
           setFlavor((current) => {
-            const list = flavorsWithPref.length ? flavorsWithPref : ['full'];
+            const combined = [...flavorsWithPref, ...lintersWithPref];
+            const list = combined.length ? combined : ['full'];
             if (preferences.flavor && list.includes(preferences.flavor)) {
               return preferences.flavor;
             }
@@ -573,11 +604,24 @@ export const RunApp: React.FC = () => {
               {isLoadingContext ? (
                 <option value={flavor}>Loading…</option>
               ) : (
-                (flavors.length ? flavors : ['full']).map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))
+                <>
+                  <optgroup label="Flavors">
+                    {flavorOptions.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </optgroup>
+                  {linters.length > 0 && (
+                    <optgroup label="Linters">
+                      {linters.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
               )}
             </select>
           </label>

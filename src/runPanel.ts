@@ -32,6 +32,11 @@ import { EngineStatusService, type Engine, type EngineStatus } from "./run/engin
 import { RunnerVersionService, isValidSemver } from "./run/runnerVersions";
 import { RecommendationsService } from "./run/recommendations";
 
+function buildOnlyLinterImage(linterKey: string, release: string): string {
+  const tag = release || "latest";
+  return `ghcr.io/oxsecurity/megalinter-only-${linterKey.toLowerCase()}:${tag}`;
+}
+
 export class RunPanel {
   public static currentPanel: RunPanel | undefined;
 
@@ -74,6 +79,7 @@ export class RunPanel {
     | undefined;
 
   private _flavorEnumCache: string[] | null = null;
+  private _linterEnumCache: string[] | null = null;
   private readonly _engineStatusService = new EngineStatusService();
   private readonly _runnerVersionService = new RunnerVersionService();
   private readonly _recommendationsService = new RecommendationsService();
@@ -257,6 +263,18 @@ export class RunPanel {
       return v;
     });
 
+    const lintersPromise = Promise.resolve().then(() => {
+      const t0 = Date.now();
+      const cached = Boolean(this._linterEnumCache);
+      const v = this._readLinterEnum();
+      logMegaLinter(
+        `Run view: init linters in ${Date.now() - t0}ms` +
+          (cached ? " (cached)" : "") +
+          ` | count=${v.length}`,
+      );
+      return v;
+    });
+
     const runnerPromise = Promise.resolve().then(async () => {
       const t0 = Date.now();
       const v = await this._getRunnerVersions();
@@ -275,8 +293,9 @@ export class RunPanel {
 
     const runPreferences = this._getRunPreferences();
 
-    const [flavors, runnerInfo, engineStatuses] = await Promise.all([
+    const [flavors, linters, runnerInfo, engineStatuses] = await Promise.all([
       flavorsPromise,
+      lintersPromise,
       runnerPromise,
       enginesPromise,
     ]);
@@ -309,6 +328,7 @@ export class RunPanel {
       type: "runContext",
       workspaceRoot: this._getWorkspaceRoot(),
       flavors,
+      linters,
       runnerVersions: versions,
       latestRunnerVersion: latest || undefined,
       engines: engineStatuses,
@@ -363,6 +383,31 @@ export class RunPanel {
 
   private async _detectEngines(force?: boolean): Promise<Record<Engine, EngineStatus>> {
     return this._engineStatusService.detect(force);
+  }
+
+  private _readLinterEnum(): string[] {
+    if (this._linterEnumCache) {
+      return this._linterEnumCache;
+    }
+
+    const schemaPath = path.join(
+      this._extensionUri.fsPath,
+      "src",
+      "descriptors",
+      "schemas",
+      "megalinter-configuration.jsonschema.json",
+    );
+
+    const raw = fs.readFileSync(schemaPath, "utf8");
+    const parsed = JSON.parse(raw) as any;
+    const enumValues = parsed?.definitions?.enum_linter_keys?.enum;
+
+    const linters: string[] = Array.isArray(enumValues)
+      ? enumValues.filter((v: unknown): v is string => typeof v === "string")
+      : [];
+
+    this._linterEnumCache = linters;
+    return this._linterEnumCache;
   }
 
   private async _updateRunSetting(
@@ -442,7 +487,9 @@ export class RunPanel {
       );
     }
 
+    const linterKeys = this._readLinterEnum();
     const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "full";
+    const isLinterSelection = linterKeys.includes(safeFlavor);
     const safeRelease =
       runnerVersion === "latest" || runnerVersion === "beta" || isValidSemver(runnerVersion)
         ? runnerVersion
@@ -472,14 +519,19 @@ export class RunPanel {
     const args = [
       "--yes",
       `mega-linter-runner@${runnerPackageVersion}`,
-      ...flavorArgs,
+      ...(isLinterSelection ? [] : flavorArgs),
       "--container-engine",
       engine,
-      "--release",
-      safeRelease,
+      ...(isLinterSelection
+        ? ["--image", buildOnlyLinterImage(safeFlavor, safeRelease)]
+        : ["--release", safeRelease]),
       "--path",
       workspaceRoot,
       // "--remove-container",
+      ...
+        (isLinterSelection
+          ? ["-e", `ENABLE_LINTERS=${safeFlavor}`]
+          : []),
       "-e",
       `REPORT_OUTPUT_FOLDER=/tmp/lint/${reportFolderRel}`,
       "-e",
@@ -497,7 +549,11 @@ export class RunPanel {
     const commandLine = formatCommandLine(npxCmd, redactArgs(args));
 
     logMegaLinter(
-      `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} release=${safeRelease} cores=${safeParallel}/${cpuCount}`,
+      `Run ${runId}: starting | engine=${engine} flavor=${safeFlavor} runnerPackage=${runnerPackageVersion} ${
+        isLinterSelection
+          ? `image=${buildOnlyLinterImage(safeFlavor, safeRelease)}`
+          : `release=${safeRelease}`
+      } cores=${safeParallel}/${cpuCount}`,
     );
     logMegaLinter(`Run ${runId}: report folder ${reportFolderPath}`);
     logMegaLinter(`Run ${runId}: command ${commandLine}`);
@@ -530,7 +586,13 @@ export class RunPanel {
       windowsHide: true,
     });
 
-    this._runningChild = { runId, reportFolderPath, child, engine, containerImage: undefined };
+    this._runningChild = {
+      runId,
+      reportFolderPath,
+      child,
+      engine,
+      containerImage: isLinterSelection ? buildOnlyLinterImage(safeFlavor, safeRelease) : undefined,
+    };
 
     const forward = (chunk: Buffer) => {
       // Mirror process output to VS Code Output panel.

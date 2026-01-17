@@ -116,6 +116,7 @@ export type RunContextMessage = {
   type: "runContext";
   workspaceRoot: string;
   flavors: string[];
+  linters: string[];
   runnerVersions: string[];
   latestRunnerVersion?: string;
   maxParallelCores: number;
