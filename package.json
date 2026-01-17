@@ -117,6 +117,11 @@
           "default": 4,
           "description": "Number of parallel cores to use when running MegaLinter from the Run view."
         },
+        "megalinter.run.applyFixes": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable formatting/fixes (APPLY_FIXES) as configured in .mega-linter.yml. When false, runs with APPLY_FIXES=none."
+        },
         "megalinter.run.recommendVsCodeExtensions": {
           "type": "boolean",
           "default": true,

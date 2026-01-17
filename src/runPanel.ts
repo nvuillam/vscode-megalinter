@@ -131,6 +131,7 @@ export class RunPanel {
                 message.flavor,
                 message.runnerVersion,
                 message.parallelCores,
+                message.applyFixes,
               );
               break;
             case "cancelRun":
@@ -236,8 +237,10 @@ export class RunPanel {
 
     const parallelCoresRaw = config.get<number>("parallelCores");
     const parallelCores = typeof parallelCoresRaw === "number" && parallelCoresRaw > 0 ? parallelCoresRaw : undefined;
+    const applyFixesRaw = config.get<boolean>("applyFixes");
+    const applyFixes = applyFixesRaw === true;
 
-    return { engine, flavor, runnerVersion, parallelCores };
+    return { engine, flavor, runnerVersion, parallelCores, applyFixes };
   }
 
   private _getWorkspaceRoot(): string {
@@ -416,7 +419,7 @@ export class RunPanel {
   }
 
   private async _updateRunSetting(
-    key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions",
+    key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions" | "applyFixes",
     value: string,
   ) {
     const config = vscode.workspace.getConfiguration("megalinter.run");
@@ -463,6 +466,13 @@ export class RunPanel {
       const boolValue = value === "true";
       logMegaLinter(`Run view: setting updated | key=recommendVsCodeExtensions value=${boolValue}`);
       await config.update("recommendVsCodeExtensions", boolValue, vscode.ConfigurationTarget.Workspace);
+      return;
+    }
+
+    if (key === "applyFixes") {
+      const boolValue = value === "true";
+      logMegaLinter(`Run view: setting updated | key=applyFixes value=${boolValue}`);
+      await config.update("applyFixes", boolValue, vscode.ConfigurationTarget.Workspace);
     }
   }
 
@@ -471,6 +481,7 @@ export class RunPanel {
     flavor: string,
     runnerVersion: string,
     parallelCores: number,
+    applyFixes: boolean,
   ) {
     if (this._runningChild) {
       throw new Error("MegaLinter is already running");
@@ -534,6 +545,8 @@ export class RunPanel {
         ]
       : [];
 
+    const applyFixesEnv = applyFixes ? [] : ["-e", "APPLY_FIXES=none"];
+
     const args = [
       "--yes",
       `mega-linter-runner@${runnerPackageVersion}`,
@@ -551,6 +564,7 @@ export class RunPanel {
           ? ["-e", `ENABLE_LINTERS=${safeFlavor}`]
           : []),
       ...singleLinterEnv,
+      ...applyFixesEnv,
       "-e",
       `REPORT_OUTPUT_FOLDER=/tmp/lint/${reportFolderRel}`,
       "-e",

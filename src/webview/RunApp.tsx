@@ -43,6 +43,7 @@ export const RunApp: React.FC = () => {
   const [runnerVersion, setRunnerVersion] = useState<string>('latest');
   const [maxParallelCores, setMaxParallelCores] = useState<number>(4);
   const [parallelCores, setParallelCores] = useState<number>(4);
+  const [applyFixes, setApplyFixes] = useState<boolean>(false);
 
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
@@ -239,6 +240,7 @@ export const RunApp: React.FC = () => {
             }
             return nextParallel;
           });
+          setApplyFixes(preferences.applyFixes === true);
           const preferredEngine = preferences.engine;
           if (preferredEngine && message.engines[preferredEngine]?.available) {
             setEngine(preferredEngine as Engine);
@@ -303,7 +305,8 @@ export const RunApp: React.FC = () => {
       engine,
       flavor,
       runnerVersion,
-      parallelCores
+      parallelCores,
+      applyFixes
     });
   };
 
@@ -566,7 +569,16 @@ export const RunApp: React.FC = () => {
 
         <div className="run__grid">
           <label className="run__field">
-            <span className="run__label">Container engine</span>
+            <span className="run__label">
+              Container engine
+              <span
+                className="run__info"
+                title="Choose Docker or Podman to run MegaLinter."
+                aria-label="Container engine: choose Docker or Podman to run MegaLinter."
+              >
+                <span className="codicon codicon-info" aria-hidden="true" />
+              </span>
+            </span>
             <select
               className="run__select"
               value={engine}
@@ -593,7 +605,16 @@ export const RunApp: React.FC = () => {
           </label>
 
           <label className="run__field">
-            <span className="run__label">Flavor</span>
+            <span className="run__label">
+              Flavor
+              <span
+                className="run__info"
+                title="Select the MegaLinter flavor or a single-linter image to run."
+                aria-label="Flavor: select the MegaLinter flavor or a single-linter image to run."
+              >
+                <span className="codicon codicon-info" aria-hidden="true" />
+              </span>
+            </span>
             <select
               className="run__select"
               value={flavor}
@@ -630,7 +651,16 @@ export const RunApp: React.FC = () => {
           </label>
 
           <label className="run__field">
-            <span className="run__label">MegaLinter version</span>
+            <span className="run__label">
+              MegaLinter version
+              <span
+                className="run__info"
+                title="Pick the MegaLinter version to use; latest pulls the newest release."
+                aria-label="MegaLinter version: pick the tag to use; latest pulls the newest release."
+              >
+                <span className="codicon codicon-info" aria-hidden="true" />
+              </span>
+            </span>
             <select
               className="run__select"
               value={runnerVersion}
@@ -657,7 +687,16 @@ export const RunApp: React.FC = () => {
           </label>
 
           <label className="run__field">
-            <span className="run__label">Parallel cores</span>
+            <span className="run__label">
+              Parallel cores
+              <span
+                className="run__info"
+                title="Limit how many linters run in parallel; lower values reduce load."
+                aria-label="Parallel cores: limit how many linters run in parallel; lower values reduce load."
+              >
+                <span className="codicon codicon-info" aria-hidden="true" />
+              </span>
+            </span>
             <select
               className="run__select"
               value={parallelCores}
@@ -679,6 +718,58 @@ export const RunApp: React.FC = () => {
               ))}
             </select>
           </label>
+
+          <div className="run__field run__field--checkbox">
+            <span className="run__label">
+              Enable formatting/fixes
+              <span
+                className="run__info"
+                title="Allow linters to apply automatic fixes; when off we run with APPLY_FIXES=none."
+                aria-label="Enable formatting and fixes: allow linters to apply automatic fixes; when off we run with APPLY_FIXES equals none."
+              >
+                <span className="codicon codicon-info" aria-hidden="true" />
+              </span>
+            </span>
+            <div
+              className={`boolean-toggle ${applyFixes ? 'boolean-toggle--on' : 'boolean-toggle--off'} ${
+                runStatus === 'running' || isLoadingContext ? 'boolean-toggle--disabled' : ''
+              }`}
+              role="group"
+              aria-label="Enable formatting and fixes"
+            >
+              <span className="boolean-toggle__thumb" aria-hidden="true" />
+              <button
+                type="button"
+                className={`boolean-toggle__option ${applyFixes ? 'boolean-toggle__option--active' : ''}`}
+                aria-pressed={applyFixes}
+                disabled={runStatus === 'running' || isLoadingContext}
+                onClick={() => {
+                  if (applyFixes) {
+                    return;
+                  }
+                  setApplyFixes(true);
+                  postMessage({ type: 'updateRunSetting', key: 'applyFixes', value: 'true' });
+                }}
+              >
+                On
+              </button>
+              <button
+                type="button"
+                className={`boolean-toggle__option ${!applyFixes ? 'boolean-toggle__option--active' : ''}`}
+                aria-pressed={!applyFixes}
+                disabled={runStatus === 'running' || isLoadingContext}
+                onClick={() => {
+                  if (!applyFixes) {
+                    return;
+                  }
+                  setApplyFixes(false);
+                  postMessage({ type: 'updateRunSetting', key: 'applyFixes', value: 'false' });
+                }}
+              >
+                Off
+              </button>
+            </div>
+          </div>
 
           <div className="run__field run__actions">
             <span className="run__label">&nbsp;</span>

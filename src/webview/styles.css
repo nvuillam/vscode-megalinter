@@ -2318,6 +2318,32 @@ img.linter-card__icon {
 .run__label {
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.run__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  color: var(--vscode-descriptionForeground);
+  cursor: help;
+}
+
+.run__info .codicon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.run__info:hover {
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-foreground);
 }
 
 .run__select {

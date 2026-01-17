@@ -60,6 +60,7 @@ export type RunPreferences = {
   flavor?: string;
   runnerVersion?: string;
   parallelCores?: number;
+  applyFixes?: boolean;
 };
 
 export type RunRecommendation = {
@@ -77,12 +78,13 @@ export type RunWebviewToExtensionMessage =
       flavor: string;
       runnerVersion: string;
       parallelCores: number;
+      applyFixes: boolean;
     }
   | { type: "cancelRun" }
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
   | { type: "showOutput" }
-  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions"; value: string }
+  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions" | "applyFixes"; value: string }
   | { type: "openExtension"; extensionId: string }
   | InfoMessage;
 
