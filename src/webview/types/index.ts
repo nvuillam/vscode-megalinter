@@ -4,9 +4,20 @@ import type { LinterDescriptorMetadata } from "../../shared/linterMetadata";
 import type {
   CommonWebviewToExtensionMessage,
   FlavorWebviewToExtensionMessage,
+  RunWebviewToExtensionMessage,
   FlavorContextMessage,
   FlavorDefinitionMessage,
   FlavorFolderSelectedMessage,
+  RunContextMessage,
+  RunStatusMessage,
+  RunOutputMessage,
+  RunResultsMessage,
+  RunInitStatusMessage,
+  RunErrorMessage,
+  RunRecommendationsMessage,
+  RunRecommendation,
+  RunResult,
+  ConfigNavigationTarget,
 } from "../../shared/webviewMessages";
 
 // ============================================================================
@@ -35,6 +46,7 @@ export type ExtensionMessage =
   | { type: "saveConfig"; config: MegaLinterConfig }
   | { type: "installMegaLinter" }
   | { type: "upgradeMegaLinter" }
+  | { type: "openRunPanel" }
   | { type: "openCustomFlavorBuilder" }
   | {
       type: "resolveLinterConfigFile";
@@ -48,6 +60,7 @@ export type ExtensionMessage =
       destination?: { linterRulesPath?: string; configFile?: string };
     }
   | FlavorWebviewToExtensionMessage
+  | RunWebviewToExtensionMessage
   | { type: "info"; message: string }
   | { type: "error"; message: string };
 
@@ -74,6 +87,20 @@ export type WebViewMessage =
       defaultTemplate?: LinterDefaultConfigDetails;
     }
   | { type: "navigate"; target: NavigationTarget };
+
+export type RunWebViewMessage =
+  | RunContextMessage
+  | RunStatusMessage
+  | RunOutputMessage
+  | RunResultsMessage
+  | RunInitStatusMessage
+  | RunRecommendationsMessage
+  | RunErrorMessage;
+
+export type { RunResult };
+export type { ConfigNavigationTarget };
+export type { RunWebviewToExtensionMessage };
+export type { RunRecommendation };
 
 export type {
   FlavorContextMessage,
@@ -185,6 +212,7 @@ export interface MenuChild {
   id: string;
   label: string;
   type: "linter";
+  linterVersion?: string;
   parentId: string;
   hasValues: boolean;
 }
@@ -260,22 +288,15 @@ export interface HomePanelProps {
   referenceDataLoading: boolean;
   configuredCount: number;
   totalKeys: number;
-  descriptorCount: number;
   linterCount: number;
   postMessage: (message: ExtensionMessage) => void;
   onOpenGeneral: () => void;
   onOpenSummary: () => void;
-  onOpenFirstDescriptor: () => void;
-  onOpenReporters: () => void;
   logoUrl: string;
   logoFallbackUrl: string;
   bannerUrl: string;
   bannerFallbackUrl: string;
-  descriptorLabel: string;
-  reportersLabel: string;
   hasConfiguration: boolean;
-  descriptorNavigationReady: boolean;
-  reporterNavigationReady: boolean;
   searchItems: SearchItem[];
   onSearchSelect: (item: SearchItem) => void;
 }

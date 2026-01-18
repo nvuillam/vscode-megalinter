@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { getGitOriginRepositoryName, isGitRepository } from "./gitUtils";
+import { getConfiguredRunnerVersion } from "./runnerVersion";
 import type {
   FlavorPanelInboundMessage,
   FlavorPanelOutboundMessage,
@@ -299,8 +300,10 @@ export class CustomFlavorPanel {
     const normalizedFolder = path.resolve(folderPath);
     const safeLinters = this._validateLinters(linters);
 
+    const runnerVersion = getConfiguredRunnerVersion();
+
     const baseCommand =
-      "npx --yes mega-linter-runner@beta --custom-flavor-setup";
+      `npx --yes mega-linter-runner@${runnerVersion} --custom-flavor-setup`;
     const command = safeLinters.length
       ? `${baseCommand} --custom-flavor-linters "${safeLinters.join(",")}"`
       : baseCommand;
