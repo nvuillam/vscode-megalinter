@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import '@vscode/codicons/dist/codicon.css';
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import bundledSchema from '../descriptors/schemas/megalinter-configuration.jsonschema.json';
@@ -18,7 +19,8 @@ import megalinterBannerLocal from './assets/megalinter-banner.png';
 import {
   HomePanel,
   NavigationMenu,
-  MainTabs
+  MainTabs,
+  LoadingOverlay
 } from './components';
 
 import {
@@ -137,11 +139,6 @@ export const App: React.FC = () => {
     return Object.keys(schema.properties as Record<string, unknown>).length;
   }, [schema]);
 
-  const descriptorCount = useMemo(
-    () => navigationModel?.descriptorOrder.length ?? 0,
-    [navigationModel]
-  );
-
   const linterCount = useMemo(() => {
     if (!groups) {
       return 0;
@@ -150,36 +147,6 @@ export const App: React.FC = () => {
       return acc + Object.keys(linters || {}).length;
     }, 0);
   }, [groups]);
-
-  const firstDescriptorId = useMemo(
-    () => navigationModel?.descriptorOrder[0] || null,
-    [navigationModel]
-  );
-
-  const firstGenericCategoryId = useMemo(() => {
-    if (!groups) {
-      return null;
-    }
-    const ids = Object.keys(groups.genericCategoryKeys);
-    const preferred = ids.find((id) => id.toLowerCase().includes('report'));
-    return preferred || ids[0] || null;
-  }, [groups]);
-
-  const firstDescriptorLabel = useMemo(() => {
-    if (!firstDescriptorId || !groups) {
-      return '';
-    }
-    const meta = groups.categoryMeta[firstDescriptorId];
-    return prettifyId(meta?.label || firstDescriptorId);
-  }, [firstDescriptorId, groups]);
-
-  const firstGenericCategoryLabel = useMemo(() => {
-    if (!firstGenericCategoryId || !groups) {
-      return '';
-    }
-    const meta = groups.categoryMeta[firstGenericCategoryId];
-    return prettifyId(meta?.label || firstGenericCategoryId);
-  }, [firstGenericCategoryId, groups]);
 
   const searchItems = useMemo(() => {
     if (!groups) {
@@ -459,14 +426,13 @@ export const App: React.FC = () => {
       try {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-        const response = await fetch(remoteSchemaUrl, { signal: controller.signal });
+        const response = await axios.get<RJSFSchema>(remoteSchemaUrl, {
+          signal: controller.signal,
+          timeout: 8000,
+        });
         window.clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch schema (HTTP ${response.status})`);
-        }
-
-        const schemaData = await response.json();
+        const schemaData = response.data;
         const filtered = filterRemovedLintersFromSchema(schemaData as RJSFSchema);
         setSchema(filtered);
         setGroups(extractGroups(filtered));
@@ -641,6 +607,7 @@ export const App: React.FC = () => {
   ];
 
   const showHome = referenceDataLoading || activeMainTab === 'home';
+  const isConfigLoading = !configLoaded;
 
   return (
     <div className="container">
@@ -654,22 +621,15 @@ export const App: React.FC = () => {
               referenceDataLoading={referenceDataLoading}
               configuredCount={configuredKeyCount}
               totalKeys={totalSchemaKeys}
-              descriptorCount={descriptorCount}
               linterCount={linterCount}
               postMessage={postMessage}
               onOpenGeneral={openGeneral}
               onOpenSummary={openSummary}
-              onOpenFirstDescriptor={() => openDescriptor(firstDescriptorId, 'descriptor')}
-              onOpenReporters={() => openCategory(firstGenericCategoryId)}
               logoUrl={OX_SECURITY_LOGO}
               logoFallbackUrl={OX_SECURITY_LOGO_FALLBACK}
               bannerUrl={MEGALINTER_BANNER_URL}
               bannerFallbackUrl={MEGALINTER_BANNER_FALLBACK}
-              descriptorLabel={firstDescriptorLabel}
-              reportersLabel={firstGenericCategoryLabel}
               hasConfiguration={configuredKeyCount > 0}
-              descriptorNavigationReady={!!firstDescriptorId}
-              reporterNavigationReady={!!firstGenericCategoryId}
               searchItems={searchItems}
               onSearchSelect={handleSearchSelect}
             />
@@ -705,18 +665,21 @@ export const App: React.FC = () => {
             />
           )}
         </div>
-        <NavigationMenu
-          sections={effectiveSections}
-          selectedId={selectedNavId}
-          activeDescriptorId={selectedDescriptor}
-          onSelect={(item) => {
-            if (referenceDataLoading && item.type !== 'home') {
-              return;
-            }
-            handleNavigationSelect(item);
-          }}
-          disabled={referenceDataLoading}
-        />
+        <div className="nav-wrapper">
+          {isConfigLoading && <LoadingOverlay />}
+          <NavigationMenu
+            sections={effectiveSections}
+            selectedId={selectedNavId}
+            activeDescriptorId={selectedDescriptor}
+            onSelect={(item) => {
+              if (referenceDataLoading && item.type !== 'home') {
+                return;
+              }
+              handleNavigationSelect(item);
+            }}
+            disabled={referenceDataLoading}
+          />
+        </div>
       </div>
     </div>
   );

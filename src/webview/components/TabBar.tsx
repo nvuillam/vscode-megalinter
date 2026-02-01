@@ -7,7 +7,9 @@ export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onSelect }) => 
     {tabs.map((tab) => (
       <button
         key={tab.id}
-        className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+        className={['tab', activeTab === tab.id ? 'active' : '', tab.hasValues ? 'tab--has-values' : '']
+          .filter(Boolean)
+          .join(' ')}
         onClick={() => {
           if (!tab.disabled) {
             onSelect(tab.id);

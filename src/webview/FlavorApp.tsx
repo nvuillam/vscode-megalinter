@@ -222,8 +222,8 @@ export const FlavorApp: React.FC = () => {
   }, [folderPath]);
 
   const commandPreview = selectedLinters.length
-    ? `npx --yes mega-linter-runner@beta --custom-flavor-setup --custom-flavor-linters "${selectedLinters.join(',')}"`
-    : 'npx --yes mega-linter-runner@beta --custom-flavor-setup';
+    ? `npx --yes mega-linter-runner --custom-flavor-setup --custom-flavor-linters "${selectedLinters.join(',')}"`
+    : 'npx --yes mega-linter-runner --custom-flavor-setup';
 
   const hasFolder = Boolean(folderPath);
   const controlsDisabled = !hasFolder;

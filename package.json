@@ -1,7 +1,7 @@
 {
   "name": "vscode-megalinter",
-  "displayName": "MegaLinter Configuration",
-  "description": "Configure MegaLinter using a visual interface",
+  "displayName": "MegaLinter",
+  "description": "Configure and Run MegaLinter using a visual interface",
   "version": "0.0.1",
   "publisher": "nvuillam",
   "repository": {
@@ -16,7 +16,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "workspaceContains:megalinter-custom-flavor.yml"
+    "workspaceContains:megalinter-custom-flavor.yml",
+    "workspaceContains:.mega-linter.yml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -25,6 +26,11 @@
         "command": "megalinter.openConfiguration",
         "title": "MegaLinter: Open Configuration",
         "icon": "$(gear)"
+      },
+      {
+        "command": "megalinter.openRun",
+        "title": "MegaLinter: Run MegaLinter",
+        "icon": "$(play)"
       },
       {
         "command": "megalinter.openCustomFlavorBuilder",
@@ -79,6 +85,57 @@
           "when": "resourceFilename == 'megalinter-custom-flavor.yml' || resourceFilename == 'megalinter-custom-flavor.yaml' || resourceFilename == 'mega-linter-flavor.yml' || resourceFilename == 'mega-linter-flavor.yaml'"
         }
       ]
+    },
+    "configuration": {
+      "title": "MegaLinter",
+      "properties": {
+        "megalinter.megaLinterRunnerVersion": {
+          "type": "string",
+          "default": "latest",
+          "markdownDescription": "Version used for mega-linter-runner (channels: `latest`, `beta`, `alpha`, or an explicit semver like `9.4.0`).",
+          "scope": "application"
+        },
+        "megalinter.run.engine": {
+          "type": "string",
+          "enum": [
+            "docker",
+            "podman"
+          ],
+          "default": "docker",
+          "description": "Container engine used by the MegaLinter Run view."
+        },
+        "megalinter.run.flavor": {
+          "type": "string",
+          "default": "full",
+          "description": "Default MegaLinter flavor used by the Run view."
+        },
+        "megalinter.run.version": {
+          "type": "string",
+          "default": "latest",
+          "description": "Default MegaLinter docker image version used by the Run view."
+        },
+        "megalinter.run.parallelCores": {
+          "type": "number",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of parallel cores to use when running MegaLinter from the Run view."
+        },
+        "megalinter.run.applyFixes": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable formatting/fixes (APPLY_FIXES) as configured in .mega-linter.yml. When false, runs with APPLY_FIXES=none."
+        },
+        "megalinter.run.recommendVsCodeExtensions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show and open recommended VS Code extensions produced by MegaLinter reports."
+        },
+        "megalinter.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Display more debugging logs in MegaLinter Output Channel"
+        }
+      }
     }
   },
   "scripts": {
@@ -92,6 +149,7 @@
     "package": "vsce package"
   },
   "devDependencies": {
+    "@types/koa": "^2.15.0",
     "@types/node": "^18.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -113,7 +171,9 @@
     "@rjsf/validator-ajv8": "^5.13.0",
     "@types/yaml": "^1.9.6",
     "@vscode/codicons": "^0.0.36",
+    "axios": "^1.13.2",
     "js-yaml": "^4.1.0",
+    "koa": "^3.1.1",
     "marked": "^11.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

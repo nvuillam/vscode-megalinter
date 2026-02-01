@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import {
+  disposeMegaLinterOutputChannel,
+  getMegaLinterOutputChannel,
+} from "./outputChannel";
 
 export type NavigationTarget =
   | { type: "general" }
@@ -8,15 +12,42 @@ export type NavigationTarget =
   | { type: "descriptor"; descriptorId: string }
   | { type: "linter"; descriptorId: string; linterId: string };
 
+const DEFAULT_STATUS_TEXT = "$(tools) MegaLinter";
+const DEFAULT_STATUS_COMMAND = "megalinter.openConfiguration";
+
+let statusBarItem: vscode.StatusBarItem | undefined;
+
+export function setRunStatusBarBusy(isBusy: boolean) {
+  if (!statusBarItem) {
+    return;
+  }
+
+  statusBarItem.text = isBusy ? "$(sync~spin) MegaLinter" : DEFAULT_STATUS_TEXT;
+  statusBarItem.tooltip = isBusy
+    ? "MegaLinter: run in progress (open Run view)"
+    : "Open MegaLinter configuration";
+  statusBarItem.command = isBusy
+    ? "megalinter.openRun"
+    : DEFAULT_STATUS_COMMAND;
+}
+
 export function activate(context: vscode.ExtensionContext) {
   console.log("MegaLinter Configuration extension is now active");
 
-  const statusBarItem = vscode.window.createStatusBarItem(
+  // Register shared output channel lifecycle (dispose on deactivation).
+  getMegaLinterOutputChannel();
+  context.subscriptions.push(
+    new vscode.Disposable(() => {
+      disposeMegaLinterOutputChannel();
+    }),
+  );
+
+  statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100,
   );
-  statusBarItem.text = "$(tools) MegaLinter";
-  statusBarItem.command = "megalinter.openConfiguration";
+  statusBarItem.text = DEFAULT_STATUS_TEXT;
+  statusBarItem.command = DEFAULT_STATUS_COMMAND;
   statusBarItem.tooltip = "Open MegaLinter configuration";
   statusBarItem.show();
 
@@ -81,6 +112,14 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const openRunPanel = vscode.commands.registerCommand(
+    "megalinter.openRun",
+    async () => {
+      const { RunPanel } = await import("./runPanel");
+      RunPanel.createOrShow(context.extensionUri);
+    },
+  );
+
   const revealSection = vscode.commands.registerCommand(
     "megalinter.revealSection",
     async (target: NavigationTarget, uri?: vscode.Uri) => {
@@ -107,6 +146,7 @@ export function activate(context: vscode.ExtensionContext) {
     disposable,
     revealSection,
     openCustomFlavorBuilder,
+    openRunPanel,
   );
 }
 

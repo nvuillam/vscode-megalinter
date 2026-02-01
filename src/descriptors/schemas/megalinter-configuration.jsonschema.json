@@ -19183,7 +19183,7 @@
       "$id": "#/properties/POWERSHELL_POWERSHELL_CLI_EXECUTABLE",
       "default": [
         [
-          "powershell"
+          "pwsh"
         ]
       ],
       "description": "POWERSHELL_POWERSHELL: Override CLI executable used to build the linter command line (rarely needed)",
@@ -19349,7 +19349,7 @@
       "$id": "#/properties/POWERSHELL_POWERSHELL_FORMATTER_CLI_EXECUTABLE",
       "default": [
         [
-          "powershell"
+          "pwsh"
         ]
       ],
       "description": "POWERSHELL_POWERSHELL_FORMATTER: Override CLI executable used to build the linter command line (rarely needed)",
@@ -21340,8 +21340,7 @@
       "$id": "#/properties/PYTHON_MYPY_FILE_EXTENSIONS",
       "default": [
         ".py",
-        ".pyi",
-        ".ipynb"
+        ".pyi"
       ],
       "description": "PYTHON_MYPY: Override descriptor/linter matching files extensions that will be used to select files to lint",
       "examples": [
