@@ -106,7 +106,10 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
             {isExpanded && section.items.length > 0 && (
               <ul className="nav__list">
                 {section.items.map((item) => {
-                  const isActive = selectedId === item.id;
+                  const hasActiveChild = !!(item.children && item.children.some((child) => child.id === selectedId));
+                  const isDescriptorActive =
+                    item.type === 'descriptor' && activeDescriptorId === item.id && !hasActiveChild;
+                  const isActive = selectedId === item.id || isDescriptorActive;
                   const isItemExpanded = activeDescriptorId === item.id || isActive;
                   const itemIcon = getCodiconForNavigationItem(item.type, item.id, section.id);
                   return (

@@ -923,6 +923,11 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
   outline: none;
 }
 
+.nav__title--active {
+  background: linear-gradient(180deg, rgb(120 255 214 / 16%), rgb(120 160 255 / 10%));
+  color: var(--vscode-editor-selectionForeground);
+}
+
 .nav__title--toggle:hover,
 .nav__title--toggle:focus-visible {
   border-color: var(--vscode-panel-border);
@@ -979,9 +984,7 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 }
 
 .nav__item--active {
-  border-color: var(--vscode-focusBorder);
   background: linear-gradient(180deg, rgb(120 255 214 / 12%), rgb(120 160 255 / 8%));
-  box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 .nav__label {
@@ -1020,6 +1023,10 @@ body.vscode-high-contrast-light .breadcrumbs__home-icon--dark {
 
 .nav__item--child {
   background: transparent;
+}
+
+.nav__item--child.nav__item--active {
+  background: linear-gradient(180deg, rgb(120 255 214 / 12%), rgb(120 160 255 / 8%));
 }
 
 .header {
