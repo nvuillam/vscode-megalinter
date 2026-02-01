@@ -6,10 +6,18 @@ import type { RunRecommendation } from "../shared/webviewMessages";
 import { logMegaLinter } from "../outputChannel";
 
 export class RecommendationsService {
-  private readonly metadataCache = new Map<string, { label?: string; author?: string }>();
+  private readonly metadataCache = new Map<
+    string,
+    { label?: string; author?: string }
+  >();
 
   async load(reportFolderPath: string): Promise<RunRecommendation[]> {
-    const configPath = path.join(reportFolderPath, "IDE-config", ".vscode", "extensions.json");
+    const configPath = path.join(
+      reportFolderPath,
+      "IDE-config",
+      ".vscode",
+      "extensions.json",
+    );
 
     if (!fs.existsSync(configPath)) {
       return [];
@@ -63,7 +71,9 @@ export class RecommendationsService {
       return recs;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logMegaLinter(`Run view: failed to parse recommended extensions | ${msg}`);
+      logMegaLinter(
+        `Run view: failed to parse recommended extensions | ${msg}`,
+      );
       return [];
     }
   }
@@ -91,7 +101,8 @@ export class RecommendationsService {
           : "";
 
     if (!label || !author) {
-      const marketplace = await fetchExtensionMetadataFromMarketplace(extensionId);
+      const marketplace =
+        await fetchExtensionMetadataFromMarketplace(extensionId);
       if (marketplace) {
         if (!label && marketplace.label) {
           label = marketplace.label.trim();
@@ -122,7 +133,9 @@ function inferLabelFromExtensionId(extensionId: string): string {
   }
 
   const trimmed = extensionId.trim();
-  const withoutPublisher = trimmed.includes(".") ? trimmed.slice(trimmed.indexOf(".") + 1) : trimmed;
+  const withoutPublisher = trimmed.includes(".")
+    ? trimmed.slice(trimmed.indexOf(".") + 1)
+    : trimmed;
   const parts = withoutPublisher.split(/[-._]/g).filter(Boolean);
   if (parts.length === 0) {
     return trimmed;
@@ -138,7 +151,9 @@ function inferAuthorFromExtensionId(extensionId: string): string {
   }
 
   const trimmed = extensionId.trim();
-  const publisher = trimmed.includes(".") ? trimmed.slice(0, trimmed.indexOf(".")) : trimmed;
+  const publisher = trimmed.includes(".")
+    ? trimmed.slice(0, trimmed.indexOf("."))
+    : trimmed;
   const parts = publisher.split(/[-._]/g).filter(Boolean);
   if (parts.length === 0) {
     return publisher;
@@ -155,7 +170,8 @@ async function fetchExtensionMetadataFromMarketplace(
     return null;
   }
 
-  const url = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery";
+  const url =
+    "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery";
   const body = {
     filters: [
       {
@@ -186,7 +202,8 @@ async function fetchExtensionMetadataFromMarketplace(
       return null;
     }
 
-    const label = typeof ext.displayName === "string" ? ext.displayName : undefined;
+    const label =
+      typeof ext.displayName === "string" ? ext.displayName : undefined;
     const author =
       typeof ext.publisher?.displayName === "string"
         ? ext.publisher.displayName
@@ -197,7 +214,9 @@ async function fetchExtensionMetadataFromMarketplace(
     return { label, author };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    logMegaLinter(`Run view: marketplace lookup failed for ${trimmed} | ${msg}`);
+    logMegaLinter(
+      `Run view: marketplace lookup failed for ${trimmed} | ${msg}`,
+    );
     return null;
   }
 }

@@ -97,7 +97,10 @@
         },
         "megalinter.run.engine": {
           "type": "string",
-          "enum": ["docker", "podman"],
+          "enum": [
+            "docker",
+            "podman"
+          ],
           "default": "docker",
           "description": "Container engine used by the MegaLinter Run view."
         },

@@ -28,7 +28,11 @@ import type {
   RunRecommendation,
 } from "./shared/webviewMessages";
 import { setRunStatusBarBusy, type NavigationTarget } from "./extension";
-import { EngineStatusService, type Engine, type EngineStatus } from "./run/engineStatus";
+import {
+  EngineStatusService,
+  type Engine,
+  type EngineStatus,
+} from "./run/engineStatus";
 import { RunnerVersionService, isValidSemver } from "./run/runnerVersions";
 import { RecommendationsService } from "./run/recommendations";
 
@@ -228,16 +232,26 @@ export class RunPanel {
     const config = vscode.workspace.getConfiguration("megalinter.run");
 
     const engineRaw = config.get<string>("engine");
-    const engine = engineRaw === "docker" || engineRaw === "podman" ? engineRaw : undefined;
+    const engine =
+      engineRaw === "docker" || engineRaw === "podman" ? engineRaw : undefined;
 
     const flavorRaw = config.get<string>("flavor");
-    const flavor = typeof flavorRaw === "string" && flavorRaw.trim() ? flavorRaw.trim() : undefined;
+    const flavor =
+      typeof flavorRaw === "string" && flavorRaw.trim()
+        ? flavorRaw.trim()
+        : undefined;
 
     const versionRaw = config.get<string>("version");
-    const runnerVersion = typeof versionRaw === "string" && versionRaw.trim() ? versionRaw.trim() : undefined;
+    const runnerVersion =
+      typeof versionRaw === "string" && versionRaw.trim()
+        ? versionRaw.trim()
+        : undefined;
 
     const parallelCoresRaw = config.get<number>("parallelCores");
-    const parallelCores = typeof parallelCoresRaw === "number" && parallelCoresRaw > 0 ? parallelCoresRaw : undefined;
+    const parallelCores =
+      typeof parallelCoresRaw === "number" && parallelCoresRaw > 0
+        ? parallelCoresRaw
+        : undefined;
     const applyFixesRaw = config.get<boolean>("applyFixes");
     const applyFixes = applyFixesRaw === true;
 
@@ -310,13 +324,14 @@ export class RunPanel {
     ]);
 
     const { versions, latest } = runnerInfo;
-    const availableCores = Math.max(1, (os.cpus()?.length ?? 1));
+    const availableCores = Math.max(1, os.cpus()?.length ?? 1);
 
     const preferredEngine = runPreferences.engine;
 
-    const defaultEngine: Engine | undefined = preferredEngine && engineStatuses[preferredEngine]?.available
-      ? preferredEngine
-      : engineStatuses.docker.running
+    const defaultEngine: Engine | undefined =
+      preferredEngine && engineStatuses[preferredEngine]?.available
+        ? preferredEngine
+        : engineStatuses.docker.running
           ? "docker"
           : engineStatuses.podman.running
             ? "podman"
@@ -386,11 +401,16 @@ export class RunPanel {
     return this._flavorEnumCache;
   }
 
-  private async _getRunnerVersions(): Promise<{ versions: string[]; latest: string | null }> {
+  private async _getRunnerVersions(): Promise<{
+    versions: string[];
+    latest: string | null;
+  }> {
     return this._runnerVersionService.getRunnerVersions();
   }
 
-  private async _detectEngines(force?: boolean): Promise<Record<Engine, EngineStatus>> {
+  private async _detectEngines(
+    force?: boolean,
+  ): Promise<Record<Engine, EngineStatus>> {
     return this._engineStatusService.detect(force);
   }
 
@@ -420,18 +440,31 @@ export class RunPanel {
   }
 
   private async _updateRunSetting(
-    key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions" | "applyFixes",
+    key:
+      | "engine"
+      | "flavor"
+      | "version"
+      | "parallelCores"
+      | "recommendVsCodeExtensions"
+      | "applyFixes",
     value: string,
   ) {
     const config = vscode.workspace.getConfiguration("megalinter.run");
 
     if (key === "engine") {
-      const normalized = value === "docker" || value === "podman" ? value : undefined;
+      const normalized =
+        value === "docker" || value === "podman" ? value : undefined;
       if (!normalized) {
         return;
       }
-      logMegaLinter(`Run view: setting updated | key=engine value=${normalized}`);
-      await config.update("engine", normalized, vscode.ConfigurationTarget.Workspace);
+      logMegaLinter(
+        `Run view: setting updated | key=engine value=${normalized}`,
+      );
+      await config.update(
+        "engine",
+        normalized,
+        vscode.ConfigurationTarget.Workspace,
+      );
       return;
     }
 
@@ -441,7 +474,11 @@ export class RunPanel {
         return;
       }
       logMegaLinter(`Run view: setting updated | key=flavor value=${trimmed}`);
-      await config.update("flavor", trimmed, vscode.ConfigurationTarget.Workspace);
+      await config.update(
+        "flavor",
+        trimmed,
+        vscode.ConfigurationTarget.Workspace,
+      );
       return;
     }
 
@@ -451,7 +488,11 @@ export class RunPanel {
         return;
       }
       logMegaLinter(`Run view: setting updated | key=version value=${trimmed}`);
-      await config.update("version", trimmed, vscode.ConfigurationTarget.Workspace);
+      await config.update(
+        "version",
+        trimmed,
+        vscode.ConfigurationTarget.Workspace,
+      );
     }
 
     if (key === "parallelCores") {
@@ -459,21 +500,39 @@ export class RunPanel {
       if (!Number.isFinite(parsed) || parsed <= 0) {
         return;
       }
-      logMegaLinter(`Run view: setting updated | key=parallelCores value=${parsed}`);
-      await config.update("parallelCores", parsed, vscode.ConfigurationTarget.Workspace);
+      logMegaLinter(
+        `Run view: setting updated | key=parallelCores value=${parsed}`,
+      );
+      await config.update(
+        "parallelCores",
+        parsed,
+        vscode.ConfigurationTarget.Workspace,
+      );
     }
 
     if (key === "recommendVsCodeExtensions") {
       const boolValue = value === "true";
-      logMegaLinter(`Run view: setting updated | key=recommendVsCodeExtensions value=${boolValue}`);
-      await config.update("recommendVsCodeExtensions", boolValue, vscode.ConfigurationTarget.Workspace);
+      logMegaLinter(
+        `Run view: setting updated | key=recommendVsCodeExtensions value=${boolValue}`,
+      );
+      await config.update(
+        "recommendVsCodeExtensions",
+        boolValue,
+        vscode.ConfigurationTarget.Workspace,
+      );
       return;
     }
 
     if (key === "applyFixes") {
       const boolValue = value === "true";
-      logMegaLinter(`Run view: setting updated | key=applyFixes value=${boolValue}`);
-      await config.update("applyFixes", boolValue, vscode.ConfigurationTarget.Workspace);
+      logMegaLinter(
+        `Run view: setting updated | key=applyFixes value=${boolValue}`,
+      );
+      await config.update(
+        "applyFixes",
+        boolValue,
+        vscode.ConfigurationTarget.Workspace,
+      );
     }
   }
 
@@ -496,7 +555,9 @@ export class RunPanel {
     const engineStatuses = await this._detectEngines(true);
     const selectedStatus = engineStatuses[engine];
     if (!selectedStatus.available) {
-      throw new Error(`${engine} is not available. Please install it and try again.`);
+      throw new Error(
+        `${engine} is not available. Please install it and try again.`,
+      );
     }
     if (!selectedStatus.running) {
       throw new Error(
@@ -508,27 +569,41 @@ export class RunPanel {
     const safeFlavor = /^[a-z0-9_\-]+$/i.test(flavor) ? flavor : "full";
     const isLinterSelection = linterKeys.includes(safeFlavor);
     const allowedChannels = new Set(["latest", "beta", "alpha"]);
-    const safeRelease = allowedChannels.has(runnerVersion) || isValidSemver(runnerVersion)
-      ? runnerVersion
-      : "latest";
-    const cpuCount = Math.max(1, (os.cpus()?.length ?? 1));
-    const safeParallel = Math.min(cpuCount, Math.max(1, Math.floor(parallelCores || 4)));
+    const safeRelease =
+      allowedChannels.has(runnerVersion) || isValidSemver(runnerVersion)
+        ? runnerVersion
+        : "latest";
+    const cpuCount = Math.max(1, os.cpus()?.length ?? 1);
+    const safeParallel = Math.min(
+      cpuCount,
+      Math.max(1, Math.floor(parallelCores || 4)),
+    );
     const runnerPackageVersion = getConfiguredRunnerVersion();
 
     const runId = createRunId();
     const runFolderName = `${formatRunFolderTimestamp(new Date())}_${safeFlavor}`;
 
-    const reportFolderPath = path.join(workspaceRoot, "megalinter-reports", runFolderName);
+    const reportFolderPath = path.join(
+      workspaceRoot,
+      "megalinter-reports",
+      runFolderName,
+    );
     fs.mkdirSync(reportFolderPath, { recursive: true });
 
     const reportFolderRel = `megalinter-reports/${runFolderName}`;
 
-    const webhook = await this._startWebhookServer({ runId, engine, reportFolderPath });
+    const webhook = await this._startWebhookServer({
+      runId,
+      engine,
+      reportFolderPath,
+    });
     const { webhookUrl, webhookToken } = webhook;
 
     const envFromDotenv = loadDotenvEnv(workspaceRoot);
 
-    const containerImage = isLinterSelection ? buildOnlyLinterImage(safeFlavor, safeRelease) : undefined;
+    const containerImage = isLinterSelection
+      ? buildOnlyLinterImage(safeFlavor, safeRelease)
+      : undefined;
 
     // On Windows, spawning a .cmd directly with shell:false frequently fails with spawn EINVAL.
     // Use the shell so VS Code/Node can resolve npx.cmd correctly.
@@ -556,14 +631,13 @@ export class RunPanel {
       ...(isLinterSelection ? [] : flavorArgs),
       "--container-engine",
       engine,
-      ...(isLinterSelection ? ["--image", containerImage!] : ["--release", safeRelease]),
+      ...(isLinterSelection
+        ? ["--image", containerImage!]
+        : ["--release", safeRelease]),
       "--path",
       workspaceRoot,
       // "--remove-container",
-      ...
-        (isLinterSelection
-          ? ["-e", `ENABLE_LINTERS=${safeFlavor}`]
-          : []),
+      ...(isLinterSelection ? ["-e", `ENABLE_LINTERS=${safeFlavor}`] : []),
       ...singleLinterEnv,
       ...applyFixesEnv,
       "-e",
@@ -652,7 +726,9 @@ export class RunPanel {
       // Ensure we don't leave the webhook server running if spawn fails.
       this._stopWebhookServer();
 
-      logMegaLinter(`Run ${runId}: spawn error: ${err instanceof Error ? err.message : String(err)}`);
+      logMegaLinter(
+        `Run ${runId}: spawn error: ${err instanceof Error ? err.message : String(err)}`,
+      );
       if (process.platform === "win32") {
         void logWhereNpxDiagnostics();
       }
@@ -680,7 +756,9 @@ export class RunPanel {
       const webhookResults = this._collectWebhookResults(runId);
       this._stopWebhookServer();
 
-      logMegaLinter(`Run ${runId}: completed with exitCode=${typeof code === "number" ? code : "unknown"}`);
+      logMegaLinter(
+        `Run ${runId}: completed with exitCode=${typeof code === "number" ? code : "unknown"}`,
+      );
       logMegaLinter(`Run ${runId}: webhook results=${webhookResults.length}`);
 
       try {
@@ -725,7 +803,8 @@ export class RunPanel {
       return;
     }
 
-    const { runId, reportFolderPath, child, engine, containerImage } = this._runningChild;
+    const { runId, reportFolderPath, child, engine, containerImage } =
+      this._runningChild;
     try {
       child.kill();
     } catch {
@@ -748,25 +827,41 @@ export class RunPanel {
       reportFolderRel: "",
     });
 
-    this._postMessage({ type: "runRecommendations", runId, recommendations: [] });
+    this._postMessage({
+      type: "runRecommendations",
+      runId,
+      recommendations: [],
+    });
   }
 
-  private async _sendRecommendedExtensions(runId: string, reportFolderPath: string) {
+  private async _sendRecommendedExtensions(
+    runId: string,
+    reportFolderPath: string,
+  ) {
     if (!this._recommendationsEnabled()) {
-      this._postMessage({ type: "runRecommendations", runId, recommendations: [] });
+      this._postMessage({
+        type: "runRecommendations",
+        runId,
+        recommendations: [],
+      });
       return;
     }
 
     try {
-      const recommendations = await this._loadExtensionRecommendations(reportFolderPath);
+      const recommendations =
+        await this._loadExtensionRecommendations(reportFolderPath);
       this._postMessage({ type: "runRecommendations", runId, recommendations });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logMegaLinter(`Run ${runId}: unable to load recommended extensions | ${msg}`);
+      logMegaLinter(
+        `Run ${runId}: unable to load recommended extensions | ${msg}`,
+      );
     }
   }
 
-  private async _loadExtensionRecommendations(reportFolderPath: string): Promise<RunRecommendation[]> {
+  private async _loadExtensionRecommendations(
+    reportFolderPath: string,
+  ): Promise<RunRecommendation[]> {
     return this._recommendationsService.load(reportFolderPath);
   }
 
@@ -782,7 +877,9 @@ export class RunPanel {
     try {
       const ids = await listContainersByImage(engine, containerImage);
       if (!ids.length) {
-        logMegaLinter(`Run ${runId}: no running containers found for ${containerImage}`);
+        logMegaLinter(
+          `Run ${runId}: no running containers found for ${containerImage}`,
+        );
         return;
       }
 
@@ -792,7 +889,9 @@ export class RunPanel {
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logMegaLinter(`Run ${runId}: failed to stop containers for ${containerImage} | ${msg}`);
+      logMegaLinter(
+        `Run ${runId}: failed to stop containers for ${containerImage} | ${msg}`,
+      );
     }
   }
 
@@ -945,18 +1044,23 @@ export class RunPanel {
       return;
     }
 
-    const messageType = typeof payload?.messageType === "string" ? payload.messageType : "";
+    const messageType =
+      typeof payload?.messageType === "string" ? payload.messageType : "";
 
     if (this._debugEnabled()) {
       try {
         const raw = JSON.stringify(payload);
-        const trimmed = raw.length > 5000 ? `${raw.slice(0, 5000)}... (truncated)` : raw;
-        logMegaLinter(`Run ${ctx.runId}: webhook ${messageType} received -> ${trimmed}`);
+        const trimmed =
+          raw.length > 5000 ? `${raw.slice(0, 5000)}... (truncated)` : raw;
+        logMegaLinter(
+          `Run ${ctx.runId}: webhook ${messageType} received -> ${trimmed}`,
+        );
       } catch {
-        logMegaLinter(`Run ${ctx.runId}: webhook ${messageType} received -> [unserializable]`);
+        logMegaLinter(
+          `Run ${ctx.runId}: webhook ${messageType} received -> [unserializable]`,
+        );
       }
     }
-
 
     if (messageType === "megalinterStart" && Array.isArray(payload?.linters)) {
       for (const l of payload.linters) {
@@ -974,11 +1078,14 @@ export class RunPanel {
     }
 
     if (messageType === "linterComplete") {
-      const linterStatus = typeof payload?.linterStatus === "string" ? payload.linterStatus : "";
-      const status: RunResult["status"] = linterStatus === "success" ? "SUCCESS" : "ERROR";
+      const linterStatus =
+        typeof payload?.linterStatus === "string" ? payload.linterStatus : "";
+      const status: RunResult["status"] =
+        linterStatus === "success" ? "SUCCESS" : "ERROR";
       this._upsertLinterFromWebhook(ctx, payload, status);
 
-      const key = typeof payload?.linterKey === "string" ? payload.linterKey : "";
+      const key =
+        typeof payload?.linterKey === "string" ? payload.linterKey : "";
       if (key) {
         logMegaLinter(`Run ${ctx.runId}: ${key} -> ${status}`);
       }
@@ -1000,7 +1107,8 @@ export class RunPanel {
     const keyRaw =
       typeof payload?.linterKey === "string"
         ? payload.linterKey
-        : typeof payload?.linterId === "string" && typeof payload?.descriptorId === "string"
+        : typeof payload?.linterId === "string" &&
+            typeof payload?.descriptorId === "string"
           ? `${payload.descriptorId}_${payload.linterId}`
           : "";
 
@@ -1008,33 +1116,63 @@ export class RunPanel {
       return;
     }
 
-    const descriptorId = typeof payload?.descriptorId === "string" ? payload.descriptorId : "";
-    const linterId = typeof payload?.linterId === "string" ? payload.linterId : "";
+    const descriptorId =
+      typeof payload?.descriptorId === "string" ? payload.descriptorId : "";
+    const linterId =
+      typeof payload?.linterId === "string" ? payload.linterId : "";
 
     const existing = this._webhook.resultsByKey.get(keyRaw);
 
-    const filesNumber = typeof payload?.filesNumber === "number" ? payload.filesNumber : undefined;
+    const filesNumber =
+      typeof payload?.filesNumber === "number"
+        ? payload.filesNumber
+        : undefined;
     const elapsedSeconds =
-      typeof payload?.linterElapsedTime === "number" ? payload.linterElapsedTime : existing?.elapsedSeconds;
+      typeof payload?.linterElapsedTime === "number"
+        ? payload.linterElapsedTime
+        : existing?.elapsedSeconds;
     const errors =
-      typeof payload?.linterErrorNumber === "number" ? payload.linterErrorNumber : existing?.errors;
+      typeof payload?.linterErrorNumber === "number"
+        ? payload.linterErrorNumber
+        : existing?.errors;
     const linterVersion =
-      typeof payload?.linterVersion === "string" && payload.linterVersion.trim() !== ""
+      typeof payload?.linterVersion === "string" &&
+      payload.linterVersion.trim() !== ""
         ? payload.linterVersion
         : existing?.linterVersion;
 
-    const status: RunResult["status"] = statusOverride ?? existing?.status ?? "UNKNOWN";
+    const status: RunResult["status"] =
+      statusOverride ?? existing?.status ?? "UNKNOWN";
 
-    const logCandidates = [status, "WARNING", "ERROR", "SUCCESS", "RUNNING", "PENDING", "UNKNOWN"]
+    const logCandidates = [
+      status,
+      "WARNING",
+      "ERROR",
+      "SUCCESS",
+      "RUNNING",
+      "PENDING",
+      "UNKNOWN",
+    ]
       .filter((v, idx, arr) => arr.indexOf(v) === idx)
-      .map((s) => path.join(ctx.reportFolderPath, "linters_logs", `${keyRaw}-${s}.log`));
+      .map((s) =>
+        path.join(ctx.reportFolderPath, "linters_logs", `${keyRaw}-${s}.log`),
+      );
 
-    const logFilePath = logCandidates.find((p) => fs.existsSync(p)) || existing?.logFilePath;
+    const logFilePath =
+      logCandidates.find((p) => fs.existsSync(p)) || existing?.logFilePath;
 
     const next: RunResult = {
       key: keyRaw,
-      descriptor: existing?.descriptor || descriptorId || (keyRaw.includes("_") ? keyRaw.split("_")[0] : keyRaw),
-      linter: existing?.linter || linterId || (keyRaw.includes("_") ? keyRaw.substring(keyRaw.indexOf("_") + 1) : keyRaw),
+      descriptor:
+        existing?.descriptor ||
+        descriptorId ||
+        (keyRaw.includes("_") ? keyRaw.split("_")[0] : keyRaw),
+      linter:
+        existing?.linter ||
+        linterId ||
+        (keyRaw.includes("_")
+          ? keyRaw.substring(keyRaw.indexOf("_") + 1)
+          : keyRaw),
       linterVersion,
       status,
       logFilePath,
@@ -1104,7 +1242,10 @@ export class RunPanel {
       return;
     }
 
-    if (lowered.includes("mega-linter-runner") || lowered.includes("initializing")) {
+    if (
+      lowered.includes("mega-linter-runner") ||
+      lowered.includes("initializing")
+    ) {
       this._setInitStage("runner", runId);
     }
   }
@@ -1167,12 +1308,19 @@ export class RunPanel {
     }
 
     this._webhook.initStage = stage;
-    this._postMessage({ type: "runInitStatus", runId, stage, containerImage: this._webhook.containerImage });
+    this._postMessage({
+      type: "runInitStatus",
+      runId,
+      stage,
+      containerImage: this._webhook.containerImage,
+    });
   }
 
   private async _navigateToConfig(target: ConfigNavigationTarget) {
     const normalize = (value?: string) =>
-      typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "";
+      typeof value === "string" && value.trim()
+        ? value.trim().toUpperCase()
+        : "";
 
     const descriptorId = normalize(target.descriptorId);
     if (!descriptorId) {
@@ -1212,7 +1360,10 @@ export class RunPanel {
       const msg = err instanceof Error ? err.message : String(err);
       logMegaLinter(`Run view: extension.open failed for ${trimmed} | ${msg}`);
       try {
-        await vscode.commands.executeCommand("workbench.extensions.search", trimmed);
+        await vscode.commands.executeCommand(
+          "workbench.extensions.search",
+          trimmed,
+        );
       } catch {
         // ignore
       }
@@ -1244,7 +1395,10 @@ function createWebhookToken(): string {
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 14)}`;
 }
 
-function readRequestBody(req: http.IncomingMessage, maxBytes: number): Promise<string> {
+function readRequestBody(
+  req: http.IncomingMessage,
+  maxBytes: number,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let total = 0;
@@ -1283,7 +1437,10 @@ function quoteArgForShell(arg: string): string {
   return `"${arg.replace(/"/g, '\\"')}"`;
 }
 
-async function listContainersByImage(engine: Engine, image: string): Promise<string[]> {
+async function listContainersByImage(
+  engine: Engine,
+  image: string,
+): Promise<string[]> {
   const cmd = process.platform === "win32" ? `${engine}.exe` : engine;
   const args = ["ps", "--filter", `ancestor=${image}`, "--format", "{{.ID}}"]; // ancestor matches by image
   const { stdout } = await execCaptureWithTimeout(cmd, args, 8000);
@@ -1293,7 +1450,10 @@ async function listContainersByImage(engine: Engine, image: string): Promise<str
     .filter(Boolean);
 }
 
-async function killContainers(engine: Engine, containerIds: string[]): Promise<void> {
+async function killContainers(
+  engine: Engine,
+  containerIds: string[],
+): Promise<void> {
   if (!containerIds.length) {
     return;
   }
@@ -1426,7 +1586,11 @@ async function logWhereNpxDiagnostics(): Promise<void> {
 
 async function resolveWebhookHost(engine: Engine): Promise<string> {
   const envOverride = process.env.MEGALINTER_WEBHOOK_HOST;
-  if (envOverride && typeof envOverride === "string" && envOverride.trim() !== "") {
+  if (
+    envOverride &&
+    typeof envOverride === "string" &&
+    envOverride.trim() !== ""
+  ) {
     return envOverride.trim();
   }
   if (engine === "docker") {
@@ -1486,7 +1650,10 @@ function loadDotenvEnv(workspaceRoot: string): Record<string, string> {
 
       const key = match[1];
       let value = match[2];
-      if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
       vars[key] = value;
@@ -1504,9 +1671,3 @@ function loadDotenvEnv(workspaceRoot: string): Record<string, string> {
     return {};
   }
 }
-
-
-
-
-
-

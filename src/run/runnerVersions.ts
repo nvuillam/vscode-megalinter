@@ -10,7 +10,10 @@ export class RunnerVersionService {
 
   async getRunnerVersions(): Promise<RunnerVersionsInfo> {
     const now = Date.now();
-    if (this._cache && now - this._cache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS) {
+    if (
+      this._cache &&
+      now - this._cache.timestamp < RUNNER_VERSIONS_CACHE_TTL_MS
+    ) {
       const ageMs = now - this._cache.timestamp;
       logMegaLinter(
         `Run view: versions cache hit | age=${ageMs}ms size=${this._cache.info.versions.length}`,
@@ -29,7 +32,9 @@ export class RunnerVersionService {
 
     const fetchStart = Date.now();
     try {
-      logMegaLinter("Run view: fetching MegaLinter versions from GitHub releases…");
+      logMegaLinter(
+        "Run view: fetching MegaLinter versions from GitHub releases…",
+      );
       const tags = await fetchMegalinterGithubReleaseTags();
       logMegaLinter(
         `Run view: GitHub releases fetched in ${Date.now() - fetchStart}ms | tags=${tags.length}`,
@@ -44,7 +49,12 @@ export class RunnerVersionService {
       const hasEligible = normalized.length > 0;
       latest = hasEligible ? "latest" : null;
 
-      versions = ["beta", ...(hasEligible ? ["latest"] : []), ...normalized, "alpha"];
+      versions = [
+        "beta",
+        ...(hasEligible ? ["latest"] : []),
+        ...normalized,
+        "alpha",
+      ];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logMegaLinter(
@@ -60,7 +70,9 @@ export class RunnerVersionService {
 
     versions = Array.from(new Set(versions));
 
-    logMegaLinter(`Run view: versions resolved (${versions.length}) [${versions.join(", ")}]`);
+    logMegaLinter(
+      `Run view: versions resolved (${versions.length}) [${versions.join(", ")}]`,
+    );
 
     return { versions, latest };
   }
@@ -69,7 +81,8 @@ export class RunnerVersionService {
 function fetchMegalinterGithubReleaseTags(): Promise<string[]> {
   // Use the GitHub API to list releases. Unauthenticated access is rate limited.
   // If unreachable, caller falls back to "latest".
-  const url = "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=10";
+  const url =
+    "https://api.github.com/repos/oxsecurity/megalinter/releases?per_page=10";
 
   return axios
     .get(url, {
@@ -98,7 +111,9 @@ function normalizeReleaseTag(tag: string): string | null {
   const trimmed = String(tag || "").trim();
   const withoutV = trimmed.startsWith("v") ? trimmed.slice(1) : trimmed;
   // Only keep semver-ish tags; ignore other release naming.
-  return /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(withoutV) ? withoutV : null;
+  return /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(withoutV)
+    ? withoutV
+    : null;
 }
 
 function compareSemverDesc(a: string, b: string): number {

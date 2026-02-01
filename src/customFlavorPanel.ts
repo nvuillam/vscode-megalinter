@@ -302,8 +302,7 @@ export class CustomFlavorPanel {
 
     const runnerVersion = getConfiguredRunnerVersion();
 
-    const baseCommand =
-      `npx --yes mega-linter-runner@${runnerVersion} --custom-flavor-setup`;
+    const baseCommand = `npx --yes mega-linter-runner@${runnerVersion} --custom-flavor-setup`;
     const command = safeLinters.length
       ? `${baseCommand} --custom-flavor-linters "${safeLinters.join(",")}"`
       : baseCommand;
