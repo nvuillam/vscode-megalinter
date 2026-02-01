@@ -2,7 +2,7 @@
   "name": "vscode-megalinter",
   "displayName": "MegaLinter",
   "description": "Configure and Run MegaLinter using a visual interface",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "nvuillam",
   "repository": {
     "type": "git",
