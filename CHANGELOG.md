@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `x-doc-key` when mentioned in JSON Schema to build links to documentation
 - Fix duplicate label "Config values"
 - Improve responsiveness of the configuration editor on small screens
-- Implement Run MegaLinter UI panel
+- Implement Run MegaLinter UI panel (with container image selection/cleanup, linter selection, runner version, flavor defaults, parallel cores, and apply-fixes toggle)
+- Load `.env` to hydrate Run panel settings and improve log path resolution/messaging (including "no matching linters" notice)
+- Allow configuring or hiding recommended VS Code extensions in the Run panel
+- Enhance status and navigation visuals (active descriptor/linter tabs and navigation items, clearer configured-state styling)
 
 ## [0.0.1] - 2026-01-12
 
