@@ -5,3 +5,4 @@ export { LinterDescription } from "./LinterDescription";
 export { ThemedForm } from "./ThemedForm";
 export { MainTabs } from "./MainTabs";
 export { TabBar } from "./TabBar";
+export { LoadingOverlay } from "./LoadingOverlay";

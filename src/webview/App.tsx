@@ -19,7 +19,8 @@ import megalinterBannerLocal from './assets/megalinter-banner.png';
 import {
   HomePanel,
   NavigationMenu,
-  MainTabs
+  MainTabs,
+  LoadingOverlay
 } from './components';
 
 import {
@@ -665,13 +666,7 @@ export const App: React.FC = () => {
           )}
         </div>
         <div className="nav-wrapper">
-          {isConfigLoading && (
-            <div className="home__loading-overlay" role="status" aria-live="polite">
-              <div className="home__loading-card">
-                <span className="home__spinner home__spinner--lg" aria-hidden="true" />
-              </div>
-            </div>
-          )}
+          {isConfigLoading && <LoadingOverlay />}
           <NavigationMenu
             sections={effectiveSections}
             selectedId={selectedNavId}
