@@ -606,6 +606,7 @@ export const App: React.FC = () => {
   ];
 
   const showHome = referenceDataLoading || activeMainTab === 'home';
+  const isConfigLoading = !configLoaded;
 
   return (
     <div className="container">
@@ -663,18 +664,27 @@ export const App: React.FC = () => {
             />
           )}
         </div>
-        <NavigationMenu
-          sections={effectiveSections}
-          selectedId={selectedNavId}
-          activeDescriptorId={selectedDescriptor}
-          onSelect={(item) => {
-            if (referenceDataLoading && item.type !== 'home') {
-              return;
-            }
-            handleNavigationSelect(item);
-          }}
-          disabled={referenceDataLoading}
-        />
+        <div className="nav-wrapper">
+          {isConfigLoading && (
+            <div className="home__loading-overlay" role="status" aria-live="polite">
+              <div className="home__loading-card">
+                <span className="home__spinner home__spinner--lg" aria-hidden="true" />
+              </div>
+            </div>
+          )}
+          <NavigationMenu
+            sections={effectiveSections}
+            selectedId={selectedNavId}
+            activeDescriptorId={selectedDescriptor}
+            onSelect={(item) => {
+              if (referenceDataLoading && item.type !== 'home') {
+                return;
+              }
+              handleNavigationSelect(item);
+            }}
+            disabled={referenceDataLoading}
+          />
+        </div>
       </div>
     </div>
   );

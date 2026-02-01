@@ -36,6 +36,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
 }
 
 .home__banner-row {
@@ -253,6 +254,12 @@ body {
   animation: home-spin 0.8s linear infinite;
 }
 
+.home__spinner--lg {
+  width: 22px;
+  height: 22px;
+  border-width: 2.5px;
+}
+
 @keyframes home-spin {
   to {
     transform: rotate(360deg);
@@ -264,6 +271,35 @@ body {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 6px;
+}
+
+.home__loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 120% at 20% 20%, rgb(120 255 214 / 10%), transparent),
+    radial-gradient(120% 120% at 80% 0%, rgb(120 160 255 / 10%), transparent),
+    rgb(0 0 0 / 24%);
+  z-index: 5;
+}
+
+.home__loading-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 28%);
+  color: var(--vscode-foreground);
+  font-weight: 650;
+}
+
+.home__loading-text {
+  font-size: 13px;
 }
 
 .pill-button {
@@ -358,6 +394,7 @@ body {
   flex-direction: column;
   gap: 10px;
   box-shadow: 0 10px 26px rgb(0 0 0 / 22%);
+  position: relative;
 }
 
 .home__section--primary {
@@ -589,6 +626,11 @@ body {
   max-width: none;
   margin: 0;
   padding: 0 8px 24px;
+  position: relative;
+}
+
+.nav-wrapper {
+  position: relative;
 }
 
 .layout {

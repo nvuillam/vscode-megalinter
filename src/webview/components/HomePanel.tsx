@@ -25,6 +25,7 @@ export const HomePanel: React.FC<HomePanelProps> = ({
   const [bannerSrc, setBannerSrc] = useState<string>(bannerUrl);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const isConfigLoading = !configLoaded;
 
   const filteredItems = React.useMemo(() => {
     if (!searchTerm || !searchItems) {
@@ -137,6 +138,13 @@ export const HomePanel: React.FC<HomePanelProps> = ({
 
       <div className="home__sections-grid">
         <div className="home__section home__section--primary">
+          {isConfigLoading && (
+            <div className="home__loading-overlay" role="status" aria-live="polite">
+              <div className="home__loading-card">
+                <span className="home__spinner home__spinner--lg" aria-hidden="true" />
+              </div>
+            </div>
+          )}
           <div className="home__section-header">
             <span className="home__section-icon codicon codicon-settings-gear" aria-hidden="true" />
             <div>
