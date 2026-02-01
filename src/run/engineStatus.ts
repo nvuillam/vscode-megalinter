@@ -12,17 +12,27 @@ export type EngineStatus = {
 const ENGINE_STATUS_CACHE_TTL_MS = 10 * 1000;
 
 export class EngineStatusService {
-  private _cache: { timestamp: number; statuses: Record<Engine, EngineStatus> } | null = null;
+  private _cache: {
+    timestamp: number;
+    statuses: Record<Engine, EngineStatus>;
+  } | null = null;
 
   async detect(force?: boolean): Promise<Record<Engine, EngineStatus>> {
     const now = Date.now();
-    if (!force && this._cache && now - this._cache.timestamp < ENGINE_STATUS_CACHE_TTL_MS) {
+    if (
+      !force &&
+      this._cache &&
+      now - this._cache.timestamp < ENGINE_STATUS_CACHE_TTL_MS
+    ) {
       const ageMs = now - this._cache.timestamp;
       logMegaLinter(`Run view: using cached engine status | age=${ageMs}ms`);
       return this._cache.statuses;
     }
 
-    const [docker, podman] = await Promise.all([this.detectEngine("docker"), this.detectEngine("podman")]);
+    const [docker, podman] = await Promise.all([
+      this.detectEngine("docker"),
+      this.detectEngine("podman"),
+    ]);
     const statuses: Record<Engine, EngineStatus> = { docker, podman };
     this._cache = { timestamp: now, statuses };
 
@@ -39,7 +49,11 @@ export class EngineStatusService {
 
     try {
       const ok = await execWithTimeout(cmd, ["info"], 10000);
-      return { available: true, running: ok, details: ok ? "running" : "not running" };
+      return {
+        available: true,
+        running: ok,
+        details: ok ? "running" : "not running",
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
 
@@ -54,7 +68,11 @@ export class EngineStatusService {
   }
 }
 
-function execWithTimeout(command: string, args: string[], timeoutMs: number): Promise<boolean> {
+function execWithTimeout(
+  command: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       shell: false,

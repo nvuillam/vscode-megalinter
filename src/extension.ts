@@ -26,7 +26,9 @@ export function setRunStatusBarBusy(isBusy: boolean) {
   statusBarItem.tooltip = isBusy
     ? "MegaLinter: run in progress (open Run view)"
     : "Open MegaLinter configuration";
-  statusBarItem.command = isBusy ? "megalinter.openRun" : DEFAULT_STATUS_COMMAND;
+  statusBarItem.command = isBusy
+    ? "megalinter.openRun"
+    : DEFAULT_STATUS_COMMAND;
 }
 
 export function activate(context: vscode.ExtensionContext) {

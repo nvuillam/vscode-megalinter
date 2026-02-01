@@ -347,6 +347,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
 }
+
 .home__section {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 12px;
@@ -2128,7 +2129,9 @@ img.linter-card__icon {
 }
 
 /* ========================================================================== */
+
 /* MegaLinter Run view */
+
 /* ========================================================================== */
 
 .run {
@@ -2319,7 +2322,7 @@ img.linter-card__icon {
 
 .run__recommendation-name {
   font-weight: 700;
-  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-family: 'IBM Plex Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
   word-break: break-all;
 }
 

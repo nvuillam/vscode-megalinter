@@ -127,7 +127,9 @@ export class ConfigurationPanel {
 
     // If we already have a panel, show it
     if (ConfigurationPanel.currentPanel) {
-      logMegaLinter(`Config view: reveal existing panel | configPath=${configPath}`);
+      logMegaLinter(
+        `Config view: reveal existing panel | configPath=${configPath}`,
+      );
       ConfigurationPanel.currentPanel._panel.reveal(column);
       ConfigurationPanel.currentPanel._configPath = configPath;
       ConfigurationPanel.currentPanel._update();
@@ -226,14 +228,18 @@ export class ConfigurationPanel {
             await this._openFile(message.filePath);
             break;
           case "resolveLinterConfigFile":
-            logMegaLinter(`Config view: resolveLinterConfigFile | linterKey=${message.linterKey}`);
+            logMegaLinter(
+              `Config view: resolveLinterConfigFile | linterKey=${message.linterKey}`,
+            );
             await this._resolveAndSendLinterConfigFile(
               message.linterKey,
               message.overrides,
             );
             break;
           case "createLinterConfigFileFromDefault":
-            logMegaLinter(`Config view: createLinterConfigFileFromDefault | linterKey=${message.linterKey}`);
+            logMegaLinter(
+              `Config view: createLinterConfigFileFromDefault | linterKey=${message.linterKey}`,
+            );
             await this._createLinterConfigFileFromDefault(
               message.linterKey,
               message.destination,
@@ -250,7 +256,9 @@ export class ConfigurationPanel {
             break;
         }
 
-        logMegaLinter(`Config view: handled ${message.type} in ${Date.now() - msgStart}ms`);
+        logMegaLinter(
+          `Config view: handled ${message.type} in ${Date.now() - msgStart}ms`,
+        );
       },
       null,
       this._disposables,
@@ -784,10 +792,7 @@ export class ConfigurationPanel {
     return parsed;
   }
 
-  private _fetchText(
-    url: string,
-    timeoutMs: number,
-  ): Promise<string> {
+  private _fetchText(url: string, timeoutMs: number): Promise<string> {
     return this._httpClient
       .get<string>(url, {
         timeout: timeoutMs,
@@ -877,7 +882,9 @@ export class ConfigurationPanel {
       };
     }
 
-    logMegaLinter(`Config view: EXTENDS detected | items=${extendsItems.length}`);
+    logMegaLinter(
+      `Config view: EXTENDS detected | items=${extendsItems.length}`,
+    );
 
     const appendKeys = this._normalizeConfigPropertiesToAppend(
       localConfig?.CONFIG_PROPERTIES_TO_APPEND,
@@ -1398,7 +1405,9 @@ export class ConfigurationPanel {
       await this._sendConfig();
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      logMegaLinter(`Config view: save failed in ${Date.now() - start}ms | ${msg}`);
+      logMegaLinter(
+        `Config view: save failed in ${Date.now() - start}ms | ${msg}`,
+      );
       vscode.window.showErrorMessage(`Failed to save configuration: ${error}`);
     }
   }

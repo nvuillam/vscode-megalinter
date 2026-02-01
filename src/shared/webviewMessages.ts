@@ -84,7 +84,17 @@ export type RunWebviewToExtensionMessage =
   | { type: "openConfigSection"; target: ConfigNavigationTarget }
   | { type: "revealPath"; path: string }
   | { type: "showOutput" }
-  | { type: "updateRunSetting"; key: "engine" | "flavor" | "version" | "parallelCores" | "recommendVsCodeExtensions" | "applyFixes"; value: string }
+  | {
+      type: "updateRunSetting";
+      key:
+        | "engine"
+        | "flavor"
+        | "version"
+        | "parallelCores"
+        | "recommendVsCodeExtensions"
+        | "applyFixes";
+      value: string;
+    }
   | { type: "openExtension"; extensionId: string }
   | InfoMessage;
 
@@ -174,7 +184,11 @@ export type RunInitStatusMessage = {
   containerImage?: string;
 };
 
-export type RunErrorMessage = { type: "runError"; message: string; commandLine?: string };
+export type RunErrorMessage = {
+  type: "runError";
+  message: string;
+  commandLine?: string;
+};
 
 export type RunPanelOutboundMessage =
   | RunContextMessage
